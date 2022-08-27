@@ -1,0 +1,12 @@
+{
+  "name": "smartrust",
+  "dependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^1.0.2",
+    "@openzeppelin/contracts": "^4.7.3"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-network-helpers": "^1.0.4",
+    "chai": "^4.3.6",
+    "hardhat-gas-reporter": "^1.0.8"
+  }
+}
