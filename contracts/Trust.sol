@@ -78,7 +78,7 @@ contract Trust is ERC1155, Ownable {
         uint256 ethBalance;
        
         /// The mapping of ERC20s (address) to trust balance
-        mapping(address => uint256) erc20Balance;
+        mapping(address => uint256) tokenBalances;
 
         /// A user friendly name for the trust, like "My Family Trust"
         bytes32 name;
@@ -110,6 +110,7 @@ contract Trust is ERC1155, Ownable {
     event keyMinted(address creator, uint256 trustId, uint256 keyId, address receiver);
     event withdrawalOccurred(address beneficiary, uint256 trustId, uint256 keyId, uint256 amount);
     event depositOccurred(address depositor, uint256 trustId, uint256 keyId, uint256 amount);
+    event tokenDepositOccurred(address depositor, uint256 trustId, uint256 keyId, address token, uint256 amount);
 
     ////////////////////////////////////////////////////////
     // External Methods
@@ -138,6 +139,19 @@ contract Trust is ERC1155, Ownable {
      */
     function getEthBalanceForTrust(uint256 keyId) external view returns(uint256) {
         return trustRegistry[resolveTrustWithSanity(msg.sender, keyId)].ethBalance;
+    }
+    
+    /**
+     * getTokenBalanceForTrust
+     *
+     * Given a specific key, will return the token balance for the associated trust.
+     *
+     * @param keyId the key you are using to access the trust
+     * @param tokenAddress the token contract address you want to retrieve the balance for
+     * @return the specific token balance for that trust
+     */
+    function getTokenBalanceForTrust(uint256 keyId, address tokenAddress) external view returns(uint256) {
+        return trustRegistry[resolveTrustWithSanity(msg.sender, keyId)].tokenBalances[tokenAddress];
     }
 
     /**
@@ -199,7 +213,8 @@ contract Trust is ERC1155, Ownable {
         uint256 trustId = resolveTrustWithSanity(msg.sender, keyId); 
         
         // make sure the key has permission to deposit for the given trust
-        require(keyHasDepositPermission(keyId), "Key does not have deposit permission on trust");
+        require(keyHasDepositPermission(keyId), 
+            "Key does not have deposit permission on trust");
    
         // make sure we are grabbing the trust via storage
         // and add the message's value to the balance
@@ -209,6 +224,42 @@ contract Trust is ERC1155, Ownable {
         
         // for sanity, return the total resulting balance
         return trust.ethBalance;
+    }
+
+    /**
+     * depositERC20
+     *
+     * This method enables owners or trustees to deposit any ERC20
+     * into the trust for their given key. Tthe caller has to hold 
+     * the key, and have deposit permissions. The caller must have 
+     * a sufficient ERC20 balance in their wallet to deposit.
+     *
+     * @param keyId the ID of the key that the depositor is using
+     * @param tokenAddress the contract address of token type for deposit
+     * @param amount the ERC20 token amount to deposit to the associated trust.
+     * @return the resulting token balance for that trust
+     */
+    function depositERC20(uint256 keyId, address tokenAddress, uint256 amount) external returns (uint256) {
+        // ensure that the caller owns the key, and the trust exists
+        uint256 trustId = resolveTrustWithSanity(msg.sender, keyId); 
+        
+        // make sure the key has permission to deposit for the given trust
+        require(keyHasDepositPermission(keyId), 
+            "Key does not have deposit permission on trust");
+
+        // make sure the caller has a sufficient token balance.
+        require(IERC20(tokenAddress).balanceOf(msg.sender) >= amount, 
+            "Depositor has insufficient tokens to send.");
+        
+        // transfer tokens in the target token contract, and 
+        // update the trust balance for that ERC20
+        IERC20(tokenAddress).transferFrom(msg.sender, address(this), amount);            
+        TrustBox storage trust = trustRegistry[trustId];
+        trust.tokenBalances[tokenAddress] += amount;
+        emit tokenDepositOccurred(msg.sender, trustId, keyId, tokenAddress, amount);
+
+        // for sanity, return the trust's token balance;
+        return trust.tokenBalances[tokenAddress];
     }
 
     /**
