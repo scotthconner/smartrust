@@ -63,16 +63,16 @@ describe("Trust", function () {
   ////////////////////////////////////////////////////////////
   async function deploySimpleTrustConfig() {
     // Contracts are deployed using the first signer/account by default
-    const [owner, otherAccount] = await ethers.getSigners();
+    const [owner, otherAccount, thirdAccount] = await ethers.getSigners();
 
     const Trust = await ethers.getContractFactory("Trust");
     const trust = await Trust.deploy();
 
-    await trust.connect(otherAccount).depositFundsAndCreateTrustKeys(stb("Conner Trust"), {
+    await trust.connect(otherAccount).createTrustAndOwnerKey(stb("Conner Trust"), {
         value: 10_000_000_000
     });
 
-    return { trust, owner, otherAccount };
+    return { trust, owner, otherAccount, thirdAccount };
   }
 
   ////////////////////////////////////////////////////////////
@@ -121,7 +121,7 @@ describe("Trust", function () {
       expect(await trust.balanceOf(owner.address, 0)).to.equal(0);
 
       // we want to ensure that a transfer and trust event was created
-      await expect(await trust.connect(otherAccount).depositFundsAndCreateTrustKeys(stb("Conner Trust"), {
+      await expect(await trust.connect(otherAccount).createTrustAndOwnerKey(stb("Conner Trust"), {
         value: 1_000_000_000
       })).to.emit(trust, "keyMinted").to.emit(trust, "trustCreated");
 
@@ -145,10 +145,10 @@ describe("Trust", function () {
       expect(await trust.balanceOf(owner.address, 0)).to.equal(0);
 
       // create two trusts
-      await expect(await trust.connect(otherAccount).depositFundsAndCreateTrustKeys(stb("Conner Trust"), {
+      await expect(await trust.connect(otherAccount).createTrustAndOwnerKey(stb("Conner Trust"), {
         value: 1_000_000_000
       })).to.emit(trust, "keyMinted").to.emit(trust, "trustCreated");
-      await expect(await trust.connect(owner).depositFundsAndCreateTrustKeys(stb("SmartTrust"), {
+      await expect(await trust.connect(owner).createTrustAndOwnerKey(stb("SmartTrust"), {
         value: 2_000_000_000
       })).to.emit(trust, "keyMinted").to.emit(trust, "trustCreated");
       
@@ -211,24 +211,57 @@ describe("Trust", function () {
       expect(await trust.balanceOf(owner.address, 1)).to.equal(0);
       expect(await trust.balanceOf(owner.address, 2)).to.equal(0);
       
-      // try to create trust keys without possessing the owner key 
+      // try to create trust keys that doesn't exist, "3" 
       await expect(trust.connect(otherAccount).createTrustKeys(0, 3, [owner.address]))
         .to.be.revertedWith('Key type is not recognized');
       
-      // couldn't mint an owner key, so its the same
+      // couldn't mint a bogus key
+      expect(await trust.balanceOf(owner.address, 3)).to.equal(0);
+    });
+
+    it("Create and test all key types", async function() {
+      const { trust, owner, otherAccount, thirdAccount } = 
+        await loadFixture(deploySimpleTrustConfig);
+      
+      // assert key ownership pre-conditions
       expect(await trust.balanceOf(owner.address, 0)).to.equal(0);
-    });
+      expect(await trust.balanceOf(owner.address, 1)).to.equal(0);
+      expect(await trust.balanceOf(owner.address, 2)).to.equal(0);
+      expect(await trust.balanceOf(otherAccount.address, 0)).to.equal(1);
+      expect(await trust.balanceOf(otherAccount.address, 1)).to.equal(0);
+      expect(await trust.balanceOf(otherAccount.address, 2)).to.equal(0);
+      expect(await trust.balanceOf(thirdAccount.address, 0)).to.equal(0);
+      expect(await trust.balanceOf(thirdAccount.address, 1)).to.equal(0);
+      expect(await trust.balanceOf(thirdAccount.address, 2)).to.equal(0);
 
-    it("Create Single and Multiple Owner Keys", async function() {
-      expect(true).to.equal(false);
-    });
+      // mint a single owner key to owner 
+      await expect(await trust.connect(otherAccount).createTrustKeys(0, 0, [owner.address]))
+        .to.emit(trust, "keyMinted");
+      
+      // use that owner key to mint a beneficiary to third account, do it twice
+      for(let x = 0; x < 2; x++) {
+        await expect(await trust.connect(owner).createTrustKeys(0, 2, [thirdAccount.address]))
+          .to.emit(trust, "keyMinted");
+      }
+      
+      // create a trustee account for owner 
+      await expect(await trust.connect(otherAccount).createTrustKeys(0, 1, [owner.address]))
+        .to.emit(trust, "keyMinted");
 
-    it("Create Single and Multiple Trustee Keys", async function() {
-      expect(true).to.equal(false);
-    });
-
-    it("Create Single and Multiple Beneficiary Keys", async function() {
-      expect(true).to.equal(false);
+      // owner should have both an owner key, and trustee key
+      expect(await trust.balanceOf(owner.address, 0)).to.equal(1);
+      expect(await trust.balanceOf(owner.address, 1)).to.equal(1);
+      expect(await trust.balanceOf(owner.address, 2)).to.equal(0);
+      
+      // other account should have an owner only
+      expect(await trust.balanceOf(otherAccount.address, 0)).to.equal(1);
+      expect(await trust.balanceOf(otherAccount.address, 1)).to.equal(0);
+      expect(await trust.balanceOf(otherAccount.address, 2)).to.equal(0);
+    
+      // third account should be a beneficiary
+      expect(await trust.balanceOf(thirdAccount.address, 0)).to.equal(0);
+      expect(await trust.balanceOf(thirdAccount.address, 1)).to.equal(0);
+      expect(await trust.balanceOf(thirdAccount.address, 2)).to.equal(2);
     });
   });
 
@@ -254,6 +287,9 @@ describe("Trust", function () {
       expect(await ethers.provider.getBalance(trust.address)).to.equal(8_000_000_000);
       expect(await ethers.provider.getBalance(otherAccount.address))
         .to.equal(ownerBalance.sub(t.gasCost).add(2_000_000_000));
+
+      // make sure the actual internal trust balance is also 8 ether
+      expect(await trust.connect(otherAccount).getEthBalanceForTrust(0)).to.equal(8_000_000_000);
     });
     
     it("Beneficiary withdrawal happy case", async function() {
@@ -350,5 +386,28 @@ describe("Trust", function () {
       // check balance of trust isn't changed. 
       expect(await ethers.provider.getBalance(trust.address)).to.equal(10_000_000_000);
     });
+  });
+  
+
+  ////////////////////////////////////////////////////////////
+  // Deposit and Withdrawal Ethereum
+  // 
+  // This test suite should test our ability to create trusts,
+  // withdrawal, deposit, and withdrawal ethereum across
+  // multiple trusts and reconcile balances.
+  ////////////////////////////////////////////////////////////
+  describe("Deposit and Withdrawal Ethereum", function () {
+
+  });
+  
+  ////////////////////////////////////////////////////////////
+  // Deposit and Withdrawal ERC20s 
+  // 
+  // This test suite should test our ability to create trusts,
+  // withdrawal, deposit, and withdrawal ERC20s across
+  // multiple trusts and reconcile balances.
+  ////////////////////////////////////////////////////////////
+  describe("Deposit and Withdrawal ERC20s", function () {
+
   });
 });

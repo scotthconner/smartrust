@@ -9,6 +9,11 @@ pragma solidity ^0.8.9;
 // a trust (Owner, Beneficiary, Trustee)
 import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
 
+// We want to use the ERC20 interface so each trust can hold
+// any arbitrary ERC20. This enables the trusts to hold all
+// sorts of assets, not just ethereum.
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
 // This enables the author of the contract to own it, and provide
 // ownership only methods to be called by the author for maintenance
 // or other issues.
@@ -71,7 +76,10 @@ contract Trust is ERC1155, Ownable {
     struct TrustBox {
         /// The ethereum balance for the trust.
         uint256 ethBalance;
-        
+       
+        /// The mapping of ERC20s (address) to trust balance
+        mapping(address => uint256) erc20Balance;
+
         /// A user friendly name for the trust, like "My Family Trust"
         bytes32 name;
     }
@@ -115,10 +123,22 @@ contract Trust is ERC1155, Ownable {
      *
      * @return the number of active trusts in the contract.
      */
-    function getTrustCount() external view returns(uint) {
+    function getTrustCount() external view returns(uint256) {
         return trustCount; 
     }
-    
+   
+    /**
+     * getEthBalanceForTrust
+     *
+     * Given a specific key, will return the ethereum balance for the associated trust.
+     *
+     * @param keyId the key you are using to access the trust
+     * @return specifically the ethereum balance for that trust
+     */
+    function getEthBalanceForTrust(uint256 keyId) external view returns(uint256) {
+        return trustRegistry[resolveTrustWithSanity(msg.sender, keyId)].ethBalance;
+    }
+
     /**
      * withdrawal
      *
@@ -143,8 +163,9 @@ contract Trust is ERC1155, Ownable {
         // each trust has rules and conditions for withdrawals, so ensure they are met.
         require(withdrawalConditionsMet(trustId, keyId, amount), "Withdrawal conditions are not met");
        
-        // at this point, we've ensured we have valid ranges for keys and trusts
-        TrustBox memory trust = trustRegistry[trustId];
+        // at this point, we've ensured we have valid ranges for keys and trusts.
+        // we need to pull this trust from storage because we are modifying the balance
+        TrustBox storage trust = trustRegistry[trustId];
 
         // ensure that there is a sufficient balance to withdrawal from
         // and that hopefully the trust isn't entitled to more than is in
@@ -153,7 +174,8 @@ contract Trust is ERC1155, Ownable {
         assert(address(this).balance >= amount);
 
         // ok ok ok, everything seems in order. Give the message sender their assets.
-        trust.ethBalance -= amount;
+        // this would not refect in storage if the TrustBox was defined in memory
+        trust.ethBalance -= amount; 
         payable(msg.sender).transfer(amount);
         emit withdrawalOccured(msg.sender, trustId, keyId, amount);
 
@@ -195,7 +217,7 @@ contract Trust is ERC1155, Ownable {
     }
     
     /**
-     * depositFundsAndCreateTrustKeys 
+     * createTrustAndOwnerKey 
      *
      * Calling this function will create a trust with a name, deposit ether,
      * and mint the first set of keys, give it to the caller.
@@ -203,16 +225,15 @@ contract Trust is ERC1155, Ownable {
      * @param  trustName A string defining the name of the trust, like 'My Family Trust'
      * @return the id of the trust created in the contract
      */
-    function depositFundsAndCreateTrustKeys(bytes32 trustName) payable external returns (uint) {
+    function createTrustAndOwnerKey(bytes32 trustName) payable external returns (uint) {
         // hold the trustBoxId that will eventually be used, and
         // increment the trust count
         uint trustId = trustCount++; 
 
         // create the trust, and put it into the registry
-        trustRegistry[trustId] = TrustBox({
-            name: trustName,
-            ethBalance: msg.value
-        });
+        TrustBox storage trust = trustRegistry[trustId];
+        trust.name = trustName;
+        trust.ethBalance = msg.value;
 
         // mint the owner key to the sender
         uint256 ownerKeyId = resolveKeyIdForTrust(trustId, OWNER);
