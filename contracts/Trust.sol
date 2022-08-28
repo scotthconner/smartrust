@@ -108,8 +108,9 @@ contract Trust is ERC1155, Ownable {
     ////////////////////////////////////////////////////////
     event trustCreated(address creator, uint256 trustId, uint256 ownerKeyId, uint256 amount);
     event keyMinted(address creator, uint256 trustId, uint256 keyId, address receiver);
-    event withdrawalOccured(address beneficiary, uint256 trustId, uint256 keyId, uint256 amount);
-    
+    event withdrawalOccurred(address beneficiary, uint256 trustId, uint256 keyId, uint256 amount);
+    event depositOccurred(address depositor, uint256 trustId, uint256 keyId, uint256 amount);
+
     ////////////////////////////////////////////////////////
     // External Methods
     // 
@@ -161,7 +162,7 @@ contract Trust is ERC1155, Ownable {
         require(keyHasWithdrawalPermission(keyId), "Key does not have withdrawal permission on trust");
 
         // each trust has rules and conditions for withdrawals, so ensure they are met.
-        require(withdrawalConditionsMet(trustId, keyId, amount), "Withdrawal conditions are not met");
+        // require(withdrawalConditionsMet(trustId, keyId, amount), "Withdrawal conditions are not met");
        
         // at this point, we've ensured we have valid ranges for keys and trusts.
         // we need to pull this trust from storage because we are modifying the balance
@@ -177,12 +178,39 @@ contract Trust is ERC1155, Ownable {
         // this would not refect in storage if the TrustBox was defined in memory
         trust.ethBalance -= amount; 
         payable(msg.sender).transfer(amount);
-        emit withdrawalOccured(msg.sender, trustId, keyId, amount);
+        emit withdrawalOccurred(msg.sender, trustId, keyId, amount);
 
         // for clarity, return the amount
         return amount;
     }
-    
+   
+    /**
+     * depositEth
+     *
+     * This method will enable owners or trustees to deposit eth into
+     * the trust for their given key. This method operates as a payable
+     * transaction where the message's value parameter is what is deposited. 
+     *
+     * @param keyId the ID of the key that the depositor is using.
+     * @return the resulting amount of ethereum in the trust's balance.
+     */
+    function depositEth(uint256 keyId) payable external returns (uint256) {
+        // ensure that the caller owns the key, and the trust exists
+        uint256 trustId = resolveTrustWithSanity(msg.sender, keyId); 
+        
+        // make sure the key has permission to deposit for the given trust
+        require(keyHasDepositPermission(keyId), "Key does not have deposit permission on trust");
+   
+        // make sure we are grabbing the trust via storage
+        // and add the message's value to the balance
+        TrustBox storage trust = trustRegistry[trustId];
+        trust.ethBalance += msg.value;
+        emit depositOccurred(msg.sender, trustId, keyId, msg.value);
+        
+        // for sanity, return the total resulting balance
+        return trust.ethBalance;
+    }
+
     /**
      * createTrustKeys 
      *
@@ -313,6 +341,20 @@ contract Trust is ERC1155, Ownable {
         // for now, only trustees can't withdrawal
         return deriveKeyType(keyId) != TRUSTEE;
     }
+    
+    /**
+     * keyHasDepositPermission
+     *
+     * Determines if the key has deposit permission for its associated trust.
+     * For now, this likely means it is an owner or trustee key.
+     *
+     * @param keyId the key ID you want to inspect the permissions for.
+     * @return true if the key has deposit permission for its trust, false otherwise.
+     */
+    function keyHasDepositPermission(uint256 keyId) internal pure returns (bool) {
+        // for now, beneficiaries can't deposit
+        return deriveKeyType(keyId) != BENEFICIARY;
+    }
 
     /**
      * doesAddressHoldKey
@@ -364,10 +406,10 @@ contract Trust is ERC1155, Ownable {
      * @param keyId the key ID you want to use to withdrawal funds from the associated trust 
      * @return true if the key has met withdrawal conditions of the associated trust 
      */
-    function withdrawalConditionsMet(uint256 trustId, uint256 keyId, uint256 amount) internal pure returns (bool) {
-        // conditions / rules have no yet been implemented yet
-        return (trustId != amount) || (keyId != amount) || true; // do this to suppress compiler warnings for now
-    }
+    //function withdrawalConditionsMet(uint256 trustId, uint256 keyId, uint256 amount) internal pure returns (bool) {
+    //    // conditions / rules have no yet been implemented yet
+    //    return (trustId != amount) || (keyId != amount) || true; // do this to suppress compiler warnings for now
+    //}
 
     /**
      * mintKey

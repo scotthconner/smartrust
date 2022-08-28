@@ -152,9 +152,11 @@ describe("Trust", function () {
         value: 2_000_000_000
       })).to.emit(trust, "keyMinted").to.emit(trust, "trustCreated");
       
-      // asset the basics that the eth is in the existing trust
+      // assess the basics that the eth is in the existing trust
       expect(await trust.getTrustCount()).to.equal(2);
       expect(await ethers.provider.getBalance(trust.address)).to.equal(3_000_000_000);
+      expect(await trust.connect(otherAccount).getEthBalanceForTrust(0)).to.equal(1_000_000_000);
+      expect(await trust.connect(owner).getEthBalanceForTrust(3)).to.equal(2_000_000_000);
       
       // ensure the keys end up the right spots
       expect(await trust.balanceOf(otherAccount.address, 0)).to.equal(1);
@@ -281,7 +283,7 @@ describe("Trust", function () {
 
       // withdrawal some eth and ensure the right events are emitted 
       const t = await doTransaction(trust.connect(otherAccount).withdrawal(0, 2_000_000_000));
-      await expect(t.transaction).to.emit(trust, "withdrawalOccured");
+      await expect(t.transaction).to.emit(trust, "withdrawalOccurred");
       
       // check balances 
       expect(await ethers.provider.getBalance(trust.address)).to.equal(8_000_000_000);
@@ -312,7 +314,7 @@ describe("Trust", function () {
       
       // withdrawal some eth as beneficiary and ensure the right events are emitted 
       const t = await doTransaction(trust.connect(owner).withdrawal(2, 2_000_000_000));
-      await expect(t.transaction).to.emit(trust, "withdrawalOccured");
+      await expect(t.transaction).to.emit(trust, "withdrawalOccurred");
       
       // check balances 
       expect(await ethers.provider.getBalance(trust.address)).to.equal(8_000_000_000);
@@ -324,15 +326,24 @@ describe("Trust", function () {
       const { trust, owner, otherAccount } = await loadFixture(deploySimpleTrustConfig);
       let ownerBalance = await ethers.provider.getBalance(otherAccount.address);
 
-      // asset preconditions
-      expect(await ethers.provider.getBalance(trust.address)).to.equal(10_000_000_000);
+      // create a second trust, owned by the owner
+      await trust.connect(owner).createTrustAndOwnerKey(stb("Second Trust"), {
+        value: 20_000_000_000
+      });
+
+      // asset preconditions for the entire trust contract
+      expect(await ethers.provider.getBalance(trust.address)).to.equal(30_000_000_000);
 
       // withdrawal some eth and ensure the right events are emitted 
       await expect(trust.connect(otherAccount).withdrawal(0, 11_000_000_000))
         .to.be.revertedWith('Insufficient balance in trust for withdrawal');
+     
+      // ensure the balances in each trust are right
+      expect(await trust.connect(otherAccount).getEthBalanceForTrust(0)).to.equal(10_000_000_000);
+      expect(await trust.connect(owner).getEthBalanceForTrust(3)).to.equal(20_000_000_000);
       
       // check balance of trust isn't changed. 
-      expect(await ethers.provider.getBalance(trust.address)).to.equal(10_000_000_000);
+      expect(await ethers.provider.getBalance(trust.address)).to.equal(30_000_000_000);
     });
     
     it("Can't withdrawal without owning key used", async function() {
@@ -396,8 +407,72 @@ describe("Trust", function () {
   // withdrawal, deposit, and withdrawal ethereum across
   // multiple trusts and reconcile balances.
   ////////////////////////////////////////////////////////////
-  describe("Deposit and Withdrawal Ethereum", function () {
+  describe("Basic Deposit Use Cases", function () {
+    it("Happy case deposit sanity", async function() {
+      const { trust, owner, otherAccount } = await loadFixture(deploySimpleTrustConfig);
 
+      // create a second trust, owned by the owner
+      await trust.connect(owner).createTrustAndOwnerKey(stb("Second Trust"), {
+        value: 20_000_000_000
+      });
+
+      // pre-conditions asserts
+      expect(await ethers.provider.getBalance(trust.address)).to.equal(30_000_000_000);
+      expect(await trust.connect(otherAccount).getEthBalanceForTrust(0)).to.equal(10_000_000_000);
+
+      // deposit some cash into the first trust
+      await expect(await trust.connect(otherAccount).depositEth(0, {value: 10_000_000_000}))
+        .to.emit(trust, "depositOccurred").withArgs(otherAccount.address, 0, 0, 10_000_000_000);
+      
+      // post-condition asserts
+      expect(await ethers.provider.getBalance(trust.address)).to.equal(40_000_000_000);
+      expect(await trust.connect(otherAccount).getEthBalanceForTrust(0)).to.equal(20_000_000_000);
+      
+      // deposit some cash into the second trust
+      await expect(await trust.connect(owner).depositEth(3, {value: 5_000_000_000}))
+        .to.emit(trust, "depositOccurred").withArgs(owner.address, 1, 3, 5_000_000_000);
+      
+      // post-condition asserts
+      expect(await ethers.provider.getBalance(trust.address)).to.equal(45_000_000_000);
+      expect(await trust.connect(otherAccount).getEthBalanceForTrust(0)).to.equal(20_000_000_000);
+      expect(await trust.connect(owner).getEthBalanceForTrust(3)).to.equal(25_000_000_000);
+    });
+    
+    it("Can't deposit without holding key", async function() {
+      const { trust, owner, otherAccount } = await loadFixture(deploySimpleTrustConfig);
+      
+      // try to deposit with a key not held, otherAccount isn't a trustee... 
+      await expect(trust.connect(otherAccount).depositEth(1, {value: 10_000_000_000}))
+        .to.be.revertedWith("Wallet does not hold key");
+    });
+    
+    it("Can't deposit if a beneficiary", async function() {
+      const { trust, owner, otherAccount } = await loadFixture(deploySimpleTrustConfig);
+     
+      // give the owner signer a beneficiary key
+      await expect(await trust.connect(otherAccount).createTrustKeys(0, 2, [owner.address]))
+        .to.emit(trust, "keyMinted").withArgs(otherAccount.address, 0, 2, owner.address);
+
+      // try to deposit as a beneficiary, not good! 
+      await expect(trust.connect(owner).depositEth(2, {value: 10_000_000_000}))
+        .to.be.revertedWith("Key does not have deposit permission on trust");
+    });
+    
+    it("Can deposit if a trustee", async function() {
+      const { trust, owner, otherAccount } = await loadFixture(deploySimpleTrustConfig);
+     
+      // give the owner signer a beneficiary key
+      await expect(await trust.connect(otherAccount).createTrustKeys(0, 1, [owner.address]))
+        .to.emit(trust, "keyMinted").withArgs(otherAccount.address, 0, 1, owner.address);
+
+      // try to deposit as a trustee
+      await expect(await trust.connect(owner).depositEth(1, {value: 10_000_000_000}))
+        .to.emit(trust, "depositOccurred").withArgs(owner.address, 0, 1, 10_000_000_000);
+
+      // validate the trust balances
+      expect(await ethers.provider.getBalance(trust.address)).to.equal(20_000_000_000);
+      expect(await trust.connect(otherAccount).getEthBalanceForTrust(0)).to.equal(20_000_000_000);
+    });
   });
   
   ////////////////////////////////////////////////////////////
