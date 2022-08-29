@@ -108,9 +108,10 @@ contract Trust is ERC1155, Ownable {
     ////////////////////////////////////////////////////////
     event trustCreated(address creator, uint256 trustId, uint256 ownerKeyId, uint256 amount);
     event keyMinted(address creator, uint256 trustId, uint256 keyId, address receiver);
-    event withdrawalOccurred(address beneficiary, uint256 trustId, uint256 keyId, uint256 amount);
     event depositOccurred(address depositor, uint256 trustId, uint256 keyId, uint256 amount);
+    event withdrawalOccurred(address beneficiary, uint256 trustId, uint256 keyId, uint256 amount);
     event erc20DepositOccurred(address depositor, uint256 trustId, uint256 keyId, address token, uint256 amount);
+    event erc20WithdrawalOccurred(address beneficiary, uint256 trustId, uint256 keyId, address token, uint256 amount);
 
     ////////////////////////////////////////////////////////
     // External Methods
@@ -168,7 +169,7 @@ contract Trust is ERC1155, Ownable {
      * @param amount the amount of ether, in gwei, to withdrawal from the balance.
      * @return the remaining balance for that asset in the trust
      */
-    function withdrawal(uint256 keyId, uint256 amount) external returns (uint) {
+    function withdrawal(uint256 keyId, uint256 amount) external returns (uint256) {
         // sanely ensure we know what trust this would be for
         uint256 trustId = resolveTrustWithSanity(msg.sender, keyId); 
 
@@ -197,7 +198,51 @@ contract Trust is ERC1155, Ownable {
         // for clarity, return the amount
         return amount;
     }
-   
+
+    /**
+     * withdrawalERC20 
+     *
+     * Given a key, attempt to withdrawal ERC20 funds from the trust. This will only
+     * succeed if the key is held by the user, the key has the permission to 
+     * withdrawal, the rules of the trust are satisified (whatever those may be), 
+     * and there is sufficient balance. If any of those fail, the entire 
+     * transaction will revert and fail.
+     *
+     * @param keyId  the keyId that identifies both the permissioned 'actor'
+     *               and implicitly the associated trust
+     * @param tokenAddress the token contract address representing the ERC20 to withdrawal
+     * @param amount the amount of ERC20, in gwei, to withdrawal from the trust.
+     * @return the remaining balance for that asset in the trust
+     */
+    function withdrawalERC20(uint256 keyId, address tokenAddress, uint256 amount) external returns (uint256) {
+        // sanely ensure we know what trust this would be for
+        uint256 trustId = resolveTrustWithSanity(msg.sender, keyId); 
+
+        // make sure the key has permission to withdrawal for the given trust
+        require(keyHasWithdrawalPermission(keyId), "Key does not have withdrawal permission on trust");
+
+        // each trust has rules and conditions for withdrawals, so ensure they are met.
+        // require(withdrawalConditionsMet(trustId, keyId, address, amount), "Withdrawal conditions are not met");
+       
+        // at this point, we've ensured we have valid ranges for keys and trusts.
+        // we need to pull this trust from storage because we are modifying the balance
+        TrustBox storage trust = trustRegistry[trustId];
+
+        // ensure that there is a sufficient balance to withdrawal from
+        // and that hopefully the trust isn't entitled to more than is in
+        // the contract
+        require(trust.tokenBalances[tokenAddress] >= amount, "Insufficient ERC20 balance in trust for withdrawal");
+        assert(IERC20(tokenAddress).balanceOf(address(this)) >= amount); 
+
+        // ok ok ok, everything seems in order. Give the message sender their assets.
+        trust.tokenBalances[tokenAddress] -= amount;
+        IERC20(tokenAddress).transfer(msg.sender, amount);            
+        emit erc20WithdrawalOccurred(msg.sender, trustId, keyId, tokenAddress, amount);
+
+        // for clarity, return the amount
+        return amount;
+    }
+
     /**
      * depositEth
      *
