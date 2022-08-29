@@ -74,6 +74,35 @@ describe("Trust", function () {
 
     return { trust, owner, otherAccount, thirdAccount };
   }
+  
+  ////////////////////////////////////////////////////////////
+  // deployTrustAndShadowCoin
+  //
+  // This fixture should represent the contract with a single
+  // trust configured, with only one owner key provisioned.
+  // 
+  // It also contains one generic ERC20, and puts some
+  // balance into both accounts.
+  ////////////////////////////////////////////////////////////
+  async function deployTrustAndShadowCoin() {
+    const {trust, owner, otherAccount, thirdAccount} = await deploySimpleTrustConfig();
+
+    const ShadowCoin = await ethers.getContractFactory("ShadowERC");
+    const shadow = await ShadowCoin.deploy("Coinbase Liquid Staked Eth", "cbETH");
+
+    // spawn some tokens into each account 
+    await shadow.connect(owner).spawn(ethers.utils.parseEther("10"));
+    await shadow.connect(otherAccount).spawn(ethers.utils.parseEther("11"));
+    await shadow.connect(thirdAccount).spawn(ethers.utils.parseEther("12"));
+
+    // we are not testing allowance functionality, so be super liberal here.
+    await shadow.connect(owner).approve(trust.address, ethers.constants.MaxUint256);
+    await shadow.connect(otherAccount).approve(trust.address, ethers.constants.MaxUint256);
+    await shadow.connect(thirdAccount).approve(trust.address, ethers.constants.MaxUint256);
+
+    return { trust, shadow, owner, otherAccount, thirdAccount};
+  }
+
 
   ////////////////////////////////////////////////////////////
   // Deployment
@@ -482,7 +511,70 @@ describe("Trust", function () {
   // withdrawal, deposit, and withdrawal ERC20s across
   // multiple trusts and reconcile balances.
   ////////////////////////////////////////////////////////////
-  describe("Deposit and Withdrawal ERC20s", function () {
+  describe("Deposit ERC20s", function () {
+    it("Can deposit ERC20 happy case", async function() {
+      const {trust, shadow, owner, otherAccount, thirdAccount} = 
+        await loadFixture(deployTrustAndShadowCoin);
 
+      // validate that each account has cbETH in it.
+      expect(await shadow.balanceOf(owner.address)).to.equal(ethers.utils.parseEther("10"));
+      expect(await shadow.balanceOf(otherAccount.address)).to.equal(ethers.utils.parseEther("11"));
+      expect(await shadow.balanceOf(thirdAccount.address)).to.equal(ethers.utils.parseEther("12"));
+
+      // have the otherAccount (owner) deposit some tokens into the account
+      await expect(await trust.connect(otherAccount)
+        .depositERC20(0, shadow.address, ethers.utils.parseEther("3")))
+        .to.emit(trust, "erc20DepositOccurred")
+        .withArgs(otherAccount.address, 0, 0, shadow.address, ethers.utils.parseEther("3"));
+      
+      // check all the balances of the accounts once more
+      expect(await shadow.balanceOf(owner.address)).to.equal(ethers.utils.parseEther("10"));
+      expect(await shadow.balanceOf(otherAccount.address)).to.equal(ethers.utils.parseEther("8"));
+      expect(await shadow.balanceOf(thirdAccount.address)).to.equal(ethers.utils.parseEther("12"));
+      
+      // check the balance of the ERC20 for the entire trust contract,
+      // and check the actual ERC20 balance of the individual trust (they will be the same)
+      expect(await shadow.balanceOf(trust.address)).to.equal(ethers.utils.parseEther("3"));
+      expect(await trust.connect(otherAccount).getERC20BalanceForTrust(0, shadow.address))
+        .to.equal(ethers.utils.parseEther("3"));
+
+      // go ahead and barf if we try to get the balance for key we don't hold
+      await expect(trust.connect(owner).getERC20BalanceForTrust(1, shadow.address))
+        .to.be.revertedWith("Wallet does not hold key");
+    });
+    
+    it("Does not hold key used for deposit", async function() {
+      const {trust, shadow, owner, otherAccount, thirdAccount} = 
+        await loadFixture(deployTrustAndShadowCoin);
+   
+      // try to deposit as a beneficiary, and fail
+      await expect(trust.connect(thirdAccount)
+        .depositERC20(0, shadow.address, ethers.utils.parseEther("3")))
+        .to.be.revertedWith("Wallet does not hold key");
+    });
+
+    it("Does not have deposit permission", async function() {
+      const {trust, shadow, owner, otherAccount, thirdAccount} = 
+        await loadFixture(deployTrustAndShadowCoin);
+
+      // mint a beneficiary token to the third account
+      await trust.connect(otherAccount).createTrustKeys(0, 2, [thirdAccount.address]);
+      expect(await trust.balanceOf(thirdAccount.address, 2)).to.equal(1);
+
+      // try to deposit as a beneficiary, and fail
+      await expect(trust.connect(thirdAccount)
+        .depositERC20(2, shadow.address, ethers.utils.parseEther("3")))
+        .to.be.revertedWith("Key does not have deposit permission on trust");
+    });
+
+    it("Does not have enough ERC20 to deposit", async function() {
+      const {trust, shadow, owner, otherAccount, thirdAccount} = 
+        await loadFixture(deployTrustAndShadowCoin);
+
+      // in this fixture, the otherAccount only has 11 tokens
+      await expect(trust.connect(otherAccount)
+        .depositERC20(0, shadow.address, ethers.utils.parseEther("20")))
+        .to.be.revertedWith("Depositor has insufficient tokens to send");
+    });
   });
 });

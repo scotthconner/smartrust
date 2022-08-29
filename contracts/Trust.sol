@@ -110,7 +110,7 @@ contract Trust is ERC1155, Ownable {
     event keyMinted(address creator, uint256 trustId, uint256 keyId, address receiver);
     event withdrawalOccurred(address beneficiary, uint256 trustId, uint256 keyId, uint256 amount);
     event depositOccurred(address depositor, uint256 trustId, uint256 keyId, uint256 amount);
-    event tokenDepositOccurred(address depositor, uint256 trustId, uint256 keyId, address token, uint256 amount);
+    event erc20DepositOccurred(address depositor, uint256 trustId, uint256 keyId, address token, uint256 amount);
 
     ////////////////////////////////////////////////////////
     // External Methods
@@ -142,7 +142,7 @@ contract Trust is ERC1155, Ownable {
     }
     
     /**
-     * getTokenBalanceForTrust
+     * getERC20BalanceForTrust
      *
      * Given a specific key, will return the token balance for the associated trust.
      *
@@ -150,7 +150,7 @@ contract Trust is ERC1155, Ownable {
      * @param tokenAddress the token contract address you want to retrieve the balance for
      * @return the specific token balance for that trust
      */
-    function getTokenBalanceForTrust(uint256 keyId, address tokenAddress) external view returns(uint256) {
+    function getERC20BalanceForTrust(uint256 keyId, address tokenAddress) external view returns(uint256) {
         return trustRegistry[resolveTrustWithSanity(msg.sender, keyId)].tokenBalances[tokenAddress];
     }
 
@@ -249,14 +249,14 @@ contract Trust is ERC1155, Ownable {
 
         // make sure the caller has a sufficient token balance.
         require(IERC20(tokenAddress).balanceOf(msg.sender) >= amount, 
-            "Depositor has insufficient tokens to send.");
+            "Depositor has insufficient tokens to send");
         
         // transfer tokens in the target token contract, and 
         // update the trust balance for that ERC20
         IERC20(tokenAddress).transferFrom(msg.sender, address(this), amount);            
         TrustBox storage trust = trustRegistry[trustId];
         trust.tokenBalances[tokenAddress] += amount;
-        emit tokenDepositOccurred(msg.sender, trustId, keyId, tokenAddress, amount);
+        emit erc20DepositOccurred(msg.sender, trustId, keyId, tokenAddress, amount);
 
         // for sanity, return the trust's token balance;
         return trust.tokenBalances[tokenAddress];
