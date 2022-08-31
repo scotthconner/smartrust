@@ -176,9 +176,6 @@ contract Trust is ERC1155, Ownable {
         // make sure the key has permission to withdrawal for the given trust
         require(keyHasWithdrawalPermission(keyId), "Key does not have withdrawal permission on trust");
 
-        // each trust has rules and conditions for withdrawals, so ensure they are met.
-        // require(withdrawalConditionsMet(trustId, keyId, amount), "Withdrawal conditions are not met");
-       
         // at this point, we've ensured we have valid ranges for keys and trusts.
         // we need to pull this trust from storage because we are modifying the balance
         TrustBox storage trust = trustRegistry[trustId];
@@ -221,9 +218,6 @@ contract Trust is ERC1155, Ownable {
         // make sure the key has permission to withdrawal for the given trust
         require(keyHasWithdrawalPermission(keyId), "Key does not have withdrawal permission on trust");
 
-        // each trust has rules and conditions for withdrawals, so ensure they are met.
-        // require(withdrawalConditionsMet(trustId, keyId, address, amount), "Withdrawal conditions are not met");
-       
         // at this point, we've ensured we have valid ranges for keys and trusts.
         // we need to pull this trust from storage because we are modifying the balance
         TrustBox storage trust = trustRegistry[trustId];
@@ -491,21 +485,6 @@ contract Trust is ERC1155, Ownable {
    
         return trustId;
     }
-
-    /**
-     * withdrawalConditionsMet 
-     *
-     * Determines based on the rules of the trust if the withdrawal conditions 
-     * are met. This explicitly does not test if there is a sufficient balance. 
-     *
-     * @param trustId the id of the trust you want to withdrwal funds from
-     * @param keyId the key ID you want to use to withdrawal funds from the associated trust 
-     * @return true if the key has met withdrawal conditions of the associated trust 
-     */
-    //function withdrawalConditionsMet(uint256 trustId, uint256 keyId, uint256 amount) internal pure returns (bool) {
-    //    // conditions / rules have no yet been implemented yet
-    //    return (trustId != amount) || (keyId != amount) || true; // do this to suppress compiler warnings for now
-    //}
 
     /**
      * mintKey

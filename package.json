@@ -2,11 +2,16 @@
   "name": "smartrust",
   "dependencies": {
     "@nomicfoundation/hardhat-toolbox": "^1.0.2",
-    "@openzeppelin/contracts": "^4.7.3"
+    "@openzeppelin/contracts": "^4.7.3",
+    "@openzeppelin/contracts-upgradeable": "^4.7.3",
+    "hardhat-contract-sizer": "^2.6.1"
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-network-helpers": "^1.0.4",
+    "@nomiclabs/hardhat-ethers": "^2.1.1",
+    "@openzeppelin/hardhat-upgrades": "^1.20.0",
     "chai": "^4.3.6",
+    "ethers": "^5.7.0",
     "hardhat-gas-reporter": "^1.0.8"
   }
 }

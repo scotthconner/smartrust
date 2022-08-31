@@ -1,4 +1,6 @@
+require('hardhat-contract-sizer');
 require("@nomicfoundation/hardhat-toolbox");
+require('@openzeppelin/hardhat-upgrades');
 require("hardhat-gas-reporter");
 
 /** @type import('hardhat/config').HardhatUserConfig */
