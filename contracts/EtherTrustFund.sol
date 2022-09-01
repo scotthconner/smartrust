@@ -40,7 +40,7 @@ contract EtherTrustFund is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     // Storage
     ///////////////////////////////////////////////////////
     // the contract of the TrustKey proxy dependency 
-    TrustKey internal trustKeyManager;
+    TrustKey public trustKeyManager;
 
     // maps the associated trust id's to their ethereum balances
     // within the contract
@@ -143,7 +143,7 @@ contract EtherTrustFund is Initializable, OwnableUpgradeable, UUPSUpgradeable {
      * @return specifically the ethereum balance for that trust
      */
     function getEtherBalance(uint256 keyId) external view returns(uint256) {
-        return trustBalances[trustKeyManager.resolveTrustWithSanity(keyId)];
+        return trustBalances[trustKeyManager.resolveTrustWithSanity(msg.sender, keyId)];
     }
 
     /**
@@ -157,7 +157,7 @@ contract EtherTrustFund is Initializable, OwnableUpgradeable, UUPSUpgradeable {
      */
     function deposit(uint256 keyId) payable external {
         // ensure that the caller owns the key, and the trust exists
-        uint256 trustId = trustKeyManager.resolveTrustWithSanity(keyId);
+        uint256 trustId = trustKeyManager.resolveTrustWithSanity(msg.sender, keyId);
 
         // this is where more generalized rules will go, but for now we
         // ensure that the key held isn't a beneficiary.
@@ -186,7 +186,7 @@ contract EtherTrustFund is Initializable, OwnableUpgradeable, UUPSUpgradeable {
      */
     function withdrawal(uint256 keyId, uint256 amount) external {
         // sanely ensure we know what trust this would be for
-        uint256 trustId = trustKeyManager.resolveTrustWithSanity(keyId);
+        uint256 trustId = trustKeyManager.resolveTrustWithSanity(msg.sender, keyId);
 
         // this is where more generalized rules will go, but for now we
         // ensure that the key held isn't a beneficiary.

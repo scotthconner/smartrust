@@ -13,60 +13,11 @@ const { expect } = require("chai");    // used for assertions
 const {
   loadFixture                          // used for test setup
 } = require("@nomicfoundation/hardhat-network-helpers");
+require('./TrustTestUtils.js');        // custom helpers
 //////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////
 describe("TrustKey", function () {
-  ////////////////////////////////////////////////////////////
-  // helpers
-  // 
-  // These functions help make writing tests just that much easier.
-  ////////////////////////////////////////////////////////////
-  function stb(string) {
-    return ethers.utils.formatBytes32String(string);
-  }
-  
-  function OWNER() { return 0; }
-  function TRUSTEE() { return 1; }
-  function BENEFICIARY() { return 2; }
-
-  ////////////////////////////////////////////////////////////
-  // deployEmptyTrustRegistry
-  //
-  // This fixture should represent the contract as it would
-  // be deployed by default on the ethereum main-net. This is
-  // considered the natural state of the contract at launch time.
-  ////////////////////////////////////////////////////////////
-  async function deployEmptyTrustRegistry() {
-    // Contracts are deployed using the first signer/account by default
-    const [owner, otherAccount, thirdAccount] = await ethers.getSigners();
-
-    // then deploy the trust key manager, using the trust key library
-    const TrustKey = await ethers.getContractFactory("TrustKey");
-    
-    // since the contract is upgradeable, use a proxy
-    const trust = await upgrades.deployProxy(TrustKey);
-    await trust.deployed();
-
-    return {trust, owner, otherAccount, thirdAccount};
-  }
-  
-  ////////////////////////////////////////////////////////////
-  // deployWithSingleTrust
-  //
-  // This builds on top of the previous fixture, but starts 
-  // with a trust and a single OWNER key, given to 'owner.'
-  ////////////////////////////////////////////////////////////
-  async function deployWithSingleTrust() {
-    const {trust, owner, otherAccount, thirdAccount} = 
-      await deployEmptyTrustRegistry(); 
-     
-    // with the contract in place, create a trust and get the owner key
-    await trust.connect(owner).createTrustAndOwnerKey(stb("Conner Trust"));
-
-    return {trust, owner, otherAccount, thirdAccount};
-  }
-
   ////////////////////////////////////////////////////////////
   // Deployment
   //
@@ -75,17 +26,17 @@ describe("TrustKey", function () {
   ////////////////////////////////////////////////////////////
   describe("Contract deployment", function () {
     it("Should not fail the deployment", async function () {
-      const { trust } = await loadFixture(deployEmptyTrustRegistry);
+      const { trust } = await loadFixture(TrustTestFixtures.freshTrustProxy);
       expect(true);
     });
 
     it("Should have no active trusts", async function () {
-      const { trust } = await loadFixture(deployEmptyTrustRegistry);
+      const { trust } = await loadFixture(TrustTestFixtures.freshTrustProxy);
       expect(await trust.trustCount()).to.equal(0);
     });
 
     it("Should have no eth balance", async function () {
-      const { trust } = await loadFixture(deployEmptyTrustRegistry);
+      const { trust } = await loadFixture(TrustTestFixtures.freshTrustProxy);
       expect(await ethers.provider.getBalance(trust.address)).to.equal(0);
     });
   });
@@ -98,7 +49,7 @@ describe("TrustKey", function () {
   ////////////////////////////////////////////////////////////
   describe("Contract upgrade", function() {
     it("Should be able to upgrade", async function() {
-      const { trust } = await loadFixture(deployEmptyTrustRegistry);
+      const { trust } = await loadFixture(TrustTestFixtures.freshTrustProxy);
       
       const trustV2 = await ethers.getContractFactory("TrustKey")
       const trustAgain = await upgrades.upgradeProxy(trust.address, trustV2);
@@ -116,8 +67,8 @@ describe("TrustKey", function () {
   describe("Basic Trust Creation", function () {
     it("Trust should exist with one key created", async function () {
       const { trust, owner, otherAccount } 
-        = await loadFixture(deployEmptyTrustRegistry);
-
+        = await loadFixture(TrustTestFixtures.freshTrustProxy);
+      
       // assert the preconditions 
       expect(await trust.trustCount()).to.equal(0);
       expect(await ethers.provider.getBalance(trust.address)).to.equal(0);
@@ -142,7 +93,7 @@ describe("TrustKey", function () {
     
     it("Two trusts are independent of each other", async function () {
       const { trust, owner, otherAccount } = 
-        await loadFixture(deployEmptyTrustRegistry);
+        await loadFixture(TrustTestFixtures.freshTrustProxy);
 
       // make sure there are no trusts and there are no owner keys 
       expect(await trust.trustCount()).to.equal(0);
@@ -176,7 +127,7 @@ describe("TrustKey", function () {
   describe("Basic Key Creation Use Cases", function() {
     it("Can't create keys without using owner key", async function() {
       const { trust, owner, otherAccount } 
-        = await loadFixture(deployWithSingleTrust);
+        = await loadFixture(TrustTestFixtures.singleTrust);
      
       // assert key ownership pre-conditions
       expect(await trust.balanceOf(owner.address, 0)).to.equal(1);
@@ -197,7 +148,7 @@ describe("TrustKey", function () {
 
     it("Can't create keys without owner key possession", async function() {
       const { trust, owner, otherAccount } 
-        = await loadFixture(deployWithSingleTrust);
+        = await loadFixture(TrustTestFixtures.singleTrust);
      
       // assert key ownership pre-conditions
       expect(await trust.balanceOf(owner.address, 0)).to.equal(1);
@@ -219,7 +170,7 @@ describe("TrustKey", function () {
 
     it("Can't create bogus key types", async function() {
       const { trust, owner, otherAccount } 
-        = await loadFixture(deployWithSingleTrust);
+        = await loadFixture(TrustTestFixtures.singleTrust);
      
       // assert key ownership pre-conditions
       expect(await trust.balanceOf(owner.address, 0)).to.equal(1);
@@ -233,7 +184,7 @@ describe("TrustKey", function () {
     
     it("Can't used out of bounds key", async function() {
       const { trust, owner, otherAccount } 
-        = await loadFixture(deployWithSingleTrust);
+        = await loadFixture(TrustTestFixtures.singleTrust);
      
       // assert key ownership pre-conditions
       expect(await trust.balanceOf(owner.address, 0)).to.equal(1);
@@ -248,7 +199,7 @@ describe("TrustKey", function () {
 
     it("Create and test all key types", async function() {
       const { trust, owner, otherAccount, thirdAccount } 
-        = await loadFixture(deployWithSingleTrust);
+        = await loadFixture(TrustTestFixtures.singleTrust);
       
       // assert key ownership pre-conditions
       expect(await trust.balanceOf(owner.address, 0)).to.equal(1);

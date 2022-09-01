@@ -160,7 +160,7 @@ contract TrustKey is Initializable, ERC1155Upgradeable, OwnableUpgradeable, UUPS
         require(TrustKeyDefinitions.deriveKeyType(keyId) == TrustKeyDefinitions.OWNER, "NOT_OWNER_KEY");
 
         // ensure that the caller owns the key, and the trust exists
-        uint256 trustId = resolveTrustWithSanity(keyId);
+        uint256 trustId = resolveTrustWithSanity(msg.sender, keyId);
 
         // resolve the ERC1155 key ID to mint, panics if bad keyType
         uint256 mintedKeyId = TrustKeyDefinitions.resolveKeyIdForTrust(trustId, keyType);
@@ -179,16 +179,17 @@ contract TrustKey is Initializable, ERC1155Upgradeable, OwnableUpgradeable, UUPS
      * resolveTrustWithSanity
      *
      * This is a helper method that will do plenty of checking for the cases
-     * where the sender is trying to use a key for a
+     * where the address is trying to use a key for a
      * use case, and resolve the trust ID for the key context.
      *
      * If this method doesn't panic, it means the address holds the key,
      * and the trust is valid.
      *
+     * @param wallet the address in question, usually the sender, sometimes the origin.
      * @param keyId the key the address is attempting to use
      * @return the associated trust ID for the given valid key
      */
-    function resolveTrustWithSanity(uint256 keyId) public view returns (uint256) {
+    function resolveTrustWithSanity(address wallet, uint256 keyId) public view returns (uint256) {
         // ensure we know what trust this would be for
         uint256 trustId = TrustKeyDefinitions.deriveTrustId(keyId);
 
@@ -196,7 +197,7 @@ contract TrustKey is Initializable, ERC1155Upgradeable, OwnableUpgradeable, UUPS
         require(trustId < trustCount, "BAD_TRUST_ID");
 
         // ensure the sender holds the key they are using
-        require(doesAddressHoldKey(msg.sender, keyId), "MISSING_KEY");
+        require(doesAddressHoldKey(wallet, keyId), "MISSING_KEY");
 
         return trustId;
     }
