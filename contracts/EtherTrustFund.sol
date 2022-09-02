@@ -197,12 +197,12 @@ contract EtherTrustFund is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         // ensure that there is a sufficient balance to withdrawal from
         // and that hopefully the trust isn't entitled to more than is in
         // the contract
-        require(trustBalances[keyId] >= amount, "OVERDRAFT");
+        require(trustBalances[trustId] >= amount, "OVERDRAFT");
         assert(address(this).balance >= amount); // invariant protection
 
         // ok ok ok, everything seems in order. Give the message sender their assets.
-        trustBalances[keyId] -= amount;
+        trustBalances[trustId] -= amount;
         payable(msg.sender).transfer(amount);
-        emit ethWithdrawalOccurred(msg.sender, trustId, keyId, amount, trustBalances[keyId]);
+        emit ethWithdrawalOccurred(msg.sender, trustId, keyId, amount, trustBalances[trustId]);
     }
 }

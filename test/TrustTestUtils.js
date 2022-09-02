@@ -17,11 +17,25 @@ BENEFICIARY = function() { return 2;}
 
 stb = function(string) {
   return ethers.utils.formatBytes32String(string);
-}
+};
 
 eth = function(ethAmount) {
   return ethers.utils.parseEther("" + ethAmount);
-}
+};
+
+doTransaction = async function(promise) {
+  const _tx = (await promise); 
+      
+  // finalize the transaction and calculate gas 
+  const _receipt = await _tx.wait();
+  const _transactionCost = _receipt.gasUsed.mul(_receipt.effectiveGasPrice)
+      
+  return {
+    transaction: _tx,
+    receipt: _receipt,
+    gasCost: _transactionCost
+  }
+};
 
 TrustTestFixtures = (function() {
   return {
@@ -77,6 +91,23 @@ TrustTestFixtures = (function() {
       // since the contract is upgradeable, use a proxy
       const ethFund = await upgrades.deployProxy(EtherTrustFund, [trust.address]);
       await ethFund.deployed();
+
+      return {trust, ethFund, owner, otherAccount, thirdAccount};
+    },
+    ////////////////////////////////////////////////////////////
+    // singleEtherFunded 
+    //
+    // Delivers a contract with a single trust, filled with some 
+    // ether.
+    ////////////////////////////////////////////////////////////
+    singleEtherFunded: async function() {
+      const {trust, ethFund, owner, otherAccount, thirdAccount} =
+        await TrustTestFixtures.singleEtherFund();
+
+      // deposit some ether into it
+      await ethFund.connect(owner).deposit(0, {
+        value: eth(40)
+      })
 
       return {trust, ethFund, owner, otherAccount, thirdAccount};
     }
