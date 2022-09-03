@@ -36,16 +36,6 @@ import "./TrustKey.sol";
  *
  */
 contract EtherTrustFund is Initializable, OwnableUpgradeable, UUPSUpgradeable {
-    ///////////////////////////////////////////////////////
-    // Storage
-    ///////////////////////////////////////////////////////
-    // the contract of the TrustKey proxy dependency 
-    TrustKey public trustKeyManager;
-
-    // maps the associated trust id's to their ethereum balances
-    // within the contract
-    mapping(uint256 => uint256) public trustBalances;
-
     ////////////////////////////////////////////////////////
     // Events
     //
@@ -59,7 +49,7 @@ contract EtherTrustFund is Initializable, OwnableUpgradeable, UUPSUpgradeable {
      * Generally this means it was acted upon by an owner or a trustee.
      *
      * @param depositor the address of the depositing message sender
-     * @param trustId the trust the ether was depositing to
+     * @param trustId the trust the ether was deposited to
      * @param keyId the keyID they used to do the deposit
      * @param amount the amount deposited to the trust
      * @param newTotalBalance total resulting amount of ether after the deposit
@@ -83,6 +73,17 @@ contract EtherTrustFund is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     event ethWithdrawalOccurred(
         address beneficiary, uint256 trustId, uint256 keyId, 
         uint256 amount, uint256 newTotalBalance);
+    
+    ///////////////////////////////////////////////////////
+    // Storage
+    ///////////////////////////////////////////////////////
+    // the contract of the TrustKey proxy dependency 
+    TrustKey public trustKeyManager;
+
+    // maps the associated trust id's to their ethereum balances
+    // within the contract
+    mapping(uint256 => uint256) public trustBalances;
+
 
     ///////////////////////////////////////////////////////
     // Constructor and Upgrade Methods
