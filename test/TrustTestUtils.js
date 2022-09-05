@@ -78,7 +78,7 @@ TrustTestFixtures = (function() {
     // singleEtherFund 
     //
     // This builds on top of single trust, and deploys a properly 
-    // proxy for upgradable ether trust funds.
+    // proxied for upgradable ether trust funds.
     ////////////////////////////////////////////////////////////
     singleEtherFund: async function() {
       const {trust, owner, otherAccount, thirdAccount} =
@@ -110,6 +110,57 @@ TrustTestFixtures = (function() {
       })
 
       return {trust, ethFund, owner, otherAccount, thirdAccount};
+    },
+    ////////////////////////////////////////////////////////////
+    // singleERC20Fund
+    //
+    // This builds on top of single trust, and deploys a properly 
+    // proxied for upgradable ERC20 trust funds.
+    ////////////////////////////////////////////////////////////
+    singleERC20Fund: async function() {
+      const {trust, owner, otherAccount, thirdAccount} =
+        await TrustTestFixtures.singleTrust();
+
+      // with the trust and contracts in place, deploy 
+      // the erc20 fund contract as a proxy
+      const ERC20TrustFund = await ethers.getContractFactory("ERC20TrustFund");
+
+      // since the contract is upgradeable, use a proxy
+      const erc20 = await upgrades.deployProxy(ERC20TrustFund, [trust.address]);
+      await erc20.deployed();
+
+      // go ahead and deploy a shadow coin too 
+      const ShadowCoin = await ethers.getContractFactory("ShadowERC");
+      const coin = await ShadowCoin.deploy("Coinbase Liquid Staked Eth", "cbETH");
+
+      // spawn some tokens into each account
+      await coin.connect(owner).spawn(eth(10));
+      await coin.connect(otherAccount).spawn(eth(11));
+      await coin.connect(thirdAccount).spawn(eth(12));
+
+      // we are not testing allowance functionality, so be super liberal here.
+      await coin.connect(owner).approve(erc20.address, ethers.constants.MaxUint256);
+      await coin.connect(otherAccount).approve(erc20.address, ethers.constants.MaxUint256);
+      await coin.connect(thirdAccount).approve(erc20.address, ethers.constants.MaxUint256);
+
+      return {trust, erc20, coin, owner, otherAccount, thirdAccount};
+    },
+    ////////////////////////////////////////////////////////////
+    // singleERC20Funded
+    //
+    // Deployed ERC20 fund features, with some ERC20 deposited. 
+    ////////////////////////////////////////////////////////////
+    singleERC20Funded: async function() {
+      const {trust, erc20, coin, owner, otherAccount, thirdAccount} =
+        await TrustTestFixtures.singleERC20Fund();
+
+      // deposit some coin
+      await erc20.connect(owner).deposit(0, coin.address, eth(5));
+
+      // create a beneficiary
+      await trust.connect(owner).createTrustKeys(0, 2, [thirdAccount.address]);
+      
+      return {trust, erc20, coin, owner, otherAccount, thirdAccount};
     }
   };
 })();

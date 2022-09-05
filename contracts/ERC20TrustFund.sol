@@ -62,7 +62,24 @@ contract ERC20TrustFund is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     event erc20DepositOccurred(
         address depositor, uint256 trustId, uint256 keyId, 
         address token, uint256 amount, uint256 newTotalBalance);
-    
+   
+    /**
+     * erc20WithdrawalOccurred
+     *
+     * This event fires when an ERC20 withdrawal is successful on a trust. Most
+     * likely this done by an owner or a beneficiary.
+     *
+     * @param beneficiary the address of the withdrawaling message sender. 
+     * @param trustId the trust ID the ERC20 funds are to come from. 
+     * @param keyId the key ID that was used to make the withdrawal.
+     * @param token the token's contract address that represents its type.
+     * @param amount the amount of the ERC20 token that was withdrawn. 
+     * @param newTotalBalance the new amounting total balance of ERC20 in the trust.
+     */
+    event erc20WithdrawalOccurred(
+        address beneficiary, uint256 trustId, uint256 keyId, 
+        address token, uint256 amount, uint256 newTotalBalance);
+
     ///////////////////////////////////////////////////////
     // Storage
     ///////////////////////////////////////////////////////
@@ -162,8 +179,22 @@ contract ERC20TrustFund is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         return trustTokenVaults[trustKeyManager.resolveTrustWithSanity(msg.sender, keyId)]
             .balances[tokenAddress].balance;
     }
+    
+    /**
+     * getTokenTypes
+     *
+     * Given a specific key, will return the contract addresses for all
+     * ERC20s held in a specific trust.
+     *
+     * @param keyId the key you are using to access the trust
+     * @return the token registry for that trust 
+     */
+    function getTokenTypes(uint256 keyId) external view returns(address[] memory) {
+        return trustTokenVaults[trustKeyManager.resolveTrustWithSanity(msg.sender, keyId)]
+            .tokenRegistry;
+    }
 
-     /**
+    /**
      * deposit
      *
      * This method will enable owners or trustees to deposit eth into
@@ -212,6 +243,43 @@ contract ERC20TrustFund is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         // at this point we can assume it was successful
         emit erc20DepositOccurred(
             msg.sender, trustId, keyId, 
+            tokenAddress, amount, tokenBalance.balance);
+    }
+
+    /**
+     * withdrawal
+     *
+     * Given a key, attempt to withdrawal ERC20 funds from the trust. This will only
+     * succeed if the key is held by the user, the key has the permission to
+     * withdrawal, the rules of the trust are satisified (whatever those may be),
+     * and there is sufficient balance. If any of those fail, the entire
+     * transaction will revert and fail.
+     *
+     * @param keyId  the keyId that identifies both the permissioned 'actor'
+     *               and implicitly the associated trust
+     * @param tokenAddress the token contract address representing the ERC20 to withdrawal
+     * @param amount the amount of ERC20, in gwei, to withdrawal from the trust.
+     */
+    function withdrawal(uint256 keyId, address tokenAddress, uint256 amount) external {
+        // sanely ensure we know what trust this would be for
+        uint256 trustId = trustKeyManager.resolveTrustWithSanity(msg.sender, keyId);
+
+        // make sure the key has permission to withdrawal for the given trust,
+        // right now only owner and beneficiaries can withdrawal
+        require(TrustKeyDefinitions.deriveKeyType(keyId) != TrustKeyDefinitions.TRUSTEE,
+            "NO_PERM");
+
+        // ensure that there is a sufficient balance to withdrawal from
+        // and that hopefully the trust isn't entitled to more than is in
+        // the contract
+        TokenBalance storage tokenBalance = trustTokenVaults[trustId].balances[tokenAddress]; 
+        require(tokenBalance.balance >= amount, "INSUFFICIENT_BALANCE");
+        assert(IERC20(tokenAddress).balanceOf(address(this)) >= amount);
+
+        // ok ok ok, everything seems in order. Give the message sender their assets.
+        tokenBalance.balance -= amount;
+        IERC20(tokenAddress).transfer(msg.sender, amount);
+        emit erc20WithdrawalOccurred(msg.sender, trustId, keyId, 
             tokenAddress, amount, tokenBalance.balance);
     }
 }
