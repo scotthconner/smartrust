@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.9;
+pragma solidity ^0.8.16;
 
 ///////////////////////////////////////////////////////////
 // IMPORTS
@@ -24,7 +24,7 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
 // We have our own library that controls Trust Key Definitions and logic.
 // We are going to be using this in all of our contracts.
-import "./TrustKeyDefinitions.sol";
+import "../libraries/TrustKeyDefinitions.sol";
 ///////////////////////////////////////////////////////////
 
 /**
@@ -39,7 +39,6 @@ import "./TrustKeyDefinitions.sol";
  *
  * This contract can be used to manage crypto for families, generational wealth,
  * all while avoiding lawyers, expensive wills, or probate courts.
- *
  */
 contract TrustKey is Initializable, ERC1155Upgradeable, OwnableUpgradeable, UUPSUpgradeable {
     ///////////////////////////////////////////////////////

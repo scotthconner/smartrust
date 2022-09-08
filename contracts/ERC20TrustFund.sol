@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.9;
+pragma solidity ^0.8.16;
 
 ///////////////////////////////////////////////////////////
 // IMPORTS
@@ -23,7 +23,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 // We have our own library that controls Trust Key Definitions and logic.
 // We are going to be using this in all of our contracts.
-import "./TrustKeyDefinitions.sol";
+import "../libraries/TrustKeyDefinitions.sol";
 
 // We have a full contract dependency on the trust key manager, which
 // must be deployed first.
