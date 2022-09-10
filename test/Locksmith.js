@@ -239,7 +239,7 @@ describe("Locksmith", function () {
   });
   
   ////////////////////////////////////////////////////////////
-  // Key Copying orks 
+  // Key Copying works 
   //
   // Essentially tests copyKey 
   ////////////////////////////////////////////////////////////
@@ -300,6 +300,122 @@ describe("Locksmith", function () {
 
       expect(await locksmith.balanceOf(third.address, 1)).to.equal(1);
       expect(await locksmith.balanceOf(second.address, 1)).to.equal(1);
+    });
+  });
+  
+  ////////////////////////////////////////////////////////////
+  // Key Burning works 
+  //
+  // Essentially tests burnKey 
+  ////////////////////////////////////////////////////////////
+  describe("Basic Key Burning Use Cases", function() {
+    it("Can't burn key without holding key used", async function() {
+      const { locksmith, owner, root, second, third} = 
+        await loadFixture(TrustTestFixtures.singleRoot);
+
+      await expect(locksmith.connect(second).burnKey(0, 0, root.address))
+        .to.be.revertedWith('KEY_NOT_HELD');
+    }); 
+    
+    it("Can't burn key without using root key", async function() {
+      const { locksmith, owner, root, second, third} = 
+        await loadFixture(TrustTestFixtures.singleRoot);
+
+      // mint a second key
+      await expect(await locksmith.connect(root)
+        .createKey(0, stb('second'), second.address))
+        .to.emit(locksmith, "keyMinted")
+        .withArgs(root.address, 0, 1, stb('second'), second.address);
+      
+      await expect(locksmith.connect(second).burnKey(1, 0, root.address))
+        .to.be.revertedWith('KEY_NOT_ROOT');
+    }); 
+    
+    it("Can't burn key not held by target", async function() {
+      const { locksmith, owner, root, second, third} = 
+        await loadFixture(TrustTestFixtures.singleRoot);
+      
+      // mint a second key
+      await expect(await locksmith.connect(root)
+        .createKey(0, stb('second'), second.address))
+        .to.emit(locksmith, "keyMinted")
+        .withArgs(root.address, 0, 1, stb('second'), second.address);
+      
+      await expect(locksmith.connect(root).burnKey(0, 1, third.address))
+        .to.be.revertedWith('ZERO_BURN_AMOUNT');
+    });
+    
+    it("Can't burn key not from same trust", async function() {
+      const { locksmith, owner, root, second, third} = 
+        await loadFixture(TrustTestFixtures.singleRoot);
+    
+      // build a second trust
+      await expect(await locksmith.connect(second).createTrustAndRootKey(stb("SmartTrust")))
+        .to.emit(locksmith, "keyMinted").withArgs(second.address, 1, 1, stb('root'), second.address)
+        .to.emit(locksmith, "trustCreated").withArgs(second.address, 1, stb("SmartTrust"));
+
+      // try to use the first trust root key to burn the second
+      await expect(locksmith.connect(root).burnKey(0, 1, second.address))
+        .to.be.revertedWith('TRUST_KEY_NOT_FOUND');
+    });
+
+    it("Burn one key", async function() {
+      const { locksmith, owner, root, second, third} = 
+        await loadFixture(TrustTestFixtures.singleRoot);
+      
+      expect(await locksmith.balanceOf(second.address, 1)).to.equal(0);
+      
+      // mint a second key
+      await expect(await locksmith.connect(root)
+        .createKey(0, stb('second'), second.address))
+        .to.emit(locksmith, "keyMinted")
+        .withArgs(root.address, 0, 1, stb('second'), second.address);
+     
+      expect(await locksmith.balanceOf(second.address, 1)).to.equal(1);
+      
+      // burn the key
+      await expect(await locksmith.connect(root).burnKey(0, 1, second.address))
+        .to.emit(locksmith, "keyBurned")
+        .withArgs(root.address, 0, 1, second.address, 1);
+      
+      expect(await locksmith.balanceOf(second.address, 1)).to.equal(0);
+    });
+
+    it("Burn multiple keys at once", async function() {
+      const { locksmith, owner, root, second, third} = 
+        await loadFixture(TrustTestFixtures.singleRoot);
+      
+      expect(await locksmith.balanceOf(second.address, 1)).to.equal(0);
+      
+      // mint a second key
+      await expect(await locksmith.connect(root)
+        .createKey(0, stb('second'), second.address))
+        .to.emit(locksmith, "keyMinted")
+        .withArgs(root.address, 0, 1, stb('second'), second.address);
+      await expect(await locksmith.connect(root)
+        .copyKey(0, 1, second.address))
+        .to.emit(locksmith, "keyMinted")
+        .withArgs(root.address, 0, 1, stb('second'), second.address);
+     
+      expect(await locksmith.balanceOf(second.address, 1)).to.equal(2);
+      
+      // burn the key
+      await expect(await locksmith.connect(root).burnKey(0, 1, second.address))
+        .to.emit(locksmith, "keyBurned")
+        .withArgs(root.address, 0, 1, second.address, 2);
+      
+      expect(await locksmith.balanceOf(second.address, 1)).to.equal(0);
+    });
+
+    it("Burn the root key (irrevocable trust)", async function() {
+      const { locksmith, owner, root, second, third} = 
+        await loadFixture(TrustTestFixtures.singleRoot);
+      
+      await expect(await locksmith.connect(root).burnKey(0, 0, root.address))
+        .to.emit(locksmith, "keyBurned")
+        .withArgs(root.address, 0, 0, root.address, 1);
+      
+      expect(await locksmith.balanceOf(root.address, 0)).to.equal(0);
     });
   });
 });
