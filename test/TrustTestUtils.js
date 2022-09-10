@@ -5,6 +5,7 @@
 // used across all test files in the trust test suite.
 //
 //////////////////////////////////////////////////////
+const { expect } = require("chai");    // used for assertions
 
 //////////////////////////////////////////////////////
 // Key Type Functions
@@ -37,8 +38,51 @@ doTransaction = async function(promise) {
   }
 };
 
+assertKey = async function(locksmith, account, keyId, isValid, name, trustId, isRoot) {
+  let [valid, alias, id, root] = (await locksmith.connect(account).inspectKey(keyId));
+  expect(valid).to.equal(isValid);
+  expect(id).to.equal(trustId);
+  expect(root).to.equal(isRoot);
+  expect(alias).to.equal(name);
+}
+
 TrustTestFixtures = (function() {
   return {
+    ////////////////////////////////////////////////////////////
+    // freshLocksmithProxy
+    //
+    // This fixture should represent the contract as it would
+    // be deployed by default on the ethereum main-net. This is
+    // considered the natural state of the contract at launch time.
+    ////////////////////////////////////////////////////////////
+    freshLocksmithProxy: async function() {
+      // Contracts are deployed using the first signer/account by default
+      const [owner, root, second, third] = await ethers.getSigners();
+
+      // then deploy the trust key manager, using the trust key library
+      const Locksmith = await ethers.getContractFactory("Locksmith");
+
+      // since the contract is upgradeable, use a proxy
+      const locksmith = await upgrades.deployProxy(Locksmith);
+      await locksmith.deployed();
+
+      return {locksmith, owner, root, second, third};
+    },
+    ////////////////////////////////////////////////////////////
+    // singleRoot
+    //
+    // This builds on top of the previous fixture, but starts
+    // with a trust and a single root key, given to 'root.'
+    ////////////////////////////////////////////////////////////
+    singleRoot: async function() {
+      const {locksmith, owner, root, second, third} =
+        await TrustTestFixtures.freshLocksmithProxy();
+
+      // with the contract in place, create a trust and get the owner key
+      await locksmith.connect(root).createTrustAndRootKey(stb("Conner Trust"));
+
+      return {locksmith, owner, root, second, third};
+    },
     ////////////////////////////////////////////////////////////
     // freshTrustProxy 
     //

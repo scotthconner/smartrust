@@ -57,9 +57,10 @@ contract Locksmith is ERC1155Upgradeable, OwnableUpgradeable, UUPSUpgradeable {
      * @param creator  the creator of the trust key
      * @param trustId  the trust ID they are creating the key for
      * @param keyId    the key ID that was minted by the creator
+     * @param keyName  the named alias for the key given by the creator
      * @param receiver the receiving wallet address where the keyId was deposited.
      */
-    event keyMinted(address creator, uint256 trustId, uint256 keyId, address receiver);
+    event keyMinted(address creator, uint256 trustId, uint256 keyId, bytes32 keyName, address receiver);
     
     /**
      * keyBurned
@@ -90,12 +91,6 @@ contract Locksmith is ERC1155Upgradeable, OwnableUpgradeable, UUPSUpgradeable {
     ///////////////////////////////////////////////////////
     // Storage
     ///////////////////////////////////////////////////////
-    // errors
-    string private KEY_NOT_HELD = "KEY_NOT_HELD";
-    string private KEY_NOT_ROOT = "KEY_NOT_ROOT";
-    string private TRUST_KEY_NOT_FOUND = "TRUST_KEY_NOT_FOUND";
-    string private ZERO_BURN_AMOUNT = "ZERO_BURN_AMOUNT";
-    
     // main data structure for each trust
     struct Trust {
         // the globally unique trust id within the system    
@@ -111,23 +106,21 @@ contract Locksmith is ERC1155Upgradeable, OwnableUpgradeable, UUPSUpgradeable {
         // a list of keys that are associated with this trust
         uint256[] keys;
 
-        // for record keeping, keep track of the number of
-        // times a key has been copied or burned.
-        // also an O(1) way to ensure a key exists for this trust
-        // without zero-index attacks on the first trust.
+        // metadata about the individual keys
+        mapping(uint256 => bytes32) keyNames;
         mapping(uint256 => uint256) keyMintCounts;
         mapping(uint256 => uint256) keyBurnCounts;
     }
     
     // the global trust registry
-    mapping(uint256 => Trust) internal trustRegistry;
-    uint256 public trustCount;
+    mapping(uint256 => Trust) private trustRegistry;
+    uint256 private trustCount; // total number of trusts
 
     // a reverse mapping that keeps a top level association
     // between a key and it's trust. This enables O(1) key
     // to trust resolution
-    mapping(uint256 => uint256) public keyTrustAssociations;
-    uint256 public keyCount; // the total number of keys
+    mapping(uint256 => uint256) private keyTrustAssociations;
+    uint256 private keyCount; // the total number of keys
 
     /**
      * initialize()
@@ -179,13 +172,14 @@ contract Locksmith is ERC1155Upgradeable, OwnableUpgradeable, UUPSUpgradeable {
         // add the root key to the pool mapping, and associate
         // the key with the trust
         t.keys.push(t.rootKeyId);
+        t.keyNames[t.rootKeyId] = 'root';
         keyTrustAssociations[t.rootKeyId] = t.id;
 
         // mint the root key, give it to the sender.
         mintKey(t, t.rootKeyId, msg.sender);
 
         // the trust was successfully created
-        emit trustCreated(msg.sender, t.id, trustName);
+        emit trustCreated(msg.sender, t.id, t.name);
     }
 
     /**
@@ -201,22 +195,21 @@ contract Locksmith is ERC1155Upgradeable, OwnableUpgradeable, UUPSUpgradeable {
      * By default, these keys have no permissions. Those must be set up
      * seprately on the vaults or benefits themselves.
      *
-     * @param rootKeyId the key the sender is attempting to use to create new keys.
-     * @param addresses the addresses you want to receive an NFT key for the trust.
+     * @param rootKeyId key the sender is attempting to use to create new keys.
+     * @param keyName   an alias that you want to give the key
+     * @param receiver  address you want to receive an NFT key for the trust.
      */
-    function createKey(uint256 rootKeyId, address[] calldata addresses) external {
+    function createKey(uint256 rootKeyId, bytes32 keyName, address receiver) external {
         Trust storage t = trustRegistry[getTrustFromRootKey(rootKeyId)];
 
         // push the latest key ID into the trust, and
-        // keep track of the association at O(1)
+        // keep track of the association at O(1), along
         t.keys.push(keyCount);
+        t.keyNames[keyCount] = keyName;
         keyTrustAssociations[keyCount] = t.id; 
        
-        // mint the key into each of the target wallets
-        uint walletCount = addresses.length;
-        for(uint x = 0; x < walletCount; x++) {
-            mintKey(t, keyCount, addresses[x]);
-        }
+        // mint the key into the target wallet
+        mintKey(t, keyCount, receiver); 
 
         // increment the number of unique keys in the system
         keyCount++;
@@ -234,16 +227,16 @@ contract Locksmith is ERC1155Upgradeable, OwnableUpgradeable, UUPSUpgradeable {
      * the message sender. The key they want to copy also must be associated
      * with the trust bound to the root key used.
      * 
-     * @param rootKeyId the root key to be used for this operation
-     * @param keyId     the key ID the message sender wishes to copy
-     * @param receiver  the address of the receiver for the copied key.
+     * @param rootKeyId root key to be used for this operation
+     * @param keyId     key ID the message sender wishes to copy
+     * @param receiver  addresses of the receivers for the copied key.
      */
     function copyKey(uint256 rootKeyId, uint256 keyId, address receiver) external {
         Trust storage t = trustRegistry[getTrustFromRootKey(rootKeyId)];
 
         // we can only copy a key that already exists within the
         // trust associated with the valid root key
-        require(t.keyMintCounts[keyId] > 0, TRUST_KEY_NOT_FOUND);
+        require(t.keyMintCounts[keyId] > 0, 'TRUST_KEY_NOT_FOUND');
 
         // the root key is valid, the message sender holds it,
         // and the key requested to be copied has already been
@@ -258,25 +251,47 @@ contract Locksmith is ERC1155Upgradeable, OwnableUpgradeable, UUPSUpgradeable {
      * a key from a holder. If for some reason the holder has multiple
      * copies of this key, this method will burn them *all*.
      *
-     * @param rootKeyId the root key for the associated trust
-     * @param keyId     the id of the key you want to burn
-     * @param holder    the address of the holder you want to burn from
+     * @param rootKeyId root key for the associated trust
+     * @param keyId     id of the key you want to burn
+     * @param holder    address of the holder you want to burn from
      */
     function burnKey(uint256 rootKeyId, uint256 keyId, address holder) external {
         Trust storage t = trustRegistry[getTrustFromRootKey(rootKeyId)];
        
         // is keyId associated with the root key's trust?
-        require(t.keyMintCounts[keyId] > 0, TRUST_KEY_NOT_FOUND);
+        require(t.keyMintCounts[keyId] > 0, 'TRUST_KEY_NOT_FOUND');
        
         // make sure the target is even holding these keys
         uint256 burnAmount = this.balanceOf(holder, keyId);
-        require(burnAmount > 0, ZERO_BURN_AMOUNT);
+        require(burnAmount > 0, 'ZERO_BURN_AMOUNT');
 
         // burn them, and count the burn for logging
         _burn(holder, keyId, burnAmount);
         t.keyBurnCounts[keyId] += burnAmount;
 
         emit keyBurned(msg.sender, t.id, keyId, holder, burnAmount);
+    }
+
+    /**
+     * inspectKey 
+     * 
+     * Takes a key id and inspects it. 
+     * 
+     * @return true if the key is a valid key
+     * @return alias of the key 
+     * @return the trust id of the key (only if its considered valid
+     * @return true if the key is a root key
+     */ 
+    function inspectKey(uint256 keyId) external view returns(bool, bytes32, uint256, bool) {
+        // the key is a valid key number 
+        return ((keyId < keyCount),
+            // the human readable name of the key
+            trustRegistry[keyTrustAssociations[keyId]].keyNames[keyId],
+            // trust Id of the key
+            keyTrustAssociations[keyId],
+            // the key is a root key 
+            ((keyId == trustRegistry[keyTrustAssociations[keyId]].rootKeyId) &&  
+            (trustRegistry[keyTrustAssociations[keyId]].keyMintCounts[keyId] > 0)));
     }
     
     ////////////////////////////////////////////////////////
@@ -293,9 +308,9 @@ contract Locksmith is ERC1155Upgradeable, OwnableUpgradeable, UUPSUpgradeable {
      * Internal helper function that mints a key and emits an event for it.
      * Always assumes that the message sender is the creator.
      *
-     * @param trust     the trust we are creating a key for
-     * @param keyId     the resolved key Id we are minting
-     * @param receiver  the receiving address of the newly minted key
+     * @param trust     trust we are creating a key for
+     * @param keyId     resolved key Id we are minting
+     * @param receiver  receiving address of the newly minted key
      */
     function mintKey(Trust storage trust, uint256 keyId, address receiver) internal {
         _mint(receiver, keyId, 1, "");
@@ -305,7 +320,7 @@ contract Locksmith is ERC1155Upgradeable, OwnableUpgradeable, UUPSUpgradeable {
         // attacks to the first trust in the contract.
         trust.keyMintCounts[keyId]++;
 
-        emit keyMinted(msg.sender, trust.id, keyId, receiver);
+        emit keyMinted(msg.sender, trust.id, keyId, trust.keyNames[keyId], receiver);
     }
     
     /**
@@ -322,11 +337,11 @@ contract Locksmith is ERC1155Upgradeable, OwnableUpgradeable, UUPSUpgradeable {
      */
     function getTrustFromRootKey(uint256 rootKeyId) internal view returns (uint256) {
         // make sure that the message sender holds this key ID
-        require(this.balanceOf(msg.sender, rootKeyId) > 0, KEY_NOT_HELD);    
+        require(this.balanceOf(msg.sender, rootKeyId) > 0, 'KEY_NOT_HELD');    
 
         // make sure that the keyID is the rootKeyID
         uint256 trustId = keyTrustAssociations[rootKeyId];
-        require(rootKeyId == trustRegistry[trustId].rootKeyId, KEY_NOT_ROOT);
+        require(rootKeyId == trustRegistry[trustId].rootKeyId, 'KEY_NOT_ROOT');
 
         return trustId;
     }
