@@ -186,18 +186,146 @@ describe("Ledger", function () {
   describe("Withdrawal Balance Tracking", function() {
     it("Can't withdrawal zero", async function() {
       const { ledger, owner } = await loadFixture(TrustTestFixtures.freshLedgerProxy);
+      await expect(ledger.connect(owner).withdrawal(0, stb('ether'), 0))
+        .to.be.revertedWith('ZERO_AMOUNT');
     });
     
     it("Withdrawal something that was never there", async function() {
       const { ledger, owner } = await loadFixture(TrustTestFixtures.freshLedgerProxy);
+      await expect(ledger.connect(owner).withdrawal(0, stb('ether'), eth(1)))
+        .to.be.revertedWith('OVERDRAFT');
     });
     
     it("Withdrawal it all, then overdraft", async function() {
-      const { ledger, owner } = await loadFixture(TrustTestFixtures.freshLedgerProxy);
+      const { ledger, owner, root } = await loadFixture(TrustTestFixtures.freshLedgerProxy);
+      
+      // check preconditions
+      expect(await ledger.connect(root).ledgerArnCount()).to.equal(0);
+      expect(await ledger.connect(root).ledgerRegisteredArns(stb("ether"))).to.equal(false);
+      expect(await ledger.connect(root).ledgerArnBalances(stb("ether"))).to.equal(0);
+      expect(await ledger.connect(root).getKeyArnRegistry(0)).has.length(0); 
+      expect(await ledger.connect(root).getKeyArnBalances(0, [stb('ether')])).eql([eth(0)]);
+      
+      // make that single deposit
+      await expect(await ledger.connect(owner).deposit(0, stb('ether'), eth(1)))
+        .to.emit(ledger, 'depositOccurred')
+        .withArgs(owner.address, owner.address, 0, stb('ether'), eth(1), eth(1));
+
+    
+      // withdrawal and check balances, twice
+      await expect(await ledger.connect(owner).withdrawal(0, stb('ether'), eth(0.4)))
+        .to.emit(ledger, 'withdrawalOccurred')
+        .withArgs(owner.address, owner.address, 0, stb('ether'), eth(0.4), eth(0.6));
+      expect(await ledger.connect(root).ledgerArnCount()).to.equal(1);
+      expect(await ledger.connect(root).ledgerRegisteredArns(stb("ether"))).to.equal(true);
+      expect(await ledger.connect(root).ledgerArnBalances(stb("ether"))).to.equal(eth(0.6));
+      expect(await ledger.connect(root).getKeyArnRegistry(0)).has.length(1); 
+      expect(await ledger.connect(root).getKeyArnBalances(0, [stb('ether')])).eql([eth(0.6)]);
+      
+      // second withdrawal
+      await expect(await ledger.connect(owner).withdrawal(0, stb('ether'), eth(0.6)))
+        .to.emit(ledger, 'withdrawalOccurred')
+        .withArgs(owner.address, owner.address, 0, stb('ether'), eth(0.6), eth(0));
+      expect(await ledger.connect(root).ledgerArnCount()).to.equal(1);
+      expect(await ledger.connect(root).ledgerRegisteredArns(stb("ether"))).to.equal(true);
+      expect(await ledger.connect(root).ledgerArnBalances(stb("ether"))).to.equal(eth(0));
+      expect(await ledger.connect(root).getKeyArnRegistry(0)).has.length(1); 
+      expect(await ledger.connect(root).getKeyArnBalances(0, [stb('ether')])).eql([eth(0)]);
+
+      // overdraft
+      await expect(ledger.connect(owner).withdrawal(0, stb('ether'), eth(1)))
+        .to.be.revertedWith('OVERDRAFT');
     });
     
     it("Multiple Asset Types, Balances, Subsequent deposit and withdrawls", async function() {
-      const { ledger, owner } = await loadFixture(TrustTestFixtures.freshLedgerProxy);
+      const { ledger, owner, root } = await loadFixture(TrustTestFixtures.freshLedgerProxy);
+      
+      // initial deposits
+      await expect(await ledger.connect(owner).deposit(0, stb('ether'), eth(1)))
+        .to.emit(ledger, 'depositOccurred')
+        .withArgs(owner.address, owner.address, 0, stb('ether'), eth(1), eth(1));
+      await expect(await ledger.connect(owner).deposit(1, stb('link'), eth(2)))
+        .to.emit(ledger, 'depositOccurred')
+        .withArgs(owner.address, owner.address, 1, stb('link'), eth(2), eth(2));
+      await expect(await ledger.connect(owner).deposit(2, stb('wbtc'), eth(3)))
+        .to.emit(ledger, 'depositOccurred')
+        .withArgs(owner.address, owner.address, 2, stb('wbtc'), eth(3), eth(3));
+      await expect(await ledger.connect(owner).deposit(2, stb('ether'), eth(4)))
+        .to.emit(ledger, 'depositOccurred')
+        .withArgs(owner.address, owner.address, 2, stb('ether'), eth(4), eth(4));
+  
+      // check the initial ledger and key balances
+      expect(await ledger.connect(root).ledgerArnCount()).to.equal(3);
+      expect(await ledger.connect(root).ledgerRegisteredArns(stb("ether"))).to.equal(true);
+      expect(await ledger.connect(root).ledgerRegisteredArns(stb("wbtc"))).to.equal(true);
+      expect(await ledger.connect(root).ledgerRegisteredArns(stb("link"))).to.equal(true);
+      expect(await ledger.connect(root).ledgerArnBalances(stb("ether"))).to.equal(eth(5));
+      expect(await ledger.connect(root).ledgerArnBalances(stb("link"))).to.equal(eth(2));
+      expect(await ledger.connect(root).ledgerArnBalances(stb("wbtc"))).to.equal(eth(3));
+      expect(await ledger.connect(root).getKeyArnRegistry(0)).has.length(1); 
+      expect(await ledger.connect(root).getKeyArnRegistry(1)).has.length(1); 
+      expect(await ledger.connect(root).getKeyArnRegistry(2)).has.length(2); 
+      expect(await ledger.connect(root).getKeyArnBalances(0, [stb('ether')])).eql([eth(1)]);
+      expect(await ledger.connect(root).getKeyArnBalances(1, [stb('link')])).eql([eth(2)]);
+      expect(await ledger.connect(root).getKeyArnBalances(2, [stb('wbtc'), stb('ether')])).eql([eth(3), eth(4)]);
+      
+      // withdrawal a little from each
+      await expect(await ledger.connect(owner).withdrawal(0, stb('ether'), eth(0.3)))
+        .to.emit(ledger, 'withdrawalOccurred')
+        .withArgs(owner.address, owner.address, 0, stb('ether'), eth(0.3), eth(0.7));
+      await expect(await ledger.connect(owner).withdrawal(1, stb('link'), eth(0.3)))
+        .to.emit(ledger, 'withdrawalOccurred')
+        .withArgs(owner.address, owner.address, 1, stb('link'), eth(0.3), eth(1.7));
+      await expect(await ledger.connect(owner).withdrawal(2, stb('wbtc'), eth(0.3)))
+        .to.emit(ledger, 'withdrawalOccurred')
+        .withArgs(owner.address, owner.address, 2, stb('wbtc'), eth(0.3), eth(2.7));
+      await expect(await ledger.connect(owner).withdrawal(2, stb('ether'), eth(0.3)))
+        .to.emit(ledger, 'withdrawalOccurred')
+        .withArgs(owner.address, owner.address, 2, stb('ether'), eth(0.3), eth(3.7));
+      
+      // check both the ledger and key balances again
+      expect(await ledger.connect(root).ledgerArnBalances(stb("ether"))).to.equal(eth(4.4));
+      expect(await ledger.connect(root).ledgerArnBalances(stb("link"))).to.equal(eth(1.7));
+      expect(await ledger.connect(root).ledgerArnBalances(stb("wbtc"))).to.equal(eth(2.7));
+      expect(await ledger.connect(root).getKeyArnBalances(0, [stb('ether')])).eql([eth(0.7)]);
+      expect(await ledger.connect(root).getKeyArnBalances(1, [stb('link')])).eql([eth(1.7)]);
+      expect(await ledger.connect(root).getKeyArnBalances(2, [stb('wbtc'), stb('ether')])).eql([eth(2.7), eth(3.7)]);
+      
+      // deposit some more
+      await expect(await ledger.connect(owner).deposit(0, stb('ether'), eth(0.1)))
+        .to.emit(ledger, 'depositOccurred')
+        .withArgs(owner.address, owner.address, 0, stb('ether'), eth(0.1), eth(0.8));
+      await expect(await ledger.connect(owner).deposit(1, stb('link'), eth(0.2)))
+        .to.emit(ledger, 'depositOccurred')
+        .withArgs(owner.address, owner.address, 1, stb('link'), eth(0.2), eth(1.9));
+      await expect(await ledger.connect(owner).deposit(2, stb('wbtc'), eth(0.3)))
+        .to.emit(ledger, 'depositOccurred')
+        .withArgs(owner.address, owner.address, 2, stb('wbtc'), eth(0.3), eth(3));
+      await expect(await ledger.connect(owner).deposit(2, stb('ether'), eth(0.4)))
+        .to.emit(ledger, 'depositOccurred')
+        .withArgs(owner.address, owner.address, 2, stb('ether'), eth(0.4), eth(4.1));
+      
+      // withdrawal a little again
+      await expect(await ledger.connect(owner).withdrawal(0, stb('ether'), eth(0.8)))
+        .to.emit(ledger, 'withdrawalOccurred')
+        .withArgs(owner.address, owner.address, 0, stb('ether'), eth(0.8), eth(0));
+      await expect(await ledger.connect(owner).withdrawal(1, stb('link'), eth(1.8)))
+        .to.emit(ledger, 'withdrawalOccurred')
+        .withArgs(owner.address, owner.address, 1, stb('link'), eth(1.8), eth(0.1));
+      await expect(await ledger.connect(owner).withdrawal(2, stb('wbtc'), eth(2.8)))
+        .to.emit(ledger, 'withdrawalOccurred')
+        .withArgs(owner.address, owner.address, 2, stb('wbtc'), eth(2.8), eth(0.2));
+      await expect(await ledger.connect(owner).withdrawal(2, stb('ether'), eth(3.8)))
+        .to.emit(ledger, 'withdrawalOccurred')
+        .withArgs(owner.address, owner.address, 2, stb('ether'), eth(3.8), eth(0.3));
+      
+      // check the ledger and key balances final
+      expect(await ledger.connect(root).ledgerArnBalances(stb("ether"))).to.equal(eth(0.3));
+      expect(await ledger.connect(root).ledgerArnBalances(stb("link"))).to.equal(eth(0.1));
+      expect(await ledger.connect(root).ledgerArnBalances(stb("wbtc"))).to.equal(eth(0.2));
+      expect(await ledger.connect(root).getKeyArnBalances(0, [stb('ether')])).eql([eth(0)]);
+      expect(await ledger.connect(root).getKeyArnBalances(1, [stb('link')])).eql([eth(0.1)]);
+      expect(await ledger.connect(root).getKeyArnBalances(2, [stb('wbtc'), stb('ether')])).eql([eth(0.2), eth(0.3)]);
     });
   });
   
@@ -209,9 +337,9 @@ describe("Ledger", function () {
   ////////////////////////////////////////////////////////////
   describe("Move Balance Tracking", function() {
     it("Can't move zero", async function() {
-      const { ledger, owner } = await loadFixture(TrustTestFixtures.freshLedgerProxy);
+      const { ledger, owner } = await loadFixture(TrustTestFixtures.freshLedgerProxy); 
     });
-    
+
     it("Move something that was never there", async function() {
       const { ledger, owner } = await loadFixture(TrustTestFixtures.freshLedgerProxy);
     });
