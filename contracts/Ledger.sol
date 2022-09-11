@@ -135,7 +135,14 @@ contract Ledger is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     }
 
     // mapping of key ID to their associated asset rights.
-    mapping(uint256 => KeyAssetRights) public keyAssetRights;
+    mapping(uint256 => KeyAssetRights) private keyAssetRights;
+
+    // total balances for each asset across the whole ledger
+    uint256 public ledgerArnCount;                          // the total type of assets held
+    bytes32[] public ledgerArnRegistry;                     // every asset type held
+    mapping(bytes32 => bool) public ledgerRegisteredArns;   // the existence of any asset in ledger
+    mapping(bytes32 => uint256) public ledgerArnBalances;   // the total subsequent balances
+    
 
     // a set of peer contracts that are allowed to call non-view functions
     mapping(address => bool) private approvedPeers;
@@ -199,6 +206,46 @@ contract Ledger is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     ////////////////////////////////////////////////////////
 
     /**
+     * getKeyArnRegistry 
+     *
+     * Returns a full list of assets that have ever been held
+     * on the ledger by that key. 
+     *
+     * @param keyId key you want the arn list for. 
+     * @return the array of registered arns.
+     */
+    function getKeyArnRegistry(uint256 keyId) external view returns(bytes32[] memory) {
+        return keyAssetRights[keyId].arnRegistry;
+    }
+
+    /**
+     * getKeyArnBalances
+     *
+     * Given a list of asset resource names, returns all of the balances
+     * for that asset.
+     *
+     * @param keyId key you want the balances for.
+     * @param arns  list of arns (likely the entire registry) to introspect for that key.
+     * @return an array of balances that map 1:1 to the list of arns provided.
+     */
+    function getKeyArnBalances(uint256 keyId, bytes32[] calldata arns) external view returns(uint256[] memory) {
+        uint256[] memory balances = new uint256[](arns.length);
+        for(uint256 x = 0; x < arns.length; x++) {
+            balances[x] = keyAssetRights[keyId].arnBalances[arns[x]];
+        }
+
+        return balances;
+    }
+
+    ////////////////////////////////////////////////////////
+    // Peer Only External Methods
+    //
+    // The below methods are designed only for other peer
+    // contracts or the contract owner to be calling, because
+    // the change the key entitlements for assets.
+    ////////////////////////////////////////////////////////
+    
+    /**
      * deposit
      *
      * Vaults will call deposit to update the ledger when a key
@@ -211,7 +258,19 @@ contract Ledger is Initializable, OwnableUpgradeable, UUPSUpgradeable {
      */
     function deposit(uint256 keyId, bytes32 arn, uint256 amount) external returns(uint256) {
         requirePeerOrOwner();
+        require(amount > 0, 'ZERO_AMOUNT');
+
         uint256 finalBalance = _deposit(keyId, arn, amount);
+        ledgerArnBalances[arn] += amount;
+        
+        // this is a special case where we want to also keep track
+        // of what assets are held in the ledger, overall
+        if (!ledgerRegisteredArns[arn]) {
+            ledgerArnRegistry.push(arn);
+            ledgerRegisteredArns[arn] = true;
+            ledgerArnCount++;       
+        }
+
         emit depositOccurred(tx.origin, msg.sender, keyId, arn, amount, finalBalance); 
         return finalBalance;
     }
@@ -229,7 +288,10 @@ contract Ledger is Initializable, OwnableUpgradeable, UUPSUpgradeable {
      */
     function withdrawal(uint256 keyId, bytes32 arn, uint256 amount) external returns(uint256) {
         requirePeerOrOwner();
+        require(amount > 0, 'ZERO_AMOUNT');
+        
         uint256 finalBalance = _withdrawal(keyId, arn, amount);
+        ledgerArnBalances[arn] -= amount;
         emit withdrawalOccurred(msg.sender, tx.origin, keyId, arn, amount, finalBalance); 
         return finalBalance;
     }
@@ -249,6 +311,8 @@ contract Ledger is Initializable, OwnableUpgradeable, UUPSUpgradeable {
      */
     function move(uint256 fromKey, uint256 toKey, bytes32 arn, uint256 amount) external returns(uint256, uint256) {
         requirePeerOrOwner();
+        require(amount > 0, 'ZERO_AMOUNT');
+        
         uint256 fromFinal = _withdrawal(fromKey, arn, amount);
         uint256 toFinal = _deposit(toKey, arn, amount);
         emit ledgerTransferOccurred(tx.origin, msg.sender, arn, fromKey, toKey, amount, fromFinal, toFinal); 

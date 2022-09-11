@@ -84,6 +84,26 @@ TrustTestFixtures = (function() {
       return {locksmith, owner, root, second, third};
     },
     ////////////////////////////////////////////////////////////
+    // freshLedgerProxy
+    //
+    // This fixture should represent the contract as it would
+    // be deployed by default on the ethereum main-net. This is
+    // considered the natural state of the contract at launch time.
+    ////////////////////////////////////////////////////////////
+    freshLedgerProxy: async function() {
+      // Contracts are deployed using the first signer/account by default
+      const [owner, root, second, third] = await ethers.getSigners();
+
+      // then deploy the trust key manager, using the trust key library
+      const Ledger = await ethers.getContractFactory("Ledger");
+
+      // since the contract is upgradeable, use a proxy
+      const ledger = await upgrades.deployProxy(Ledger);
+      await ledger.deployed();
+
+      return {ledger, owner, root, second, third};
+    },
+    ////////////////////////////////////////////////////////////
     // freshTrustProxy 
     //
     // This fixture should represent the contract as it would
