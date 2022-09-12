@@ -338,18 +338,77 @@ describe("Ledger", function () {
   describe("Move Balance Tracking", function() {
     it("Can't move zero", async function() {
       const { ledger, owner } = await loadFixture(TrustTestFixtures.freshLedgerProxy); 
+   
+      await expect(ledger.connect(owner).move(0, 1, stb('ether'), 0))
+        .to.be.revertedWith('ZERO_AMOUNT');
     });
 
-    it("Move something that was never there", async function() {
+    it("Can't move something that was never there", async function() {
       const { ledger, owner } = await loadFixture(TrustTestFixtures.freshLedgerProxy);
+      await expect(ledger.connect(owner).move(0, 1, stb('ether'), eth(1)))
+        .to.be.revertedWith('OVERDRAFT');
     });
     
     it("Move multiple times, then overdraft", async function() {
-      const { ledger, owner } = await loadFixture(TrustTestFixtures.freshLedgerProxy);
+      const { ledger, owner, root } = await loadFixture(TrustTestFixtures.freshLedgerProxy);
+     
+      // deposit
+      await expect(await ledger.connect(owner).deposit(0, stb('ether'), eth(1)))
+        .to.emit(ledger, 'depositOccurred')
+        .withArgs(owner.address, owner.address, 0, stb('ether'), eth(1), eth(1));
+
+      // validate balances
+      expect(await ledger.connect(root).ledgerArnBalances(stb("ether"))).to.equal(eth(1));
+      expect(await ledger.connect(root).getKeyArnBalances(0, [stb('ether')])).eql([eth(1)]);
+      expect(await ledger.connect(root).getKeyArnBalances(1, [stb('ether')])).eql([eth(0)]);
+
+      // move and then validate
+      await expect(await ledger.connect(owner).move(0, 1, stb('ether'), eth(0.5)))
+        .to.emit(ledger, 'ledgerTransferOccurred')
+        .withArgs(owner.address, owner.address, stb('ether'), 0, 1, eth(0.5), eth(0.5), eth(0.5));
+      expect(await ledger.connect(root).ledgerArnBalances(stb("ether"))).to.equal(eth(1));
+      expect(await ledger.connect(root).getKeyArnBalances(0, [stb('ether')])).eql([eth(0.5)]);
+      expect(await ledger.connect(root).getKeyArnBalances(1, [stb('ether')])).eql([eth(0.5)]);
+
+      // move and then validate again
+      await expect(await ledger.connect(owner).move(1, 0, stb('ether'), eth(0.1)))
+        .to.emit(ledger, 'ledgerTransferOccurred')
+        .withArgs(owner.address, owner.address, stb('ether'), 1, 0, eth(0.1), eth(0.4), eth(0.6));
+      expect(await ledger.connect(root).ledgerArnBalances(stb("ether"))).to.equal(eth(1));
+      expect(await ledger.connect(root).getKeyArnBalances(0, [stb('ether')])).eql([eth(0.6)]);
+      expect(await ledger.connect(root).getKeyArnBalances(1, [stb('ether')])).eql([eth(0.4)]);
+      
+      // overdraft on move
+      await expect(ledger.connect(owner).move(0, 1, stb('ether'), eth(0.7)))
+        .to.be.revertedWith('OVERDRAFT');
     });
 
     it("Multiple Asset Types and Balances", async function() {
-      const { ledger, owner } = await loadFixture(TrustTestFixtures.freshLedgerProxy);
+      const { ledger, owner, root } = await loadFixture(TrustTestFixtures.freshLedgerProxy);
+      
+      await expect(await ledger.connect(owner).deposit(0, stb('ether'), eth(1)))
+        .to.emit(ledger, 'depositOccurred')
+        .withArgs(owner.address, owner.address, 0, stb('ether'), eth(1), eth(1));
+      await expect(await ledger.connect(owner).deposit(1, stb('link'), eth(2)))
+        .to.emit(ledger, 'depositOccurred')
+        .withArgs(owner.address, owner.address, 1, stb('link'), eth(2), eth(2));
+
+      // move both assets in different directions
+      await expect(await ledger.connect(owner).move(0, 1, stb('ether'), eth(0.4)))
+        .to.emit(ledger, 'ledgerTransferOccurred')
+        .withArgs(owner.address, owner.address, stb('ether'), 0, 1, eth(0.4), eth(0.6), eth(0.4));
+      await expect(await ledger.connect(owner).move(1, 0, stb('link'), eth(0.1)))
+        .to.emit(ledger, 'ledgerTransferOccurred')
+        .withArgs(owner.address, owner.address, stb('link'), 1, 0, eth(0.1), eth(1.9), eth(0.1));
+    
+      // validate balances
+      expect(await ledger.connect(root).ledgerArnCount()).to.equal(2);
+      expect(await ledger.connect(root).ledgerRegisteredArns(stb("ether"))).to.equal(true);
+      expect(await ledger.connect(root).ledgerRegisteredArns(stb("link"))).to.equal(true);
+      expect(await ledger.connect(root).ledgerArnBalances(stb("ether"))).to.equal(eth(1));
+      expect(await ledger.connect(root).ledgerArnBalances(stb("link"))).to.equal(eth(2));
+      expect(await ledger.connect(root).getKeyArnBalances(0, [stb('ether'), stb('link')])).eql([eth(0.6), eth(0.1)]);
+      expect(await ledger.connect(root).getKeyArnBalances(1, [stb('ether'), stb('link')])).eql([eth(0.4), eth(1.9)]);
     });
   });
 
@@ -362,13 +421,93 @@ describe("Ledger", function () {
   describe("Peer Security", function() {
     it("Account Holder can't call deposit, withdrawal, or move", async function() {
       const { ledger, owner, root } = await loadFixture(TrustTestFixtures.freshLedgerProxy);
-    
+ 
       await expect(ledger.connect(root).deposit(0, stb('ether'), eth(1)))
         .to.be.revertedWith('NOT_PEER');
       await expect(ledger.connect(root).withdrawal(0, stb('ether'), eth(1)))
         .to.be.revertedWith('NOT_PEER');
       await expect(ledger.connect(root).move(0, 1, stb('ether'), eth(1)))
         .to.be.revertedWith('NOT_PEER');
+    });
+
+    it("Non-owners can not set peer policy", async function() {
+      const { ledger, owner, root } = await loadFixture(TrustTestFixtures.freshLedgerProxy);
+      await expect(ledger.connect(root).setPeerPolicy([root.address], true))
+        .to.be.revertedWith('Ownable: caller is not the owner');
+    });
+
+    it("Set and Unset Peers works as expected, only owner", async function() {
+      const { ledger, owner, root, second, third } = await loadFixture(TrustTestFixtures.freshLedgerProxy);
+    
+      await expect(ledger.connect(root).deposit(0, stb('ether'), eth(1)))
+        .to.be.revertedWith('NOT_PEER');
+      await expect(ledger.connect(second).withdrawal(0, stb('ether'), eth(1)))
+        .to.be.revertedWith('NOT_PEER');
+      await expect(ledger.connect(third).move(0, 1, stb('ether'), eth(1)))
+        .to.be.revertedWith('NOT_PEER');
+   
+      // set them as peers
+      await expect(await ledger.connect(owner).setPeerPolicy([root.address, second.address], true))
+        .to.emit(ledger, 'peerPolicyChanged')
+        .withArgs(owner.address, root.address, true)
+        .to.emit(ledger, 'peerPolicyChanged')
+        .withArgs(owner.address, second.address, true);
+
+      // however, peers can't change the policy, only the owner
+      await expect(ledger.connect(root).setPeerPolicy([third.address], true))
+        .to.be.revertedWith('Ownable: caller is not the owner');
+    });
+
+    it("Peering continues to work through proxy upgrade", async function() {
+      const [owner, root, second, third] = await ethers.getSigners();
+
+      // then deploy the trust key manager, using the trust key library
+      const Ledger = await ethers.getContractFactory("Ledger");
+
+      // since the contract is upgradeable, use a proxy
+      const ledger = await upgrades.deployProxy(Ledger);
+      await ledger.deployed();
+
+      // now deploy the peer
+      const Peer = await ethers.getContractFactory("Peer");
+
+      // since the contract is upgradeable, use a proxy
+      const peer = await upgrades.deployProxy(Peer, [ledger.address]);
+      await peer.deployed();
+
+      // peer will revert when trying to call deposit
+      await expect(peer.connect(owner).deposit()).to.be.revertedWith('NOT_PEER');
+
+      // now set the peer properly
+      await expect(await ledger.connect(owner).setPeerPolicy([peer.address], true))
+        .to.emit(ledger, 'peerPolicyChanged')
+        .withArgs(owner.address, peer.address, true)
+      
+      // deposit will be successful
+      await expect(peer.connect(second).deposit())
+        .to.emit(ledger, 'depositOccurred')
+        .withArgs(second.address, peer.address, 0, stb('ether'), eth(1), eth(1));
+
+      // upgrade the ledger and it still works
+      const ledgerAgain = await upgrades.upgradeProxy(ledger.address, Ledger);
+      
+      // do another successful deposit
+      await expect(peer.connect(second).deposit())
+        .to.emit(ledgerAgain, 'depositOccurred')
+        .withArgs(second.address, peer.address, 0, stb('ether'), eth(1), eth(2));
+
+      // upgrade the peer contract
+      const peerAgain = await upgrades.upgradeProxy(peer.address, Peer);
+      
+      // do another successful deposit
+      await expect(peerAgain.connect(second).deposit())
+        .to.emit(ledgerAgain, 'depositOccurred')
+        .withArgs(second.address, peer.address, 0, stb('ether'), eth(1), eth(3));
+
+      // check ledger balance
+      expect(await ledger.connect(root).ledgerArnCount()).to.equal(1);
+      expect(await ledger.connect(root).ledgerRegisteredArns(stb("ether"))).to.equal(true);
+      expect(await ledger.connect(root).getKeyArnBalances(0, [stb('ether')])).eql([eth(3)]);
     });
   });
 });
