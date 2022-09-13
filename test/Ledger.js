@@ -81,7 +81,7 @@ describe("Ledger", function () {
       // make that single deposit
       await expect(await ledger.connect(owner).deposit(0, stb('ether'), eth(1)))
         .to.emit(ledger, 'depositOccurred')
-        .withArgs(owner.address, owner.address, 0, stb('ether'), eth(1), eth(1));
+        .withArgs(owner.address, owner.address, 0, stb('ether'), eth(1), eth(1), eth(1));
 
       // check all the balances afterwards
       expect(await ledger.connect(root).ledgerArnCount()).to.equal(1);
@@ -106,18 +106,19 @@ describe("Ledger", function () {
       // make multiple deposits
       await expect(await ledger.connect(owner).deposit(0, stb('ether'), eth(1)))
         .to.emit(ledger, 'depositOccurred')
-        .withArgs(owner.address, owner.address, 0, stb('ether'), eth(1), eth(1));
+        .withArgs(owner.address, owner.address, 0, stb('ether'), eth(1), eth(1), eth(1));
       await expect(await ledger.connect(owner).deposit(0, stb('ether'), eth(1)))
         .to.emit(ledger, 'depositOccurred')
-        .withArgs(owner.address, owner.address, 0, stb('ether'), eth(1), eth(2));
+        .withArgs(owner.address, owner.address, 0, stb('ether'), eth(1), eth(2), eth(2));
       await expect(await ledger.connect(owner).deposit(1, stb('ether'), eth(1)))
         .to.emit(ledger, 'depositOccurred')
-        .withArgs(owner.address, owner.address, 1, stb('ether'), eth(1), eth(1));
+        .withArgs(owner.address, owner.address, 1, stb('ether'), eth(1), eth(1), eth(3));
 
       // check all the balances afterwards
       expect(await ledger.connect(root).ledgerArnCount()).to.equal(1);
       expect(await ledger.connect(root).ledgerRegisteredArns(stb("ether"))).to.equal(true);
       expect(await ledger.connect(root).ledgerArnBalances(stb("ether"))).to.equal(eth(3));
+      expect(await ledger.connect(root).collateralProviderBalances(owner.address, stb("ether"))).to.equal(eth(3));
       expect(await ledger.connect(root).getKeyArnRegistry(0)).has.length(1).to.contain(stb('ether')); 
       expect(await ledger.connect(root).getKeyArnRegistry(1)).has.length(1).to.contain(stb('ether')); 
       expect(await ledger.connect(root).getKeyArnBalances(0, [stb('ether')])).eql([eth(2)]);
@@ -143,24 +144,24 @@ describe("Ledger", function () {
       // deposit ether
       await expect(await ledger.connect(owner).deposit(0, stb('ether'), eth(1)))
         .to.emit(ledger, 'depositOccurred')
-        .withArgs(owner.address, owner.address, 0, stb('ether'), eth(1), eth(1));
+        .withArgs(owner.address, owner.address, 0, stb('ether'), eth(1), eth(1), eth(1));
       await expect(await ledger.connect(owner).deposit(0, stb('ether'), eth(1)))
         .to.emit(ledger, 'depositOccurred')
-        .withArgs(owner.address, owner.address, 0, stb('ether'), eth(1), eth(2));
+        .withArgs(owner.address, owner.address, 0, stb('ether'), eth(1), eth(2), eth(2));
       await expect(await ledger.connect(owner).deposit(1, stb('ether'), eth(1)))
         .to.emit(ledger, 'depositOccurred')
-        .withArgs(owner.address, owner.address, 1, stb('ether'), eth(1), eth(1));
+        .withArgs(owner.address, owner.address, 1, stb('ether'), eth(1), eth(1), eth(3));
 
       // deposit chainlink
       await expect(await ledger.connect(owner).deposit(0, stb('link'), eth(2)))
         .to.emit(ledger, 'depositOccurred')
-        .withArgs(owner.address, owner.address, 0, stb('link'), eth(2), eth(2));
+        .withArgs(owner.address, owner.address, 0, stb('link'), eth(2), eth(2), eth(2));
       await expect(await ledger.connect(owner).deposit(1, stb('link'), eth(3)))
         .to.emit(ledger, 'depositOccurred')
-        .withArgs(owner.address, owner.address, 1, stb('link'), eth(3), eth(3));
+        .withArgs(owner.address, owner.address, 1, stb('link'), eth(3), eth(3), eth(5));
       await expect(await ledger.connect(owner).deposit(1, stb('link'), eth(4)))
         .to.emit(ledger, 'depositOccurred')
-        .withArgs(owner.address, owner.address, 1, stb('link'), eth(4), eth(7));
+        .withArgs(owner.address, owner.address, 1, stb('link'), eth(4), eth(7), eth(9));
     
       // check the ledger balances
       expect(await ledger.connect(root).ledgerArnCount()).to.equal(2);
@@ -209,13 +210,13 @@ describe("Ledger", function () {
       // make that single deposit
       await expect(await ledger.connect(owner).deposit(0, stb('ether'), eth(1)))
         .to.emit(ledger, 'depositOccurred')
-        .withArgs(owner.address, owner.address, 0, stb('ether'), eth(1), eth(1));
+        .withArgs(owner.address, owner.address, 0, stb('ether'), eth(1), eth(1), eth(1));
 
     
       // withdrawal and check balances, twice
       await expect(await ledger.connect(owner).withdrawal(0, stb('ether'), eth(0.4)))
         .to.emit(ledger, 'withdrawalOccurred')
-        .withArgs(owner.address, owner.address, 0, stb('ether'), eth(0.4), eth(0.6));
+        .withArgs(owner.address, owner.address, 0, stb('ether'), eth(0.4), eth(0.6), eth(0.6));
       expect(await ledger.connect(root).ledgerArnCount()).to.equal(1);
       expect(await ledger.connect(root).ledgerRegisteredArns(stb("ether"))).to.equal(true);
       expect(await ledger.connect(root).ledgerArnBalances(stb("ether"))).to.equal(eth(0.6));
@@ -225,7 +226,7 @@ describe("Ledger", function () {
       // second withdrawal
       await expect(await ledger.connect(owner).withdrawal(0, stb('ether'), eth(0.6)))
         .to.emit(ledger, 'withdrawalOccurred')
-        .withArgs(owner.address, owner.address, 0, stb('ether'), eth(0.6), eth(0));
+        .withArgs(owner.address, owner.address, 0, stb('ether'), eth(0.6), eth(0), eth(0));
       expect(await ledger.connect(root).ledgerArnCount()).to.equal(1);
       expect(await ledger.connect(root).ledgerRegisteredArns(stb("ether"))).to.equal(true);
       expect(await ledger.connect(root).ledgerArnBalances(stb("ether"))).to.equal(eth(0));
@@ -243,16 +244,16 @@ describe("Ledger", function () {
       // initial deposits
       await expect(await ledger.connect(owner).deposit(0, stb('ether'), eth(1)))
         .to.emit(ledger, 'depositOccurred')
-        .withArgs(owner.address, owner.address, 0, stb('ether'), eth(1), eth(1));
+        .withArgs(owner.address, owner.address, 0, stb('ether'), eth(1), eth(1), eth(1));
       await expect(await ledger.connect(owner).deposit(1, stb('link'), eth(2)))
         .to.emit(ledger, 'depositOccurred')
-        .withArgs(owner.address, owner.address, 1, stb('link'), eth(2), eth(2));
+        .withArgs(owner.address, owner.address, 1, stb('link'), eth(2), eth(2), eth(2));
       await expect(await ledger.connect(owner).deposit(2, stb('wbtc'), eth(3)))
         .to.emit(ledger, 'depositOccurred')
-        .withArgs(owner.address, owner.address, 2, stb('wbtc'), eth(3), eth(3));
+        .withArgs(owner.address, owner.address, 2, stb('wbtc'), eth(3), eth(3), eth(3));
       await expect(await ledger.connect(owner).deposit(2, stb('ether'), eth(4)))
         .to.emit(ledger, 'depositOccurred')
-        .withArgs(owner.address, owner.address, 2, stb('ether'), eth(4), eth(4));
+        .withArgs(owner.address, owner.address, 2, stb('ether'), eth(4), eth(4), eth(5));
   
       // check the initial ledger and key balances
       expect(await ledger.connect(root).ledgerArnCount()).to.equal(3);
@@ -272,16 +273,16 @@ describe("Ledger", function () {
       // withdrawal a little from each
       await expect(await ledger.connect(owner).withdrawal(0, stb('ether'), eth(0.3)))
         .to.emit(ledger, 'withdrawalOccurred')
-        .withArgs(owner.address, owner.address, 0, stb('ether'), eth(0.3), eth(0.7));
+        .withArgs(owner.address, owner.address, 0, stb('ether'), eth(0.3), eth(0.7), eth(4.7));
       await expect(await ledger.connect(owner).withdrawal(1, stb('link'), eth(0.3)))
         .to.emit(ledger, 'withdrawalOccurred')
-        .withArgs(owner.address, owner.address, 1, stb('link'), eth(0.3), eth(1.7));
+        .withArgs(owner.address, owner.address, 1, stb('link'), eth(0.3), eth(1.7), eth(1.7));
       await expect(await ledger.connect(owner).withdrawal(2, stb('wbtc'), eth(0.3)))
         .to.emit(ledger, 'withdrawalOccurred')
-        .withArgs(owner.address, owner.address, 2, stb('wbtc'), eth(0.3), eth(2.7));
+        .withArgs(owner.address, owner.address, 2, stb('wbtc'), eth(0.3), eth(2.7), eth(2.7));
       await expect(await ledger.connect(owner).withdrawal(2, stb('ether'), eth(0.3)))
         .to.emit(ledger, 'withdrawalOccurred')
-        .withArgs(owner.address, owner.address, 2, stb('ether'), eth(0.3), eth(3.7));
+        .withArgs(owner.address, owner.address, 2, stb('ether'), eth(0.3), eth(3.7), eth(4.4));
       
       // check both the ledger and key balances again
       expect(await ledger.connect(root).ledgerArnBalances(stb("ether"))).to.equal(eth(4.4));
@@ -294,30 +295,30 @@ describe("Ledger", function () {
       // deposit some more
       await expect(await ledger.connect(owner).deposit(0, stb('ether'), eth(0.1)))
         .to.emit(ledger, 'depositOccurred')
-        .withArgs(owner.address, owner.address, 0, stb('ether'), eth(0.1), eth(0.8));
+        .withArgs(owner.address, owner.address, 0, stb('ether'), eth(0.1), eth(0.8), eth(4.5));
       await expect(await ledger.connect(owner).deposit(1, stb('link'), eth(0.2)))
         .to.emit(ledger, 'depositOccurred')
-        .withArgs(owner.address, owner.address, 1, stb('link'), eth(0.2), eth(1.9));
+        .withArgs(owner.address, owner.address, 1, stb('link'), eth(0.2), eth(1.9), eth(1.9));
       await expect(await ledger.connect(owner).deposit(2, stb('wbtc'), eth(0.3)))
         .to.emit(ledger, 'depositOccurred')
-        .withArgs(owner.address, owner.address, 2, stb('wbtc'), eth(0.3), eth(3));
+        .withArgs(owner.address, owner.address, 2, stb('wbtc'), eth(0.3), eth(3), eth(3));
       await expect(await ledger.connect(owner).deposit(2, stb('ether'), eth(0.4)))
         .to.emit(ledger, 'depositOccurred')
-        .withArgs(owner.address, owner.address, 2, stb('ether'), eth(0.4), eth(4.1));
+        .withArgs(owner.address, owner.address, 2, stb('ether'), eth(0.4), eth(4.1), eth(4.9));
       
       // withdrawal a little again
       await expect(await ledger.connect(owner).withdrawal(0, stb('ether'), eth(0.8)))
         .to.emit(ledger, 'withdrawalOccurred')
-        .withArgs(owner.address, owner.address, 0, stb('ether'), eth(0.8), eth(0));
+        .withArgs(owner.address, owner.address, 0, stb('ether'), eth(0.8), eth(0), eth(4.1));
       await expect(await ledger.connect(owner).withdrawal(1, stb('link'), eth(1.8)))
         .to.emit(ledger, 'withdrawalOccurred')
-        .withArgs(owner.address, owner.address, 1, stb('link'), eth(1.8), eth(0.1));
+        .withArgs(owner.address, owner.address, 1, stb('link'), eth(1.8), eth(0.1), eth(0.1));
       await expect(await ledger.connect(owner).withdrawal(2, stb('wbtc'), eth(2.8)))
         .to.emit(ledger, 'withdrawalOccurred')
-        .withArgs(owner.address, owner.address, 2, stb('wbtc'), eth(2.8), eth(0.2));
+        .withArgs(owner.address, owner.address, 2, stb('wbtc'), eth(2.8), eth(0.2), eth(0.2));
       await expect(await ledger.connect(owner).withdrawal(2, stb('ether'), eth(3.8)))
         .to.emit(ledger, 'withdrawalOccurred')
-        .withArgs(owner.address, owner.address, 2, stb('ether'), eth(3.8), eth(0.3));
+        .withArgs(owner.address, owner.address, 2, stb('ether'), eth(3.8), eth(0.3), eth(0.3));
       
       // check the ledger and key balances final
       expect(await ledger.connect(root).ledgerArnBalances(stb("ether"))).to.equal(eth(0.3));
@@ -355,7 +356,7 @@ describe("Ledger", function () {
       // deposit
       await expect(await ledger.connect(owner).deposit(0, stb('ether'), eth(1)))
         .to.emit(ledger, 'depositOccurred')
-        .withArgs(owner.address, owner.address, 0, stb('ether'), eth(1), eth(1));
+        .withArgs(owner.address, owner.address, 0, stb('ether'), eth(1), eth(1), eth(1));
 
       // validate balances
       expect(await ledger.connect(root).ledgerArnBalances(stb("ether"))).to.equal(eth(1));
@@ -486,7 +487,7 @@ describe("Ledger", function () {
       // deposit will be successful
       await expect(peer.connect(second).deposit())
         .to.emit(ledger, 'depositOccurred')
-        .withArgs(second.address, peer.address, 0, stb('ether'), eth(1), eth(1));
+        .withArgs(second.address, peer.address, 0, stb('ether'), eth(1), eth(1), eth(1));
 
       // upgrade the ledger and it still works
       const ledgerAgain = await upgrades.upgradeProxy(ledger.address, Ledger);
@@ -494,7 +495,7 @@ describe("Ledger", function () {
       // do another successful deposit
       await expect(peer.connect(second).deposit())
         .to.emit(ledgerAgain, 'depositOccurred')
-        .withArgs(second.address, peer.address, 0, stb('ether'), eth(1), eth(2));
+        .withArgs(second.address, peer.address, 0, stb('ether'), eth(1), eth(2), eth(2));
 
       // upgrade the peer contract
       const peerAgain = await upgrades.upgradeProxy(peer.address, Peer);
@@ -502,7 +503,7 @@ describe("Ledger", function () {
       // do another successful deposit
       await expect(peerAgain.connect(second).deposit())
         .to.emit(ledgerAgain, 'depositOccurred')
-        .withArgs(second.address, peer.address, 0, stb('ether'), eth(1), eth(3));
+        .withArgs(second.address, peer.address, 0, stb('ether'), eth(1), eth(3), eth(2));
 
       // check ledger balance
       expect(await ledger.connect(root).ledgerArnCount()).to.equal(1);

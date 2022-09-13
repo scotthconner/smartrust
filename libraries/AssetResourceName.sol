@@ -33,7 +33,42 @@ library AssetResourceName {
     address constant public GAS_TOKEN_CONTRACT = address(0);
     uint256 constant public GAS_TOKEN_STANDARD = 0; 
     uint256 constant public GAS_ID = 0;
+    
+    ////////////////////////////////////////////////////////
+    // Events
+    //
+    // This is going to help indexers and web applications
+    // watch and respond to blocks that contain trust transactions.
+    ////////////////////////////////////////////////////////
+    /**
+     * arnVaultBalanceChange
+     *
+     * This event fires when an ethereum deposit successfully occurs
+     * into the vault on behalf of the key.
+     *
+     * @param action either 'deposit' or 'withdrawal' in most cases
+     * @param actor the address of the message sender
+     * @param trustId the trust associated with the root key 
+     * @param keyId the keyID they used
+     * @param arn the asset resource encoding used in the ledger
+     * @param amount the amount deposited to the key. 
+     * @param newKeyBalance resulting amount of ether after the deposit
+     * @param vaultBalance the contract's total balance 
+     */
+    event arnVaultBalanceChange(
+       string action, 
+       address actor, uint256 trustId, uint256 keyId, 
+       bytes32 arn, uint256 amount, 
+       uint256 newKeyBalance, uint256 vaultBalance);
+    ///////////////////////////////////////////////////////
 
+    ////////////////////////////////////////////////////////
+    // ARN Interface
+    //
+    // Importing this library and doing using / for will
+    // enable these methods on the AssetType struct.
+    ////////////////////////////////////////////////////////
+    
     /**
      * arn
      *

@@ -17,7 +17,7 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 // pattern because its more gas efficient and comes with some better trade-offs.
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
-// We have our own library that controls Trust Key Definitions and logic.
+// We have our own library that controls Asset name differentiation.
 // We are going to be using this in all of our contracts.
 import "../libraries/AssetResourceName.sol";
 ///////////////////////////////////////////////////////////
@@ -55,30 +55,32 @@ contract Ledger is Initializable, OwnableUpgradeable, UUPSUpgradeable {
      * This event fires when new assets enter a vault from
      * the outside world.
      *
-     * @param origin  the transaction origin address
-     * @param actor   address of the contract/owner that deposited the asset
-     * @param keyId   keyId associated with the deposit, most often a root key
-     * @param arn     asset resource name hash of the asset deposited
-     * @param amount  amount of asset that was deposited
-     * @param balance resulting total arn balance for that key
+     * @param origin     the transaction origin address
+     * @param provider   address of the contract/owner that deposited the asset
+     * @param keyId      keyId associated with the deposit, most often a root key
+     * @param arn        asset resource name hash of the asset deposited
+     * @param amount     amount of asset that was deposited
+     * @param balance    resulting total arn balance for that key
+     * @param collateral the provider's total collateral for that asset
      */
-    event depositOccurred(address origin, address actor, uint256 keyId, 
-        bytes32 arn, uint256 amount, uint256 balance);
+    event depositOccurred(address origin, address provider, uint256 keyId, 
+        bytes32 arn, uint256 amount, uint256 balance, uint256 collateral);
 
     /**
      * withdrawalOccurred
      *
      * This event fires when assets leave a vault into an external wallet.
      *
-     * @param actor    address of the contract/owner that withdrew the asset 
+     * @param provider address of the contract/owner that withdrew the asset 
      * @param receiver destination account that *likely* received the asset 
      * @param keyId    keyId associated with the withdrawal
      * @param arn      asset resource name hash of the asset withdrawn 
      * @param amount   amount of asset that was withdrawn 
      * @param balance  resulting total arn balance for that key
+     * @param collateral the provider's total collateral for that asset
      */
-    event withdrawalOccurred(address actor, address receiver, uint256 keyId, 
-        bytes32 arn, uint256 amount, uint256 balance);
+    event withdrawalOccurred(address provider, address receiver, uint256 keyId, 
+        bytes32 arn, uint256 amount, uint256 balance, uint256 collateral);
 
     /**
      * ledgerTransferOccurred
@@ -87,7 +89,7 @@ contract Ledger is Initializable, OwnableUpgradeable, UUPSUpgradeable {
      * another, usually as part of receiving a trust benefit.
      *
      * @param origin      transaction origin address
-     * @param actor       address of the contract or user that initiated the ledger transfer
+     * @param provider    address of the contract or user that initiated the ledger transfer
      * @param arn         asset resource name of the asset that was moved
      * @param fromKey     keyId that will have a reduction in asset balance
      * @param toKey       keyId that will have an increase in asset balance
@@ -95,20 +97,21 @@ contract Ledger is Initializable, OwnableUpgradeable, UUPSUpgradeable {
      * @param fromBalance resulting balance for the fromKey's arn rights
      * @param toBalance   resulting balance for the toKey's arn rights
      */
-    event ledgerTransferOccurred(address origin, address actor, bytes32 arn,
+    event ledgerTransferOccurred(address origin, address provider, bytes32 arn,
         uint256 fromKey, uint256 toKey, uint256 amount, uint256 fromBalance, uint256 toBalance);
     
     /**
-     * peerPolicyChanged
+     * collateralProviderChange 
      *
      * This event fires when the owner of the contract changes
-     * the peering policy.
+     * a collateral provider.
      *
-     * @param owner  owner address at the time of change
-     * @param peer   address of the peer that is being managed
-     * @param policy true or false, considering what has changed.
+     * @param owner    owner address at the time of change
+     * @param provider address of the contract trusted with the collateral 
+     * @param arn      the arn to apply the policy to 
+     * @param isVault  the peer is providing authorized collateral 
      */
-    event peerPolicyChanged(address owner, address peer, bool policy);
+    event collateralProviderChange(address owner, address provider, bytes32 arn, bool isVault);
 
     ///////////////////////////////////////////////////////
     // Storage
@@ -143,10 +146,10 @@ contract Ledger is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     mapping(bytes32 => bool) public ledgerRegisteredArns;   // the existence of any asset in ledger
     mapping(bytes32 => uint256) public ledgerArnBalances;   // the total subsequent balances
     
-
-    // a set of peer contracts that are allowed to call non-view functions
-    mapping(address => bool) private approvedPeers;
-
+    // keeps track of asset collateral providers and their balances 
+    mapping(bytes32 => mapping(address => bool)) private arnCollateralProviders;
+    mapping(address => mapping(bytes32 => uint256)) public collateralProviderBalances;
+    
     ///////////////////////////////////////////////////////
     // Constructor and Upgrade Methods
     //
@@ -183,18 +186,26 @@ contract Ledger is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     { newImplementation; }
 
     /**
-     * setPeerPolicy
+     * setCollateralProvider 
      *
-     * Enables the ledger to accept or reject incoming calls from specific addresses as peers.
-     *
-     * @param contracts array of contract addresses you want to manage
-     * @param asPeer    true if they are considered peering, false to revoke access  
+     * This is required on a per asset basis, and in-so-far there can only be one trusted
+     * collateral provider per asset, a Locksmith's asset vault.
+     * 
+     * @param provider    the contract of the collateral provider
+     * @param arn         asset resource name of the collateral being provided
+     * @param isProvider  the flag to set the collateral policy to true or false
      */
-    function setPeerPolicy(address[] calldata contracts, bool asPeer) public onlyOwner {
-        for(uint256 x = 0; x < contracts.length; x++) {
-            approvedPeers[contracts[x]] = asPeer;
-            emit peerPolicyChanged(msg.sender, contracts[x], asPeer);
-        }
+    function setCollateralProvider(address provider, bytes32 arn, bool isProvider) public onlyOwner {
+       // if you are trying to be vault, you better not be one already
+       require(!isProvider || !arnCollateralProviders[arn][provider], "REDUDANT_PROVISION");
+
+       // a provider relationship has to start and end at zero 
+       require(collateralProviderBalances[provider][arn] == 0);
+
+       // set the provider policy
+       arnCollateralProviders[arn][provider] = isProvider;
+        
+       emit collateralProviderChange(msg.sender, provider, arn, isProvider);
     }
 
     ////////////////////////////////////////////////////////
@@ -255,14 +266,16 @@ contract Ledger is Initializable, OwnableUpgradeable, UUPSUpgradeable {
      * @param arn    asset resource hash of the deposited asset
      * @param amount the amount of that asset deposited.
      * @return final resulting balance of that asset for the given key.
+     * @return final resulting provider arn balance
      */
-    function deposit(uint256 keyId, bytes32 arn, uint256 amount) external returns(uint256) {
-        requirePeerOrOwner();
+    function deposit(uint256 keyId, bytes32 arn, uint256 amount) external returns(uint256, uint256) {
+        requireCollateralTrust(arn);
         require(amount > 0, 'ZERO_AMOUNT');
 
         uint256 finalBalance = _deposit(keyId, arn, amount);
         ledgerArnBalances[arn] += amount;
-        
+        collateralProviderBalances[msg.sender][arn] += amount;
+
         // this is a special case where we want to also keep track
         // of what assets are held in the ledger, overall
         if (!ledgerRegisteredArns[arn]) {
@@ -271,8 +284,9 @@ contract Ledger is Initializable, OwnableUpgradeable, UUPSUpgradeable {
             ledgerArnCount++;       
         }
 
-        emit depositOccurred(tx.origin, msg.sender, keyId, arn, amount, finalBalance); 
-        return finalBalance;
+        emit depositOccurred(tx.origin, msg.sender, keyId, arn, amount, 
+            finalBalance, collateralProviderBalances[msg.sender][arn]); 
+        return (finalBalance, collateralProviderBalances[msg.sender][arn]);
     }
 
     /**
@@ -285,15 +299,19 @@ contract Ledger is Initializable, OwnableUpgradeable, UUPSUpgradeable {
      * @param arn    asset resource hash of the withdrawn asset
      * @param amount the amount of that asset withdrawn.
      * @return final resulting balance of that asset for the given key.
+     * @return final ledger arn balance
      */
-    function withdrawal(uint256 keyId, bytes32 arn, uint256 amount) external returns(uint256) {
-        requirePeerOrOwner();
+    function withdrawal(uint256 keyId, bytes32 arn, uint256 amount) external returns(uint256, uint256) {
+        requireCollateralTrust(arn);
         require(amount > 0, 'ZERO_AMOUNT');
         
         uint256 finalBalance = _withdrawal(keyId, arn, amount);
         ledgerArnBalances[arn] -= amount;
-        emit withdrawalOccurred(msg.sender, tx.origin, keyId, arn, amount, finalBalance); 
-        return finalBalance;
+        collateralProviderBalances[msg.sender][arn] -= amount;
+        
+        emit withdrawalOccurred(msg.sender, tx.origin, keyId, arn, amount,
+            finalBalance, collateralProviderBalances[msg.sender][arn]); 
+        return (finalBalance, collateralProviderBalances[msg.sender][arn]);
     }
     
     /**
@@ -310,7 +328,8 @@ contract Ledger is Initializable, OwnableUpgradeable, UUPSUpgradeable {
      * @return final resulting balance of that asset for the from and to keys. 
      */
     function move(uint256 fromKey, uint256 toKey, bytes32 arn, uint256 amount) external returns(uint256, uint256) {
-        requirePeerOrOwner();
+        // TODO: We need to require ensure that the scribe
+        // can move this amount of assets
         require(amount > 0, 'ZERO_AMOUNT');
         
         uint256 fromFinal = _withdrawal(fromKey, arn, amount);
@@ -328,14 +347,15 @@ contract Ledger is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     ////////////////////////////////////////////////////////
     
     /**
-     * requirePeerOrOwner
+     * requireCollateralTrust
      *
      * Use this method as a psudeo-modifier to make sure only
-     * the contract owner or approved peers can call certain
-     * methods on the ledger.
+     * only trusted collateral providers can access a method.
+     *
+     * @param arn the asset the sender needs collateral trust for
      */
-    function requirePeerOrOwner() internal view {
-        require((owner() == msg.sender) || approvedPeers[msg.sender], "NOT_PEER");
+    function requireCollateralTrust(bytes32 arn) internal view {
+        require(arnCollateralProviders[arn][msg.sender], "NO_COLLATERAL_TRUST");
     }
 
     /**

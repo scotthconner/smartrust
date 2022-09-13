@@ -101,6 +101,12 @@ TrustTestFixtures = (function() {
       const ledger = await upgrades.deployProxy(Ledger);
       await ledger.deployed();
 
+      // let's give the owner collateral trust for the sake of
+      // testing simplicity
+      await ledger.connect(owner).setCollateralProvider(owner.address, stb('ether'), true);
+      await ledger.connect(owner).setCollateralProvider(owner.address, stb('link'), true);
+      await ledger.connect(owner).setCollateralProvider(owner.address, stb('wbtc'), true);
+
       return {ledger, owner, root, second, third};
     },
     ////////////////////////////////////////////////////////////
