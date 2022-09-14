@@ -132,6 +132,7 @@ contract Ledger is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     Locksmith public locksmith;
 
     // trusted providers for trusts
+    mapping(uint256 => uint256) public trustedProviderRegistrySize; 
     mapping(uint256 => address[]) public trustedProviderRegistry;
     mapping(uint256 => mapping(address => bool)) public registeredTrustedProviders;
     mapping(uint256 => mapping(address => bool)) public trustedProviderStatus;
@@ -205,11 +206,12 @@ contract Ledger is Initializable, OwnableUpgradeable, UUPSUpgradeable {
 
         if (isProvider) {
             // make sure they are not already a provider on the trust
-            require(!trustedProviderStatus[trustId][provider]);
+            require(!trustedProviderStatus[trustId][provider], 'REDUNDANT_PROVISION');
   
             // register them with the trust if not already done so
             if (!registeredTrustedProviders[trustId][provider]) {
                 trustedProviderRegistry[trustId].push(provider);
+                trustedProviderRegistrySize[trustId]++;
                 registeredTrustedProviders[trustId][provider] = true;
             }
 
@@ -361,8 +363,11 @@ contract Ledger is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         // make sure the deposit is measurable 
         require(amount > 0, 'ZERO_AMOUNT');
         
-        // make sure that the key being used is a root key
-        uint256 trustId = resolveTrustWithRootKey(keyId); 
+        // this could be an invalid key, but if it is, the
+        // trust ID will be zero and the withdrawal will
+        // look like an overdraft because there is no balance
+        // for the key
+        uint256 trustId = locksmith.keyTrustAssociations(keyId);
        
         // make sure the provider (the message sender) is a trusted one
         requireTrustedCollateralProvider(trustId);

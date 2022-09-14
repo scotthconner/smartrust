@@ -16,6 +16,10 @@ OWNER       = function() { return 0;}
 TRUSTEE     = function() { return 1;}
 BENEFICIARY = function() { return 2;}
 
+LEDGER = function() { return 0;}
+TRUST  = function() { return 1;}
+KEY    = function() { return 2;}
+
 stb = function(string) {
   return ethers.utils.formatBytes32String(string);
 };
@@ -38,12 +42,18 @@ doTransaction = async function(promise) {
   }
 };
 
-assertKey = async function(locksmith, account, keyId, isValid, name, trustId, isRoot) {
-  let [valid, alias, id, root] = (await locksmith.connect(account).inspectKey(keyId));
+assertKey = async function(locksmith, account, keyId, isValid, name, trustId, isRoot, keys = null) {
+  let [valid, alias, id, root, _keys] = (await locksmith.connect(account).inspectKey(keyId));
   expect(valid).to.equal(isValid);
   expect(id).to.equal(trustId);
   expect(root).to.equal(isRoot);
   expect(alias).to.equal(name);
+
+  if(null != keys) {
+    for(var k = 0; k < keys.length; k++) {
+      expect(_keys).to.contain(keys[k]);
+    }
+  }
 }
 
 TrustTestFixtures = (function() {
@@ -59,14 +69,26 @@ TrustTestFixtures = (function() {
       // Contracts are deployed using the first signer/account by default
       const [owner, root, second, third] = await ethers.getSigners();
 
-      // then deploy the trust key manager, using the trust key library
+      // generate a key vault for the locksmith to use, using a beacon
+      const KeyVault = await ethers.getContractFactory("KeyVault");
+      const keyVaultBeacon = await upgrades.deployBeacon(KeyVault);
+      const keyVaultProxy = await upgrades.deployBeaconProxy(keyVaultBeacon, KeyVault, [""]);
+      await keyVaultProxy.deployed();
+      const keyVault = KeyVault.attach(keyVaultProxy.address);
+
+      expect(await keyVault.getRoleMemberCount(await keyVault.DEFAULT_ADMIN_ROLE())).to.equal(1);
+
+      // create the locksmith, providing the key vault 
       const Locksmith = await ethers.getContractFactory("Locksmith");
 
       // since the contract is upgradeable, use a proxy
-      const locksmith = await upgrades.deployProxy(Locksmith);
+      const locksmith = await upgrades.deployProxy(Locksmith, [keyVault.address]);
       await locksmith.deployed();
 
-      return {locksmith, owner, root, second, third};
+      // enable the locksmith to be a minter in the key vault
+      await keyVault.connect(owner).grantRole((await keyVault.MINTER_ROLE()), locksmith.address);
+
+      return {keyVault, locksmith, owner, root, second, third};
     },
     ////////////////////////////////////////////////////////////
     // singleRoot
@@ -75,13 +97,13 @@ TrustTestFixtures = (function() {
     // with a trust and a single root key, given to 'root.'
     ////////////////////////////////////////////////////////////
     singleRoot: async function() {
-      const {locksmith, owner, root, second, third} =
+      const {keyVault, locksmith, owner, root, second, third} =
         await TrustTestFixtures.freshLocksmithProxy();
 
       // with the contract in place, create a trust and get the owner key
       await locksmith.connect(root).createTrustAndRootKey(stb("Conner Trust"));
 
-      return {locksmith, owner, root, second, third};
+      return {keyVault, locksmith, owner, root, second, third};
     },
     ////////////////////////////////////////////////////////////
     // freshLedgerProxy
@@ -91,23 +113,21 @@ TrustTestFixtures = (function() {
     // considered the natural state of the contract at launch time.
     ////////////////////////////////////////////////////////////
     freshLedgerProxy: async function() {
-      // Contracts are deployed using the first signer/account by default
-      const [owner, root, second, third] = await ethers.getSigners();
+      const {keyVault, locksmith, owner, root, second, third} =
+        await TrustTestFixtures.singleRoot();
 
-      // then deploy the trust key manager, using the trust key library
+      // deploy the ledger using the collteral provider library 
       const Ledger = await ethers.getContractFactory("Ledger");
 
       // since the contract is upgradeable, use a proxy
-      const ledger = await upgrades.deployProxy(Ledger);
+      const ledger = await upgrades.deployProxy(Ledger, [locksmith.address]);
       await ledger.deployed();
 
       // let's give the owner collateral trust for the sake of
       // testing simplicity
-      await ledger.connect(owner).setCollateralProvider(owner.address, stb('ether'), true);
-      await ledger.connect(owner).setCollateralProvider(owner.address, stb('link'), true);
-      await ledger.connect(owner).setCollateralProvider(owner.address, stb('wbtc'), true);
+      await ledger.connect(root).setCollateralProvider(0, owner.address, true);
 
-      return {ledger, owner, root, second, third};
+      return {keyVault, locksmith, ledger, owner, root, second, third};
     },
     ////////////////////////////////////////////////////////////
     // freshTrustProxy 
