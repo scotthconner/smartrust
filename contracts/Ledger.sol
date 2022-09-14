@@ -17,9 +17,14 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 // pattern because its more gas efficient and comes with some better trade-offs.
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
-// We have our own library that controls Asset name differentiation.
-// We are going to be using this in all of our contracts.
-import "../libraries/AssetResourceName.sol";
+// The Ledger respects keys minted for trusts by it's associated locksmith.
+import './Locksmith.sol';
+
+// This struct and methods help clean up balance tracking in
+// different contexts, which will help drive the understanding
+// of the trust's asset composition.
+import "../libraries/CollateralProviderLedger.sol";
+using CollateralProviderLedger for CollateralProviderLedger.CollateralProviderContext;
 ///////////////////////////////////////////////////////////
 
 /**
@@ -55,32 +60,37 @@ contract Ledger is Initializable, OwnableUpgradeable, UUPSUpgradeable {
      * This event fires when new assets enter a vault from
      * the outside world.
      *
-     * @param origin     the transaction origin address
-     * @param provider   address of the contract/owner that deposited the asset
-     * @param keyId      keyId associated with the deposit, most often a root key
-     * @param arn        asset resource name hash of the asset deposited
-     * @param amount     amount of asset that was deposited
-     * @param balance    resulting total arn balance for that key
-     * @param collateral the provider's total collateral for that asset
+     * @param provider      address of the collateral provider that deposited the asset
+     * @param trustId       ID of the trust that has approved the collateral provider 
+     * @param keyId         keyId associated with the deposit, most often a root key
+     * @param trustId       the trust id associated with the root key
+     * @param arn           asset resource name hash of the asset deposited
+     * @param amount        amount of asset that was deposited
+     * @param keyBalance    provider's total arn balance for that key
+     * @param trustBalance  provider's total arn balance for that trust
+     * @param ledgerBalance provider's total arn balance for the ledger
      */
-    event depositOccurred(address origin, address provider, uint256 keyId, 
-        bytes32 arn, uint256 amount, uint256 balance, uint256 collateral);
+    event depositOccurred(address provider, uint256 trustId, uint256 keyId, 
+        bytes32 arn, uint256 amount, 
+        uint256 keyBalance, uint256 trustBalance, uint256 ledgerBalance); 
 
     /**
      * withdrawalOccurred
      *
      * This event fires when assets leave a vault into an external wallet.
      *
-     * @param provider address of the contract/owner that withdrew the asset 
-     * @param receiver destination account that *likely* received the asset 
+     * @param provider address of the collateral provider that withdrew the asset 
+     * @param trustId  ID of the trust that has approved the collateral provider 
      * @param keyId    keyId associated with the withdrawal
      * @param arn      asset resource name hash of the asset withdrawn 
      * @param amount   amount of asset that was withdrawn 
-     * @param balance  resulting total arn balance for that key
-     * @param collateral the provider's total collateral for that asset
+     * @param keyBalance    provider's total arn balance for that key
+     * @param trustBalance  provider's total arn balance for that trust
+     * @param ledgerBalance provider's total arn balance for the ledger
      */
-    event withdrawalOccurred(address provider, address receiver, uint256 keyId, 
-        bytes32 arn, uint256 amount, uint256 balance, uint256 collateral);
+    event withdrawalOccurred(address provider, uint256 trustId, uint256 keyId, 
+        bytes32 arn, uint256 amount, 
+        uint256 keyBalance, uint256 trustBalance, uint256 ledgerBalance); 
 
     /**
      * ledgerTransferOccurred
@@ -103,53 +113,41 @@ contract Ledger is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     /**
      * collateralProviderChange 
      *
-     * This event fires when the owner of the contract changes
+     * This event fires when a trust root key holder modifies 
      * a collateral provider.
      *
-     * @param owner    owner address at the time of change
-     * @param provider address of the contract trusted with the collateral 
-     * @param arn      the arn to apply the policy to 
-     * @param isVault  the peer is providing authorized collateral 
+     * @param keyHolder  address of the keyHolder
+     * @param trustId    the trust ID for the keyHolder
+     * @param rootKeyId  the key ID used as root for the trust
+     * @param provider   address of the contract trusted for providing collateral 
+     * @param isProvider the collateral provider flag, true or false 
      */
-    event collateralProviderChange(address owner, address provider, bytes32 arn, bool isVault);
+    event collateralProviderChange(address keyHolder, uint256 trustId, uint256 rootKeyId,
+        address provider, bool isProvider);
 
     ///////////////////////////////////////////////////////
     // Storage
     ///////////////////////////////////////////////////////
+    // the ledger only respects one locksmith
+    Locksmith public locksmith;
 
-    /**
-     * KeyAssetRights
-     *
-     * Stores the balances of all assets this individual key
-     * has withdrawal rights to.
-     */
-    struct KeyAssetRights {
-        // the id of the key this represents 
-        uint256 id;
-
-        // gives us the ability to get a full list of arns
-        bytes32[] arnRegistry;
-
-        // enables us to keep the arnRegistry free of duplicates
-        mapping(bytes32 => bool) registeredArns; 
-        
-        // a mapping between an arn and the associate balance
-        mapping(bytes32 => uint256) arnBalances;
-    }
-
-    // mapping of key ID to their associated asset rights.
-    mapping(uint256 => KeyAssetRights) private keyAssetRights;
-
-    // total balances for each asset across the whole ledger
-    uint256 public ledgerArnCount;                          // the total type of assets held
-    bytes32[] public ledgerArnRegistry;                     // every asset type held
-    mapping(bytes32 => bool) public ledgerRegisteredArns;   // the existence of any asset in ledger
-    mapping(bytes32 => uint256) public ledgerArnBalances;   // the total subsequent balances
+    // trusted providers for trusts
+    mapping(uint256 => address[]) public trustedProviderRegistry;
+    mapping(uint256 => mapping(address => bool)) public registeredTrustedProviders;
+    mapping(uint256 => mapping(address => bool)) public trustedProviderStatus;
     
-    // keeps track of asset collateral providers and their balances 
-    mapping(bytes32 => mapping(address => bool)) private arnCollateralProviders;
-    mapping(address => mapping(bytes32 => uint256)) public collateralProviderBalances;
+    // ledger context
+    CollateralProviderLedger.CollateralProviderContext private ledgerContext;
+    uint256 public constant LEDGER_CONTEXT_ID = 0;
+
+    // trust context
+    mapping(uint256 => CollateralProviderLedger.CollateralProviderContext) private trustContext;
+    uint256 public constant TRUST_CONTEXT_ID = 1;
     
+    // key context
+    mapping(uint256 => CollateralProviderLedger.CollateralProviderContext) private keyContext;
+    uint256 public constant KEY_CONTEXT_ID = 2;
+
     ///////////////////////////////////////////////////////
     // Constructor and Upgrade Methods
     //
@@ -166,10 +164,13 @@ contract Ledger is Initializable, OwnableUpgradeable, UUPSUpgradeable {
      * initialize()
      *
      * Fundamentally replaces the constructor for an upgradeable contract.
+     *
+     * @param _locksmith the address for the locksmith
      */
-    function initialize() initializer public {
+    function initialize(address _locksmith) initializer public {
         __Ownable_init();
         __UUPSUpgradeable_init();
+        locksmith = Locksmith(_locksmith);
     }
 
     /**
@@ -188,24 +189,45 @@ contract Ledger is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     /**
      * setCollateralProvider 
      *
-     * This is required on a per asset basis, and in-so-far there can only be one trusted
-     * collateral provider per asset, a Locksmith's asset vault.
-     * 
-     * @param provider    the contract of the collateral provider
-     * @param arn         asset resource name of the collateral being provided
-     * @param isProvider  the flag to set the collateral policy to true or false
+     * Individual trusts bring their own collateral providers, who can provide
+     * collateral for any number of ARNs.
+     *
+     * @param rootKeyId  the root key the caller is trying to use to enable a provider
+     * @param provider   the contract of the collateral provider
+     * @param isProvider the flag to set the collateral policy to true or false
      */
-    function setCollateralProvider(address provider, bytes32 arn, bool isProvider) public onlyOwner {
-       // if you are trying to be vault, you better not be one already
-       require(!isProvider || !arnCollateralProviders[arn][provider], "REDUDANT_PROVISION");
+    function setCollateralProvider(uint256 rootKeyId, address provider, bool isProvider) external {
+        // make sure that the caller is holding the key they are trying to use
+        require(locksmith.keyVault().balanceOf(msg.sender, rootKeyId) > 0, "KEY_NOT_HELD");
 
-       // a provider relationship has to start and end at zero 
-       require(collateralProviderBalances[provider][arn] == 0);
+        // make sure that the key being used is a root key
+        uint256 trustId = resolveTrustWithRootKey(rootKeyId); 
 
-       // set the provider policy
-       arnCollateralProviders[arn][provider] = isProvider;
-        
-       emit collateralProviderChange(msg.sender, provider, arn, isProvider);
+        if (isProvider) {
+            // make sure they are not already a provider on the trust
+            require(!trustedProviderStatus[trustId][provider]);
+  
+            // register them with the trust if not already done so
+            if (!registeredTrustedProviders[trustId][provider]) {
+                trustedProviderRegistry[trustId].push(provider);
+                registeredTrustedProviders[trustId][provider] = true;
+            }
+
+            // set their provider status to true for the trust
+            trustedProviderStatus[trustId][provider] = true;
+        } else {
+            // we are trying to revoke status, so make sure they are one
+            require(trustedProviderStatus[trustId][provider], 'NOT_CURRENT_PROVIDER');
+
+            // make sure this provider has no collateral in the trust context
+            require(!trustContext[trustId].hasCollateral(provider), 'STILL_COLLATERALIZED');
+
+            // set their provider status to false
+            trustedProviderStatus[trustId][provider] = false;
+        }
+
+        // keep an entry for auditing purposes
+        emit collateralProviderChange(msg.sender, trustId, rootKeyId, provider, isProvider);
     }
 
     ////////////////////////////////////////////////////////
@@ -217,76 +239,109 @@ contract Ledger is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     ////////////////////////////////////////////////////////
 
     /**
-     * getKeyArnRegistry 
+     * getContextArnRegistry 
      *
      * Returns a full list of assets that have ever been held
      * on the ledger by that key. 
      *
-     * @param keyId key you want the arn list for. 
-     * @return the array of registered arns.
+     * @param context LEDGER_CONTEXT_ID, TRUST_CONTEXT_ID, KEY_CONTEXT_ID 
+     ' @param identifier either 0, a trustId, or keyId depending on context.
+     * @return the array of registered arns for the given context.
      */
-    function getKeyArnRegistry(uint256 keyId) external view returns(bytes32[] memory) {
-        return keyAssetRights[keyId].arnRegistry;
+    function getContextArnRegistry(uint256 context, uint256 identifier) external view returns(bytes32[] memory) {
+        require(context < 3, "INVALID_CONTEXT");
+       
+        // check if we need to use the identifier
+        if (TRUST_CONTEXT_ID == context) { 
+            return trustContext[identifier].arnRegistry;
+        } else if (KEY_CONTEXT_ID == context ) {
+            return keyContext[identifier].arnRegistry;
+        }
+
+        // must be the ledger then
+        return ledgerContext.arnRegistry;
     }
 
     /**
-     * getKeyArnBalances
+     * getContextArnBalances
      *
-     * Given a list of asset resource names, returns all of the balances
-     * for that asset.
+     * Returns a full list of assets balances for the context. 
      *
-     * @param keyId key you want the balances for.
-     * @param arns  list of arns (likely the entire registry) to introspect for that key.
-     * @return an array of balances that map 1:1 to the list of arns provided.
+     * @param context LEDGER_CONTEXT_ID, TRUST_CONTEXT_ID, KEY_CONTEXT_ID 
+     ' @param identifier either 0, a trustId, or keyId depending on context.
+     ' @param arns the array of arns you want to inspect 
+     * @return the array of registered arns for the given context.
      */
-    function getKeyArnBalances(uint256 keyId, bytes32[] calldata arns) external view returns(uint256[] memory) {
+    function getContextArnBalances(uint256 context, uint256 identifier, bytes32[] calldata arns) external view returns(uint256[] memory) {
+        require(context < 3, "INVALID_CONTEXT");
+        
         uint256[] memory balances = new uint256[](arns.length);
+        CollateralProviderLedger.CollateralProviderContext storage balanceContext;
+
+        // check if we need to use the identifier
+        if (TRUST_CONTEXT_ID == context) { 
+            balanceContext = trustContext[identifier];
+        } else if (KEY_CONTEXT_ID == context ) {
+            balanceContext = keyContext[identifier];
+        } else {
+            // assume the ledger
+            balanceContext = ledgerContext;
+        }
+
+        // gather the request arn balances for that context
         for(uint256 x = 0; x < arns.length; x++) {
-            balances[x] = keyAssetRights[keyId].arnBalances[arns[x]];
+            balances[x] = balanceContext.contextArnBalances[arns[x]];
         }
 
         return balances;
     }
 
     ////////////////////////////////////////////////////////
-    // Peer Only External Methods
+    // Collateral Provider External Methods
     //
-    // The below methods are designed only for other peer
-    // contracts or the contract owner to be calling, because
-    // the change the key entitlements for assets.
+    // The below methods are designed only for collateral providers 
+    // because they change the key entitlements for assets.
+    // 
+    // These methods will panic if the message sender is not
+    // an approved collateral provider for the given key's trust.
+    // 
+    // These method should also panic if the key isn't root.
     ////////////////////////////////////////////////////////
     
     /**
      * deposit
      *
-     * Vaults will call deposit to update the ledger when a key
+     * Collateral providers will call deposit to update the ledger when a key
      * deposits the funds to a trust.
      *
-     * @param keyId  key to deposit the funds into
-     * @param arn    asset resource hash of the deposited asset
-     * @param amount the amount of that asset deposited.
-     * @return final resulting balance of that asset for the given key.
-     * @return final resulting provider arn balance
+     * All deposits must be done to the root key. And all deposits
+     * must happen from approved collateral providers.
+     *
+     * @param rootKeyId the root key to deposit the funds into
+     * @param arn       asset resource hash of the deposited asset
+     * @param amount    the amount of that asset deposited.
+     * @return final resulting provider arn balance for that key
+     * @return final resulting provider arn balance for that trust 
+     * @return final resulting provider arn balance for the ledger 
      */
-    function deposit(uint256 keyId, bytes32 arn, uint256 amount) external returns(uint256, uint256) {
-        requireCollateralTrust(arn);
+    function deposit(uint256 rootKeyId, bytes32 arn, uint256 amount) external returns(uint256, uint256, uint256) {
+        // make sure the deposit is measurable 
         require(amount > 0, 'ZERO_AMOUNT');
+        
+        // make sure that the key being used is a root key
+        uint256 trustId = resolveTrustWithRootKey(rootKeyId); 
+      
+        // make sure the provider (the message sender) is a trusted one
+        requireTrustedCollateralProvider(trustId);
+        
+        // make the deposit at the ledger, trust, and key contexts
+        uint256 ledgerBalance = ledgerContext.deposit(arn, amount);
+        uint256 trustBalance  = trustContext[trustId].deposit(arn, amount);
+        uint256 keyBalance    = keyContext[rootKeyId].deposit(arn, amount);
 
-        uint256 finalBalance = _deposit(keyId, arn, amount);
-        ledgerArnBalances[arn] += amount;
-        collateralProviderBalances[msg.sender][arn] += amount;
-
-        // this is a special case where we want to also keep track
-        // of what assets are held in the ledger, overall
-        if (!ledgerRegisteredArns[arn]) {
-            ledgerArnRegistry.push(arn);
-            ledgerRegisteredArns[arn] = true;
-            ledgerArnCount++;       
-        }
-
-        emit depositOccurred(tx.origin, msg.sender, keyId, arn, amount, 
-            finalBalance, collateralProviderBalances[msg.sender][arn]); 
-        return (finalBalance, collateralProviderBalances[msg.sender][arn]);
+        emit depositOccurred(msg.sender, trustId, rootKeyId, arn, amount,
+            keyBalance, trustBalance, ledgerBalance);
+        return (keyBalance, trustBalance, ledgerBalance);
     }
 
     /**
@@ -298,22 +353,32 @@ contract Ledger is Initializable, OwnableUpgradeable, UUPSUpgradeable {
      * @param keyId  key to withdrawal the funds from 
      * @param arn    asset resource hash of the withdrawn asset
      * @param amount the amount of that asset withdrawn.
-     * @return final resulting balance of that asset for the given key.
-     * @return final ledger arn balance
+     * @return final resulting provider arn balance for that key
+     * @return final resulting provider arn balance for that trust 
+     * @return final resulting provider arn balance for the ledger 
      */
-    function withdrawal(uint256 keyId, bytes32 arn, uint256 amount) external returns(uint256, uint256) {
-        requireCollateralTrust(arn);
+    function withdrawal(uint256 keyId, bytes32 arn, uint256 amount) external returns(uint256, uint256, uint256) {
+        // make sure the deposit is measurable 
         require(amount > 0, 'ZERO_AMOUNT');
         
-        uint256 finalBalance = _withdrawal(keyId, arn, amount);
-        ledgerArnBalances[arn] -= amount;
-        collateralProviderBalances[msg.sender][arn] -= amount;
+        // make sure that the key being used is a root key
+        uint256 trustId = resolveTrustWithRootKey(keyId); 
+       
+        // make sure the provider (the message sender) is a trusted one
+        requireTrustedCollateralProvider(trustId);
         
-        emit withdrawalOccurred(msg.sender, tx.origin, keyId, arn, amount,
-            finalBalance, collateralProviderBalances[msg.sender][arn]); 
-        return (finalBalance, collateralProviderBalances[msg.sender][arn]);
+        // make the deposit at the ledger, trust, and key contexts
+        uint256 ledgerBalance = ledgerContext.withdrawal(arn, amount);
+        uint256 trustBalance  = trustContext[trustId].withdrawal(arn, amount);
+        uint256 keyBalance    = keyContext[keyId].withdrawal(arn, amount);
+
+        // TODO: integrate panic integrity here
+
+        emit withdrawalOccurred(msg.sender, trustId, keyId, arn, amount,
+            keyBalance, trustBalance, ledgerBalance);
+        return (keyBalance, trustBalance, ledgerBalance);
     }
-    
+   
     /**
      * move 
      *
@@ -327,6 +392,7 @@ contract Ledger is Initializable, OwnableUpgradeable, UUPSUpgradeable {
      * @param amount the amount of that asset withdrawn.
      * @return final resulting balance of that asset for the from and to keys. 
      */
+    /*
     function move(uint256 fromKey, uint256 toKey, bytes32 arn, uint256 amount) external returns(uint256, uint256) {
         // TODO: We need to require ensure that the scribe
         // can move this amount of assets
@@ -336,8 +402,8 @@ contract Ledger is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         uint256 toFinal = _deposit(toKey, arn, amount);
         emit ledgerTransferOccurred(tx.origin, msg.sender, arn, fromKey, toKey, amount, fromFinal, toFinal); 
         return (fromFinal, toFinal);
-    }
-
+    }*/
+    
     ////////////////////////////////////////////////////////
     // Internal Methods
     //
@@ -347,63 +413,30 @@ contract Ledger is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     ////////////////////////////////////////////////////////
     
     /**
-     * requireCollateralTrust
+     * resolveTrustWithRootKey 
      *
-     * Use this method as a psudeo-modifier to make sure only
-     * only trusted collateral providers can access a method.
+     * This method will panic if the key isn't a root key.
      *
-     * @param arn the asset the sender needs collateral trust for
+     * @param rootKeyId this better be a root key. 
+     * @return the trustId of the root key
      */
-    function requireCollateralTrust(bytes32 arn) internal view {
-        require(arnCollateralProviders[arn][msg.sender], "NO_COLLATERAL_TRUST");
+    function resolveTrustWithRootKey(uint256 rootKeyId) internal view returns (uint256){
+        // make sure the key is valid and it is a root key
+        require(locksmith.isRootKey(rootKeyId), "KEY_NOT_ROOT");
+
+        // return the trust Id for the valid root key
+        return locksmith.keyTrustAssociations(rootKeyId);
     }
 
     /**
-     * _deposit
+     * requireTrustedCollateralProvider
      *
-     * Internal function that encapsulates the logic for adding
-     * to a key/arn balance.
+     * This code will panic if the message sender is not
+     * a trusted collateral provider for the given trust.
      *
-     * @param keyId  key to deposit the funds into
-     * @param arn    asset resource hash of the deposited asset
-     * @param amount the amount of that asset deposited.
-     * @return final resulting balance of that asset for the given key.
+     * @param trustId the id of the trust the provider is operating on/
      */
-    function _deposit(uint256 keyId, bytes32 arn, uint256 amount) internal returns(uint256) {
-        KeyAssetRights storage r = keyAssetRights[keyId];
-
-        // manage the balance and registration
-        r.id = keyId;                     // do this in case it hasn't been
-        r.arnBalances[arn] += amount;     // update the arn balance
-        if (!r.registeredArns[arn]) {
-            r.arnRegistry.push(arn);      // allow us to introspect all balances O(n).
-            r.registeredArns[arn] = true; // register the arn so we don't duplicate
-        }
-
-        return r.arnBalances[arn];
-    }
-
-    /**
-     * _withdrawal
-     *
-     * Internal function that encapsulates the logic for removing 
-     * to a key/arn balance.
-     *
-     * @param keyId  key to withdrawal the funds from
-     * @param arn    asset resource hash of the withdrawn asset
-     * @param amount the amount of that asset withdrawn.
-     * @return final resulting balance of that asset for the given key.
-     */
-    function _withdrawal(uint256 keyId, bytes32 arn, uint256 amount) internal returns(uint256) {
-        KeyAssetRights storage r = keyAssetRights[keyId];
-
-        // we want to ensure that the balance is registered, and that
-        // the amount they want to withdrawal is actually there.
-        require(r.registeredArns[arn] && r.arnBalances[arn] >= amount, "OVERDRAFT");
-
-        // manage the balance
-        r.arnBalances[arn] -= amount;
-
-        return r.arnBalances[arn];
+    function requireTrustedCollateralProvider(uint256 trustId) internal view {
+        require(trustedProviderStatus[trustId][msg.sender], 'UNTRUSTED_PROVIDER');
     }
 }

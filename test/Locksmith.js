@@ -61,16 +61,16 @@ describe("Locksmith", function () {
   ////////////////////////////////////////////////////////////
   describe("Basic Trust Creation", function () {
     it("Trust should exist with one key created", async function () {
-      const { locksmith, owner, root, second, third} 
+      const { keyVault, locksmith, owner, root, second, third } 
         = await loadFixture(TrustTestFixtures.freshLocksmithProxy);
-      
+
       // assert the preconditions 
       expect((await locksmith.inspectKey(0))[0]).to.equal(false);
       expect(await ethers.provider.getBalance(locksmith.address)).to.equal(0);
 
       // ensure no account holds any root keys 
-      expect(await locksmith.balanceOf(owner.address, 0)).to.equal(0);
-      expect(await locksmith.balanceOf(root.address, 0)).to.equal(0);
+      expect(await keyVault.balanceOf(owner.address, 0)).to.equal(0);
+      expect(await keyVault.balanceOf(root.address, 0)).to.equal(0);
 
       // we want to ensure that a trust event was created
       await expect(await locksmith.connect(root).createTrustAndRootKey(stb("Conner Trust")))
@@ -82,20 +82,20 @@ describe("Locksmith", function () {
       
       // ensure that the account now holds a root key for the first trust, and 
       // that we didn't accidentally send it somewhere else, or to everyone
-      expect(await locksmith.balanceOf(root.address, 0)).to.equal(1);
-      expect(await locksmith.balanceOf(owner.address, 0)).to.equal(0);
-      expect(await locksmith.balanceOf(second.address, 0)).to.equal(0);
-      expect(await locksmith.balanceOf(third.address, 0)).to.equal(0);
+      expect(await keyVault.balanceOf(root.address, 0)).to.equal(1);
+      expect(await keyVault.balanceOf(owner.address, 0)).to.equal(0);
+      expect(await keyVault.balanceOf(second.address, 0)).to.equal(0);
+      expect(await keyVault.balanceOf(third.address, 0)).to.equal(0);
     });
     
     it("Two trusts are independent of each other", async function () {
-      const { locksmith, owner, root, second, third} = 
+      const { keyVault, locksmith, owner, root, second, third} = 
         await loadFixture(TrustTestFixtures.freshLocksmithProxy);
 
       // make sure there are no trusts and there are no root keys 
       expect((await locksmith.inspectKey(0))[0]).to.equal(false);
-      expect(await locksmith.balanceOf(root.address, 0)).to.equal(0);
-      expect(await locksmith.balanceOf(second.address, 0)).to.equal(0);
+      expect(await keyVault.balanceOf(root.address, 0)).to.equal(0);
+      expect(await keyVault.balanceOf(second.address, 0)).to.equal(0);
 
       // create two trusts, and ensure their events emit properly
       await expect(await locksmith.connect(root).createTrustAndRootKey(stb("Conner Trust")))
@@ -110,10 +110,10 @@ describe("Locksmith", function () {
       await assertKey(locksmith, root, 1, true, stb('root'), 1, true);
       
       // ensure the keys end up the right spots
-      expect(await locksmith.balanceOf(root.address, 0)).to.equal(1);
-      expect(await locksmith.balanceOf(root.address, 1)).to.equal(0);
-      expect(await locksmith.balanceOf(second.address, 0)).to.equal(0);
-      expect(await locksmith.balanceOf(second.address, 1)).to.equal(1);
+      expect(await keyVault.balanceOf(root.address, 0)).to.equal(1);
+      expect(await keyVault.balanceOf(root.address, 1)).to.equal(0);
+      expect(await keyVault.balanceOf(second.address, 0)).to.equal(0);
+      expect(await keyVault.balanceOf(second.address, 1)).to.equal(1);
     });
   });
   
@@ -124,16 +124,16 @@ describe("Locksmith", function () {
   ////////////////////////////////////////////////////////////
   describe("Basic Key Creation Use Cases", function() {
     it("Can't create keys without holding used key", async function() {
-      const { locksmith, owner, root, second, third} = 
+      const { keyVault, locksmith, owner, root, second, third} = 
         await loadFixture(TrustTestFixtures.singleRoot);
      
       // assert key ownership pre-conditions
-      expect(await locksmith.balanceOf(root.address, 0)).to.equal(1);
-      expect(await locksmith.balanceOf(root.address, 1)).to.equal(0);
-      expect(await locksmith.balanceOf(root.address, 2)).to.equal(0);
-      expect(await locksmith.balanceOf(second.address, 0)).to.equal(0);
-      expect(await locksmith.balanceOf(second.address, 1)).to.equal(0);
-      expect(await locksmith.balanceOf(second.address, 2)).to.equal(0);
+      expect(await keyVault.balanceOf(root.address, 0)).to.equal(1);
+      expect(await keyVault.balanceOf(root.address, 1)).to.equal(0);
+      expect(await keyVault.balanceOf(root.address, 2)).to.equal(0);
+      expect(await keyVault.balanceOf(second.address, 0)).to.equal(0);
+      expect(await keyVault.balanceOf(second.address, 1)).to.equal(0);
+      expect(await keyVault.balanceOf(second.address, 2)).to.equal(0);
       
       // try to create a key you dont hold 
       await expect(locksmith.connect(root)
@@ -141,19 +141,19 @@ describe("Locksmith", function () {
         .to.be.revertedWith('KEY_NOT_HELD');
 
       // couldn't mint an owner key, so its the same
-      expect(await locksmith.balanceOf(second.address, 0)).to.equal(0);
-      expect(await locksmith.balanceOf(second.address, 1)).to.equal(0);
-      expect(await locksmith.balanceOf(second.address, 2)).to.equal(0);
+      expect(await keyVault.balanceOf(second.address, 0)).to.equal(0);
+      expect(await keyVault.balanceOf(second.address, 1)).to.equal(0);
+      expect(await keyVault.balanceOf(second.address, 2)).to.equal(0);
     });
 
     it("Can't create keys without using root key", async function() {
-      const { locksmith, owner, root, second, third} = 
+      const { keyVault, locksmith, owner, root, second, third} = 
         await loadFixture(TrustTestFixtures.singleRoot);
      
       // assert key ownership pre-conditions
-      expect(await locksmith.balanceOf(root.address, 0)).to.equal(1);
-      expect(await locksmith.balanceOf(second.address, 1)).to.equal(0);
-      expect(await locksmith.balanceOf(third.address, 2)).to.equal(0);
+      expect(await keyVault.balanceOf(root.address, 0)).to.equal(1);
+      expect(await keyVault.balanceOf(second.address, 1)).to.equal(0);
+      expect(await keyVault.balanceOf(third.address, 2)).to.equal(0);
      
       // mint a second key to another user
       await expect(locksmith.connect(root)
@@ -162,7 +162,7 @@ describe("Locksmith", function () {
         .withArgs(root.address, 0, 1, stb('beneficiary'), second.address);
 
       // ensure that the key is not actually a root
-      expect(await locksmith.balanceOf(second.address, 1)).to.equal(1);
+      expect(await keyVault.balanceOf(second.address, 1)).to.equal(1);
       await assertKey(locksmith, root, 1, true, stb('beneficiary'), 0, false);
 
       // try to create trust keys without possessing the root key 
@@ -171,13 +171,13 @@ describe("Locksmith", function () {
         .to.be.revertedWith('KEY_NOT_ROOT');
       
       // couldn't mint a key, so the third balance is the same
-      expect(await locksmith.balanceOf(third.address, 2)).to.equal(0);
-      expect(await locksmith.balanceOf(second.address, 1)).to.equal(1);
-      expect(await locksmith.balanceOf(root.address, 0)).to.equal(1);
+      expect(await keyVault.balanceOf(third.address, 2)).to.equal(0);
+      expect(await keyVault.balanceOf(second.address, 1)).to.equal(1);
+      expect(await keyVault.balanceOf(root.address, 0)).to.equal(1);
     });
 
     it("Create and test key generation", async function() {
-      const { locksmith, owner, root, second, third} = 
+      const { keyVault, locksmith, owner, root, second, third} = 
         await loadFixture(TrustTestFixtures.singleRoot);
      
       // make a second trust
@@ -187,12 +187,12 @@ describe("Locksmith", function () {
         .to.emit(locksmith, "trustCreated").withArgs(second.address, 1, stb("SmartTrust"));
 
       // assert key ownership pre-conditions
-      expect(await locksmith.balanceOf(root.address, 0)).to.equal(1);
-      expect(await locksmith.balanceOf(second.address, 1)).to.equal(1);
-      expect(await locksmith.balanceOf(third.address, 2)).to.equal(0);
-      expect(await locksmith.balanceOf(root.address, 3)).to.equal(0);
-      expect(await locksmith.balanceOf(second.address, 4)).to.equal(0);
-      expect(await locksmith.balanceOf(third.address, 5)).to.equal(0);
+      expect(await keyVault.balanceOf(root.address, 0)).to.equal(1);
+      expect(await keyVault.balanceOf(second.address, 1)).to.equal(1);
+      expect(await keyVault.balanceOf(third.address, 2)).to.equal(0);
+      expect(await keyVault.balanceOf(root.address, 3)).to.equal(0);
+      expect(await keyVault.balanceOf(second.address, 4)).to.equal(0);
+      expect(await keyVault.balanceOf(third.address, 5)).to.equal(0);
       
       // assert key properties pre-conditions 
       await assertKey(locksmith, root, 0, true, stb('root'), 0, true);
@@ -221,12 +221,12 @@ describe("Locksmith", function () {
         .withArgs(root.address, 0, 5, stb('five'), third.address);
      
       // make sure all the keys ended up where we expected
-      expect(await locksmith.balanceOf(root.address, 0)).to.equal(1);
-      expect(await locksmith.balanceOf(second.address, 1)).to.equal(1);
-      expect(await locksmith.balanceOf(third.address, 2)).to.equal(1);
-      expect(await locksmith.balanceOf(root.address, 3)).to.equal(1);
-      expect(await locksmith.balanceOf(second.address, 4)).to.equal(1);
-      expect(await locksmith.balanceOf(third.address, 5)).to.equal(1);
+      expect(await keyVault.balanceOf(root.address, 0)).to.equal(1);
+      expect(await keyVault.balanceOf(second.address, 1)).to.equal(1);
+      expect(await keyVault.balanceOf(third.address, 2)).to.equal(1);
+      expect(await keyVault.balanceOf(root.address, 3)).to.equal(1);
+      expect(await keyVault.balanceOf(second.address, 4)).to.equal(1);
+      expect(await keyVault.balanceOf(third.address, 5)).to.equal(1);
 
       // inspect the key properties
       await assertKey(locksmith, root, 0, true, stb('root'), 0, true);
@@ -253,7 +253,7 @@ describe("Locksmith", function () {
     });
     
     it("Can't copy key without using root key", async function() {
-      const { locksmith, owner, root, second, third} = 
+      const { keyVault, locksmith, owner, root, second, third} = 
         await loadFixture(TrustTestFixtures.singleRoot);
    
       // mint a second key
@@ -267,7 +267,7 @@ describe("Locksmith", function () {
     });
 
     it("Can't copy key that isn't in trust", async function() {
-      const { locksmith, owner, root, second, third} = 
+      const { keyVault, locksmith, owner, root, second, third} = 
         await loadFixture(TrustTestFixtures.singleRoot);
       
       // make a second trust
@@ -281,11 +281,11 @@ describe("Locksmith", function () {
     });
     
     it("Basic Key Copy", async function() {
-      const { locksmith, owner, root, second, third} = 
+      const { keyVault, locksmith, owner, root, second, third} = 
         await loadFixture(TrustTestFixtures.singleRoot);
       
-      expect(await locksmith.balanceOf(third.address, 0)).to.equal(0);
-      expect(await locksmith.balanceOf(second.address, 0)).to.equal(0);
+      expect(await keyVault.balanceOf(third.address, 0)).to.equal(0);
+      expect(await keyVault.balanceOf(second.address, 0)).to.equal(0);
     
       // mint a second key
       await expect(await locksmith.connect(root)
@@ -298,8 +298,8 @@ describe("Locksmith", function () {
         .to.emit(locksmith, "keyMinted")
         .withArgs(root.address, 0, 1, stb('second'), third.address);
 
-      expect(await locksmith.balanceOf(third.address, 1)).to.equal(1);
-      expect(await locksmith.balanceOf(second.address, 1)).to.equal(1);
+      expect(await keyVault.balanceOf(third.address, 1)).to.equal(1);
+      expect(await keyVault.balanceOf(second.address, 1)).to.equal(1);
     });
   });
   
@@ -309,8 +309,15 @@ describe("Locksmith", function () {
   // Essentially tests burnKey 
   ////////////////////////////////////////////////////////////
   describe("Basic Key Burning Use Cases", function() {
+    it("Can't burn key if not a locksmith", async function() {
+      const { keyVault, locksmith, owner, root, second, third} = 
+        await loadFixture(TrustTestFixtures.singleRoot);
+      await expect(keyVault.connect(root).minterBurn(root.address, 0, 1))
+        .to.be.revertedWith("NOT_MINTER");
+    });
+
     it("Can't burn key without holding key used", async function() {
-      const { locksmith, owner, root, second, third} = 
+      const { keyVault, locksmith, owner, root, second, third} = 
         await loadFixture(TrustTestFixtures.singleRoot);
 
       await expect(locksmith.connect(second).burnKey(0, 0, root.address))
@@ -318,7 +325,7 @@ describe("Locksmith", function () {
     }); 
     
     it("Can't burn key without using root key", async function() {
-      const { locksmith, owner, root, second, third} = 
+      const { keyVault, locksmith, owner, root, second, third} = 
         await loadFixture(TrustTestFixtures.singleRoot);
 
       // mint a second key
@@ -332,7 +339,7 @@ describe("Locksmith", function () {
     }); 
     
     it("Can't burn key not held by target", async function() {
-      const { locksmith, owner, root, second, third} = 
+      const { keyVault, locksmith, owner, root, second, third} = 
         await loadFixture(TrustTestFixtures.singleRoot);
       
       // mint a second key
@@ -346,7 +353,7 @@ describe("Locksmith", function () {
     });
     
     it("Can't burn key not from same trust", async function() {
-      const { locksmith, owner, root, second, third} = 
+      const { keyVault, locksmith, owner, root, second, third} = 
         await loadFixture(TrustTestFixtures.singleRoot);
     
       // build a second trust
@@ -360,10 +367,10 @@ describe("Locksmith", function () {
     });
 
     it("Burn one key", async function() {
-      const { locksmith, owner, root, second, third} = 
+      const { keyVault, locksmith, owner, root, second, third} = 
         await loadFixture(TrustTestFixtures.singleRoot);
       
-      expect(await locksmith.balanceOf(second.address, 1)).to.equal(0);
+      expect(await keyVault.balanceOf(second.address, 1)).to.equal(0);
       
       // mint a second key
       await expect(await locksmith.connect(root)
@@ -371,21 +378,21 @@ describe("Locksmith", function () {
         .to.emit(locksmith, "keyMinted")
         .withArgs(root.address, 0, 1, stb('second'), second.address);
      
-      expect(await locksmith.balanceOf(second.address, 1)).to.equal(1);
+      expect(await keyVault.balanceOf(second.address, 1)).to.equal(1);
       
       // burn the key
       await expect(await locksmith.connect(root).burnKey(0, 1, second.address))
         .to.emit(locksmith, "keyBurned")
         .withArgs(root.address, 0, 1, second.address, 1);
       
-      expect(await locksmith.balanceOf(second.address, 1)).to.equal(0);
+      expect(await keyVault.balanceOf(second.address, 1)).to.equal(0);
     });
 
     it("Burn multiple keys at once", async function() {
-      const { locksmith, owner, root, second, third} = 
+      const { keyVault, locksmith, owner, root, second, third} = 
         await loadFixture(TrustTestFixtures.singleRoot);
       
-      expect(await locksmith.balanceOf(second.address, 1)).to.equal(0);
+      expect(await keyVault.balanceOf(second.address, 1)).to.equal(0);
       
       // mint a second key
       await expect(await locksmith.connect(root)
@@ -397,25 +404,25 @@ describe("Locksmith", function () {
         .to.emit(locksmith, "keyMinted")
         .withArgs(root.address, 0, 1, stb('second'), second.address);
      
-      expect(await locksmith.balanceOf(second.address, 1)).to.equal(2);
+      expect(await keyVault.balanceOf(second.address, 1)).to.equal(2);
       
       // burn the key
       await expect(await locksmith.connect(root).burnKey(0, 1, second.address))
         .to.emit(locksmith, "keyBurned")
         .withArgs(root.address, 0, 1, second.address, 2);
       
-      expect(await locksmith.balanceOf(second.address, 1)).to.equal(0);
+      expect(await keyVault.balanceOf(second.address, 1)).to.equal(0);
     });
 
     it("Burn the root key (irrevocable trust)", async function() {
-      const { locksmith, owner, root, second, third} = 
+      const { keyVault, locksmith, owner, root, second, third} = 
         await loadFixture(TrustTestFixtures.singleRoot);
       
       await expect(await locksmith.connect(root).burnKey(0, 0, root.address))
         .to.emit(locksmith, "keyBurned")
         .withArgs(root.address, 0, 0, root.address, 1);
       
-      expect(await locksmith.balanceOf(root.address, 0)).to.equal(0);
+      expect(await keyVault.balanceOf(root.address, 0)).to.equal(0);
     });
   });
 });

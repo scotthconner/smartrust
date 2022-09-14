@@ -126,20 +126,22 @@ contract EtherVault is Initializable, OwnableUpgradeable, UUPSUpgradeable {
      */
     function deposit(uint256 keyId) payable external {
         // stop right now if the message sender doesn't hold the key
-        require(locksmith.balanceOf(msg.sender, keyId) > 0, 'KEY_NOT_HELD');
+        require(locksmith.keyVault().balanceOf(msg.sender, keyId) > 0, 'KEY_NOT_HELD');
 
         // only the root key is capable of depositing funds
         bool isValidKey;
         bytes32 keyAlias;
         uint256 trustId;
         bool isRootKey;
-        (isValidKey, keyAlias, trustId, isRootKey) = locksmith.inspectKey(keyId);
+        uint256[] memory keys;
+        (isValidKey, keyAlias, trustId, isRootKey, keys) = locksmith.inspectKey(keyId);
         require(isRootKey, 'KEY_NOT_ROOT');
 
         // track the deposit on the ledger
         uint256 finalKeyBalance;
+        uint256 finalTrustBalance;
         uint256 finalLedgerBalance; 
-        (finalKeyBalance, finalLedgerBalance) = ledger.deposit(keyId, ethArn, msg.value);
+        (finalKeyBalance, finalTrustBalance, finalLedgerBalance) = ledger.deposit(keyId, ethArn, msg.value);
 
         // jam the vault if the ledger's balance for its 
         // provisions doesn't match the vault balance
@@ -167,7 +169,7 @@ contract EtherVault is Initializable, OwnableUpgradeable, UUPSUpgradeable {
      */
     function withdrawal(uint256 keyId, uint256 amount) external {
         // stop right now if the message sender doesn't hold the key
-        require(locksmith.balanceOf(msg.sender, keyId) > 0, 'KEY_NOT_HELD');
+        require(locksmith.keyVault().balanceOf(msg.sender, keyId) > 0, 'KEY_NOT_HELD');
 
         // inspect the key. We need this for events but ultimately access
         // to the funds is based on what the ledger thinks
@@ -175,13 +177,15 @@ contract EtherVault is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         bytes32 keyAlias;
         uint256 trustId;
         bool isRootKey;
-        (isValidKey, keyAlias, trustId, isRootKey) = locksmith.inspectKey(keyId);
+        uint256[] memory keys;
+        (isValidKey, keyAlias, trustId, isRootKey, keys) = locksmith.inspectKey(keyId);
         
         // withdrawal from the ledger *first*. if there is an overdraft,
         // the entire transaction will revert.
         uint256 finalKeyBalance;
-        uint256 finalLedgerBalance;
-        (finalKeyBalance, finalLedgerBalance) = ledger.withdrawal(keyId, ethArn, amount);
+        uint256 finalTrustBalance;
+        uint256 finalLedgerBalance; 
+        (finalKeyBalance, finalTrustBalance, finalLedgerBalance) = ledger.withdrawal(keyId, ethArn, amount);
 
         // jam the vault if the ledger's balance doesn't
         // match the vault balance after withdrawal

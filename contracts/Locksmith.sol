@@ -4,23 +4,22 @@ pragma solidity ^0.8.16;
 ///////////////////////////////////////////////////////////
 // IMPORTS
 //
-// We need this to use the ERC1155 token standard. This is required
-// to be able to mint multiple types of NFTs for interacting with
-// a trust (Owner, Beneficiary, Trustee). We also want it to be upgradeable.
-import "@openzeppelin/contracts-upgradeable/token/ERC1155/ERC1155Upgradeable.sol";
-
 // This enables the author of the contract to own it, and provide
 // ownership only methods to be called by the author for maintenance
 // or other operations.
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
-
+//
 // Initializable interface is required because constructors don't work the same
 // way for upgradeable contracts.
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-
+//
 // We are using the UUPSUpgradeable Proxy pattern instead of the transparent proxy
 // pattern because its more gas efficient and comes with some better trade-offs.
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+
+// A locksmith stores all of the keys from their associated trusts into
+// a key vault.
+import "./KeyVault.sol";
 ///////////////////////////////////////////////////////////
 
 /**
@@ -33,7 +32,7 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
  * a different contract, that take a dependency on the Locksmith for
  * understanding key ownership and user permissions.
  */
-contract Locksmith is ERC1155Upgradeable, OwnableUpgradeable, UUPSUpgradeable {
+contract Locksmith is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     ///////////////////////////////////////////////////////
     // Events
     ///////////////////////////////////////////////////////
@@ -75,22 +74,13 @@ contract Locksmith is ERC1155Upgradeable, OwnableUpgradeable, UUPSUpgradeable {
      * @param amount     the number of keys burned in the operation
      */
     event keyBurned(address rootHolder, uint256 trustId, uint256 keyId, address target, uint256 amount);
-
-    ///////////////////////////////////////////////////////
-    // Constructor and Upgrade Methods
-    //
-    // This section is specifically for upgrades and inherited
-    // override functionality.
-    ///////////////////////////////////////////////////////
-    /// @custom:oz-upgrades-unsafe-allow constructor
-    constructor() {
-        // this disables all previous initializers 
-        _disableInitializers();
-    }
-    
+ 
     ///////////////////////////////////////////////////////
     // Storage
     ///////////////////////////////////////////////////////
+    // reference to the KeyVault used by this Locksmith
+    KeyVault public keyVault;
+
     // main data structure for each trust
     struct Trust {
         // the globally unique trust id within the system    
@@ -119,18 +109,33 @@ contract Locksmith is ERC1155Upgradeable, OwnableUpgradeable, UUPSUpgradeable {
     // a reverse mapping that keeps a top level association
     // between a key and it's trust. This enables O(1) key
     // to trust resolution
-    mapping(uint256 => uint256) private keyTrustAssociations;
+    mapping(uint256 => uint256) public keyTrustAssociations;
     uint256 private keyCount; // the total number of keys
+    
+    ///////////////////////////////////////////////////////
+    // Constructor and Upgrade Methods
+    //
+    // This section is specifically for upgrades and inherited
+    // override functionality.
+    ///////////////////////////////////////////////////////
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        // this disables all previous initializers 
+        _disableInitializers();
+    }
 
     /**
      * initialize()
      *
      * Fundamentally replaces the constructor for an upgradeable contract.
+     *
+     * @param keyVaultContract the ERC1155 key vault contract the locksmith will use
      */
-    function initialize() initializer public {
-        __ERC1155_init("");
+    function initialize(address keyVaultContract) initializer public {
         __Ownable_init();
         __UUPSUpgradeable_init();
+
+        keyVault = KeyVault(keyVaultContract);
     }
 
     /**
@@ -181,7 +186,23 @@ contract Locksmith is ERC1155Upgradeable, OwnableUpgradeable, UUPSUpgradeable {
         // the trust was successfully created
         emit trustCreated(msg.sender, t.id, t.name);
     }
+    
+    /**
+     * isRootKey
+     *
+     * @param keyId the key id in question
+     * @return true if the key Id is the root key of it's associated trust
+     */
+    function isRootKey(uint256 keyId) public view returns(bool) {
+        // key is valid
+        return (keyId < keyCount) &&
+        // the root key for the trust is the key in question
+        (keyId == trustRegistry[keyTrustAssociations[keyId]].rootKeyId) &&
+        // the key has been minted at least once
+        (trustRegistry[keyTrustAssociations[keyId]].keyMintCounts[keyId] > 0);
+    }
 
+    
     /**
      * createKey
      *
@@ -262,11 +283,11 @@ contract Locksmith is ERC1155Upgradeable, OwnableUpgradeable, UUPSUpgradeable {
         require(t.keyMintCounts[keyId] > 0, 'TRUST_KEY_NOT_FOUND');
        
         // make sure the target is even holding these keys
-        uint256 burnAmount = this.balanceOf(holder, keyId);
+        uint256 burnAmount = keyVault.balanceOf(holder, keyId);
         require(burnAmount > 0, 'ZERO_BURN_AMOUNT');
 
         // burn them, and count the burn for logging
-        _burn(holder, keyId, burnAmount);
+        keyVault.minterBurn(holder, keyId, burnAmount);
         t.keyBurnCounts[keyId] += burnAmount;
 
         emit keyBurned(msg.sender, t.id, keyId, holder, burnAmount);
@@ -279,10 +300,11 @@ contract Locksmith is ERC1155Upgradeable, OwnableUpgradeable, UUPSUpgradeable {
      * 
      * @return true if the key is a valid key
      * @return alias of the key 
-     * @return the trust id of the key (only if its considered valid
+     * @return the trust id of the key (only if its considered valid)
      * @return true if the key is a root key
+     * @return the keys associated with the given trust
      */ 
-    function inspectKey(uint256 keyId) external view returns(bool, bytes32, uint256, bool) {
+    function inspectKey(uint256 keyId) external view returns(bool, bytes32, uint256, bool, uint256[] memory) {
         // the key is a valid key number 
         return ((keyId < keyCount),
             // the human readable name of the key
@@ -290,10 +312,12 @@ contract Locksmith is ERC1155Upgradeable, OwnableUpgradeable, UUPSUpgradeable {
             // trust Id of the key
             keyTrustAssociations[keyId],
             // the key is a root key 
-            ((keyId == trustRegistry[keyTrustAssociations[keyId]].rootKeyId) &&  
-            (trustRegistry[keyTrustAssociations[keyId]].keyMintCounts[keyId] > 0)));
+            isRootKey(keyId) &&  
+            (trustRegistry[keyTrustAssociations[keyId]].keyMintCounts[keyId] > 0),
+            // the keys associated with the trust
+            trustRegistry[keyTrustAssociations[keyId]].keys);
     }
-    
+
     ////////////////////////////////////////////////////////
     // Internal Methods
     //
@@ -313,7 +337,7 @@ contract Locksmith is ERC1155Upgradeable, OwnableUpgradeable, UUPSUpgradeable {
      * @param receiver  receiving address of the newly minted key
      */
     function mintKey(Trust storage trust, uint256 keyId, address receiver) internal {
-        _mint(receiver, keyId, 1, "");
+        keyVault.mint(receiver, keyId, 1, "");
         
         // keep track of the number of times we minted this key.
         // this is good for reporting, and prevents key out of range
@@ -337,12 +361,12 @@ contract Locksmith is ERC1155Upgradeable, OwnableUpgradeable, UUPSUpgradeable {
      */
     function getTrustFromRootKey(uint256 rootKeyId) internal view returns (uint256) {
         // make sure that the message sender holds this key ID
-        require(this.balanceOf(msg.sender, rootKeyId) > 0, 'KEY_NOT_HELD');    
+        require(keyVault.balanceOf(msg.sender, rootKeyId) > 0, 'KEY_NOT_HELD');    
 
         // make sure that the keyID is the rootKeyID
         uint256 trustId = keyTrustAssociations[rootKeyId];
         require(rootKeyId == trustRegistry[trustId].rootKeyId, 'KEY_NOT_ROOT');
 
         return trustId;
-    }
+    }    
 }

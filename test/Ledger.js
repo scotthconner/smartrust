@@ -33,8 +33,7 @@ describe("Ledger", function () {
     it("Should have no ledger balance or activity", async function () {
       const { ledger, owner, root } = await loadFixture(TrustTestFixtures.freshLedgerProxy);
     
-      expect(await ledger.connect(root).ledgerArnCount()).to.equal(0);
-      expect(await ledger.connect(root).getKeyArnRegistry(0)).has.length(0); 
+      expect(await ledger.connect(root).getContextArnRegistry(2,0)).has.length(0); 
     });
   });
   
@@ -72,36 +71,33 @@ describe("Ledger", function () {
       const { ledger, owner, root } = await loadFixture(TrustTestFixtures.freshLedgerProxy);
 
       // check preconditions
-      expect(await ledger.connect(root).ledgerArnCount()).to.equal(0);
-      expect(await ledger.connect(root).ledgerRegisteredArns(stb("ether"))).to.equal(false);
-      expect(await ledger.connect(root).ledgerArnBalances(stb("ether"))).to.equal(0);
-      expect(await ledger.connect(root).getKeyArnRegistry(0)).has.length(0); 
-      expect(await ledger.connect(root).getKeyArnBalances(0, [stb('ether')])).eql([eth(0)]);
+      expect(await ledger.connect(root).getContextArnRegistry(0,0)).has.length(0);
+      expect(await ledger.connect(root).getContextArnRegistry(2,0)).has.length(0); 
+      expect(await ledger.connect(root).getContextArnBalances(0,0, [stb("ether")])).eql([eth(0)]);
       
       // make that single deposit
       await expect(await ledger.connect(owner).deposit(0, stb('ether'), eth(1)))
         .to.emit(ledger, 'depositOccurred')
         .withArgs(owner.address, owner.address, 0, stb('ether'), eth(1), eth(1), eth(1));
-
+      
       // check all the balances afterwards
-      expect(await ledger.connect(root).ledgerArnCount()).to.equal(1);
-      expect(await ledger.connect(root).ledgerRegisteredArns(stb("ether"))).to.equal(true);
-      expect(await ledger.connect(root).ledgerArnBalances(stb("ether"))).to.equal(eth(1));
-      expect(await ledger.connect(root).getKeyArnRegistry(0)).has.length(1).to.contain(stb('ether'));
-      expect(await ledger.connect(root).getKeyArnBalances(0, [stb('ether')])).eql([eth(1)]);
+      expect(await ledger.connect(root).getContextArnRegistry(2,0)).eql([stb("ether")]); 
+      expect(await ledger.connect(root).getContextArnBalances(0,0, [stb("ether")])).eql([eth(1)]);
+      expect(await ledger.connect(root).getContextArnBalances(0,0, [stb("ether")])).eql([eth(1)]);
+      expect(await ledger.connect(root).getContextArnRegistry(0,0)).has.length(0);
+      expect(await ledger.connect(root).getContextArnRegistry(2,0)).has.length(1).to.contain(stb('ether'));
     });
     
     it("Multiple Deposits and Balances", async function() {
       const { ledger, owner, root } = await loadFixture(TrustTestFixtures.freshLedgerProxy);
       
       // check preconditions
-      expect(await ledger.connect(root).ledgerArnCount()).to.equal(0);
-      expect(await ledger.connect(root).ledgerRegisteredArns(stb("ether"))).to.equal(false);
-      expect(await ledger.connect(root).ledgerArnBalances(stb("ether"))).to.equal(0);
-      expect(await ledger.connect(root).getKeyArnRegistry(0)).has.length(0); 
-      expect(await ledger.connect(root).getKeyArnRegistry(1)).has.length(0); 
-      expect(await ledger.connect(root).getKeyArnBalances(0, [stb('ether')])).eql([eth(0)]);
-      expect(await ledger.connect(root).getKeyArnBalances(1, [stb('ether')])).eql([eth(0)]);
+      expect(await ledger.connect(root).getContextArnRegistry(0,0)).has.length(0);
+      expect(await ledger.connect(root).getContextArnBalances(0,0, [stb("ether")])).eql([eth(0)]);
+      expect(await ledger.connect(root).getContextArnRegistry(2,0)).has.length(0); 
+      expect(await ledger.connect(root).getContextArnRegistry(2,1)).has.length(0); 
+      expect(await ledger.connect(root).getContextArnBalances(2,0, [stb("ether")])).eql([eth(0)]);
+      expect(await ledger.connect(root).getContextArnBalances(2,1, [stb("ether")])).eql([eth(0)]);
       
       // make multiple deposits
       await expect(await ledger.connect(owner).deposit(0, stb('ether'), eth(1)))
@@ -115,31 +111,25 @@ describe("Ledger", function () {
         .withArgs(owner.address, owner.address, 1, stb('ether'), eth(1), eth(1), eth(3));
 
       // check all the balances afterwards
-      expect(await ledger.connect(root).ledgerArnCount()).to.equal(1);
-      expect(await ledger.connect(root).ledgerRegisteredArns(stb("ether"))).to.equal(true);
-      expect(await ledger.connect(root).ledgerArnBalances(stb("ether"))).to.equal(eth(3));
+      expect(await ledger.connect(root).getContextArnRegistry(0,0)).to.contain(stb("ether"));
+      expect(await ledger.connect(root).getContextArnBalances(0,0, [stb("ether")])).eql([eth(3)]);
       expect(await ledger.connect(root).collateralProviderBalances(owner.address, stb("ether"))).to.equal(eth(3));
-      expect(await ledger.connect(root).getKeyArnRegistry(0)).has.length(1).to.contain(stb('ether')); 
-      expect(await ledger.connect(root).getKeyArnRegistry(1)).has.length(1).to.contain(stb('ether')); 
-      expect(await ledger.connect(root).getKeyArnBalances(0, [stb('ether')])).eql([eth(2)]);
-      expect(await ledger.connect(root).getKeyArnBalances(1, [stb('ether')])).eql([eth(1)]);
+      expect(await ledger.connect(root).getContextArnRegistry(2,0)).has.length(1).to.contain(stb('ether')); 
+      expect(await ledger.connect(root).getContextArnRegistry(2,1)).has.length(1).to.contain(stb('ether')); 
+      expect(await ledger.connect(root).getContextArnBalances(2,0, [stb("ether")])).eql([eth(2)]);
+      expect(await ledger.connect(root).getContextArnBalances(2,1, [stb("ether")])).eql([eth(1)]);
     });
 
     it("Multiple Asset Types and Balances", async function() {
       const { ledger, owner, root } = await loadFixture(TrustTestFixtures.freshLedgerProxy);
       
       // check preconditions
-      expect(await ledger.connect(root).ledgerArnCount()).to.equal(0);
-      expect(await ledger.connect(root).ledgerRegisteredArns(stb("ether"))).to.equal(false);
-      expect(await ledger.connect(root).ledgerArnBalances(stb("ether"))).to.equal(0);
-      expect(await ledger.connect(root).ledgerRegisteredArns(stb("link"))).to.equal(false);
-      expect(await ledger.connect(root).ledgerArnBalances(stb("link"))).to.equal(0);
-      expect(await ledger.connect(root).getKeyArnRegistry(0)).has.length(0); 
-      expect(await ledger.connect(root).getKeyArnRegistry(1)).has.length(0); 
-      expect(await ledger.connect(root).getKeyArnBalances(0, [stb('ether')])).eql([eth(0)]);
-      expect(await ledger.connect(root).getKeyArnBalances(1, [stb('ether')])).eql([eth(0)]);
-      expect(await ledger.connect(root).getKeyArnBalances(0, [stb('link')])).eql([eth(0)]);
-      expect(await ledger.connect(root).getKeyArnBalances(1, [stb('link')])).eql([eth(0)]);
+      expect(await ledger.connect(root).getContextArnRegistry(0,0)).has.length(0);
+      expect(await ledger.connect(root).getContextArnBalances(0,0, [stb('ether'),stb('link')])).eql([eth(0), eth(0)]);
+      expect(await ledger.connect(root).getContextArnRegistry(2,0)).has.length(0); 
+      expect(await ledger.connect(root).getContextArnRegistry(2,1)).has.length(0); 
+      expect(await ledger.connect(root).getContextArnBalances(2,0, [stb('ether'),stb('link')])).eql([eth(0), eth(0)]);
+      expect(await ledger.connect(root).getContextArnBalances(2,1, [stb('ether'),stb('link')])).eql([eth(0), eth(0)]);
     
       // deposit ether
       await expect(await ledger.connect(owner).deposit(0, stb('ether'), eth(1)))
@@ -162,19 +152,15 @@ describe("Ledger", function () {
       await expect(await ledger.connect(owner).deposit(1, stb('link'), eth(4)))
         .to.emit(ledger, 'depositOccurred')
         .withArgs(owner.address, owner.address, 1, stb('link'), eth(4), eth(7), eth(9));
-    
-      // check the ledger balances
-      expect(await ledger.connect(root).ledgerArnCount()).to.equal(2);
-      expect(await ledger.connect(root).ledgerRegisteredArns(stb("ether"))).to.equal(true);
-      expect(await ledger.connect(root).ledgerRegisteredArns(stb("link"))).to.equal(true);
-      expect(await ledger.connect(root).ledgerArnBalances(stb("ether"))).to.equal(eth(3));
-      expect(await ledger.connect(root).ledgerArnBalances(stb("link"))).to.equal(eth(9));
+   
 
-      // check the asset balances
-      expect(await ledger.connect(root).getKeyArnRegistry(0)).eql([stb('ether'),stb('link')]);
-      expect(await ledger.connect(root).getKeyArnRegistry(1)).eql([stb('ether'),stb('link')]);
-      expect(await ledger.connect(root).getKeyArnBalances(0, [stb('ether'), stb('link')])).eql([eth(2), eth(2)]);
-      expect(await ledger.connect(root).getKeyArnBalances(1, [stb('ether'), stb('link')])).eql([eth(1), eth(7)]);
+      // test ledger and key balances
+      expect(await ledger.connect(root).getContextArnRegistry(0,0)).has.length(2);
+      expect(await ledger.connect(root).getContextArnBalances(0,0, [stb('ether'),stb('link')])).eql([eth(3), eth(9)]);
+      expect(await ledger.connect(root).getContextArnRegistry(2,0)).has.length(2); 
+      expect(await ledger.connect(root).getContextArnRegistry(2,1)).has.length(2); 
+      expect(await ledger.connect(root).getContextArnBalances(2,0, [stb('ether'),stb('link')])).eql([eth(2), eth(2)]);
+      expect(await ledger.connect(root).getContextArnBalances(2,1, [stb('ether'),stb('link')])).eql([eth(1), eth(7)]);
     });
   });
 
@@ -201,11 +187,8 @@ describe("Ledger", function () {
       const { ledger, owner, root } = await loadFixture(TrustTestFixtures.freshLedgerProxy);
       
       // check preconditions
-      expect(await ledger.connect(root).ledgerArnCount()).to.equal(0);
-      expect(await ledger.connect(root).ledgerRegisteredArns(stb("ether"))).to.equal(false);
-      expect(await ledger.connect(root).ledgerArnBalances(stb("ether"))).to.equal(0);
-      expect(await ledger.connect(root).getKeyArnRegistry(0)).has.length(0); 
-      expect(await ledger.connect(root).getKeyArnBalances(0, [stb('ether')])).eql([eth(0)]);
+      expect(await ledger.connect(root).getContextArnRegistry(0,0)).has.length(0);
+      expect(await ledger.connect(root).getContextArnBalances(2,0, [stb('ether'),stb('link')])).eql([eth(0), eth(0)]);
       
       // make that single deposit
       await expect(await ledger.connect(owner).deposit(0, stb('ether'), eth(1)))
@@ -217,20 +200,20 @@ describe("Ledger", function () {
       await expect(await ledger.connect(owner).withdrawal(0, stb('ether'), eth(0.4)))
         .to.emit(ledger, 'withdrawalOccurred')
         .withArgs(owner.address, owner.address, 0, stb('ether'), eth(0.4), eth(0.6), eth(0.6));
-      expect(await ledger.connect(root).ledgerArnCount()).to.equal(1);
-      expect(await ledger.connect(root).ledgerRegisteredArns(stb("ether"))).to.equal(true);
-      expect(await ledger.connect(root).ledgerArnBalances(stb("ether"))).to.equal(eth(0.6));
-      expect(await ledger.connect(root).getKeyArnRegistry(0)).has.length(1); 
+      
+      expect(await ledger.connect(root).getContextArnRegistry(0,0)).eql([stb('ether')]);
+      expect(await ledger.connect(root).getContextArnBalances(0,0, [stb('ether'),stb('link')])).eql([eth(0.6), eth(0)]);
+      expect(await ledger.connect(root).getContextArnRegistry(2,0)).has.length(1); 
       expect(await ledger.connect(root).getKeyArnBalances(0, [stb('ether')])).eql([eth(0.6)]);
       
       // second withdrawal
       await expect(await ledger.connect(owner).withdrawal(0, stb('ether'), eth(0.6)))
         .to.emit(ledger, 'withdrawalOccurred')
         .withArgs(owner.address, owner.address, 0, stb('ether'), eth(0.6), eth(0), eth(0));
-      expect(await ledger.connect(root).ledgerArnCount()).to.equal(1);
-      expect(await ledger.connect(root).ledgerRegisteredArns(stb("ether"))).to.equal(true);
-      expect(await ledger.connect(root).ledgerArnBalances(stb("ether"))).to.equal(eth(0));
-      expect(await ledger.connect(root).getKeyArnRegistry(0)).has.length(1); 
+      
+      expect(await ledger.connect(root).getContextArnRegistry(0,0)).eql([stb('ether')]);
+      expect(await ledger.connect(root).getContextArnBalances(0,0, [stb('ether'),stb('link')])).eql([eth(0), eth(0)]);
+      expect(await ledger.connect(root).getContextArnRegistry(2,0)).has.length(1); 
       expect(await ledger.connect(root).getKeyArnBalances(0, [stb('ether')])).eql([eth(0)]);
 
       // overdraft
@@ -256,19 +239,18 @@ describe("Ledger", function () {
         .withArgs(owner.address, owner.address, 2, stb('ether'), eth(4), eth(4), eth(5));
   
       // check the initial ledger and key balances
-      expect(await ledger.connect(root).ledgerArnCount()).to.equal(3);
-      expect(await ledger.connect(root).ledgerRegisteredArns(stb("ether"))).to.equal(true);
-      expect(await ledger.connect(root).ledgerRegisteredArns(stb("wbtc"))).to.equal(true);
-      expect(await ledger.connect(root).ledgerRegisteredArns(stb("link"))).to.equal(true);
-      expect(await ledger.connect(root).ledgerArnBalances(stb("ether"))).to.equal(eth(5));
-      expect(await ledger.connect(root).ledgerArnBalances(stb("link"))).to.equal(eth(2));
-      expect(await ledger.connect(root).ledgerArnBalances(stb("wbtc"))).to.equal(eth(3));
-      expect(await ledger.connect(root).getKeyArnRegistry(0)).has.length(1); 
-      expect(await ledger.connect(root).getKeyArnRegistry(1)).has.length(1); 
-      expect(await ledger.connect(root).getKeyArnRegistry(2)).has.length(2); 
-      expect(await ledger.connect(root).getKeyArnBalances(0, [stb('ether')])).eql([eth(1)]);
-      expect(await ledger.connect(root).getKeyArnBalances(1, [stb('link')])).eql([eth(2)]);
-      expect(await ledger.connect(root).getKeyArnBalances(2, [stb('wbtc'), stb('ether')])).eql([eth(3), eth(4)]);
+      expect(await ledger.connect(root).getContextArnRegistry(0,0)).eql([stb('ether'),stb('link'),stb('wbtc')]);
+      expect(await ledger.connect(root).getContextArnBalances(0,0, [stb('ether'),stb('link'),stb('wbtc')]))
+        .eql([eth(5), eth(2), eth(3)]);
+      expect(await ledger.connect(root).getContextArnRegistry(2,0)).has.length(1); 
+      expect(await ledger.connect(root).getContextArnRegistry(2,1)).has.length(1); 
+      expect(await ledger.connect(root).getContextArnRegistry(2,2)).has.length(2); 
+      expect(await ledger.connect(root).getContextArnBalances(2,0, [stb('ether'),stb('link'),stb('wbtc')]))
+        .eql([eth(1), eth(0), eth(0)]);
+      expect(await ledger.connect(root).getContextArnBalances(2,1, [stb('ether'),stb('link'),stb('wbtc')]))
+        .eql([eth(0), eth(1), eth(0)]);
+      expect(await ledger.connect(root).getContextArnBalances(2,2, [stb('ether'),stb('link'),stb('wbtc')]))
+        .eql([eth(0), eth(3), eth(4)]);
       
       // withdrawal a little from each
       await expect(await ledger.connect(owner).withdrawal(0, stb('ether'), eth(0.3)))
@@ -285,12 +267,12 @@ describe("Ledger", function () {
         .withArgs(owner.address, owner.address, 2, stb('ether'), eth(0.3), eth(3.7), eth(4.4));
       
       // check both the ledger and key balances again
-      expect(await ledger.connect(root).ledgerArnBalances(stb("ether"))).to.equal(eth(4.4));
-      expect(await ledger.connect(root).ledgerArnBalances(stb("link"))).to.equal(eth(1.7));
-      expect(await ledger.connect(root).ledgerArnBalances(stb("wbtc"))).to.equal(eth(2.7));
-      expect(await ledger.connect(root).getKeyArnBalances(0, [stb('ether')])).eql([eth(0.7)]);
-      expect(await ledger.connect(root).getKeyArnBalances(1, [stb('link')])).eql([eth(1.7)]);
-      expect(await ledger.connect(root).getKeyArnBalances(2, [stb('wbtc'), stb('ether')])).eql([eth(2.7), eth(3.7)]);
+      expect(await ledger.connect(root).getContextArnBalances(2,0, [stb('ether')])).eql([eth(0.7)]);
+      expect(await ledger.connect(root).getContextArnBalances(2,1, [stb('ether')])).eql([eth(1.7)]);
+      expect(await ledger.connect(root).getContextArnBalances(2,1, [stb('wbtc'), stb('ether')])).eql([eth(2.7), eth(3.7)]);
+      expect(await ledger.connect(root).getContextArnRegistry(2,0)).has.length(1); 
+      expect(await ledger.connect(root).getContextArnRegistry(2,1)).has.length(1); 
+      expect(await ledger.connect(root).getContextArnRegistry(2,2)).has.length(2); 
       
       // deposit some more
       await expect(await ledger.connect(owner).deposit(0, stb('ether'), eth(0.1)))
@@ -321,15 +303,19 @@ describe("Ledger", function () {
         .withArgs(owner.address, owner.address, 2, stb('ether'), eth(3.8), eth(0.3), eth(0.3));
       
       // check the ledger and key balances final
-      expect(await ledger.connect(root).ledgerArnBalances(stb("ether"))).to.equal(eth(0.3));
-      expect(await ledger.connect(root).ledgerArnBalances(stb("link"))).to.equal(eth(0.1));
-      expect(await ledger.connect(root).ledgerArnBalances(stb("wbtc"))).to.equal(eth(0.2));
-      expect(await ledger.connect(root).getKeyArnBalances(0, [stb('ether')])).eql([eth(0)]);
-      expect(await ledger.connect(root).getKeyArnBalances(1, [stb('link')])).eql([eth(0.1)]);
-      expect(await ledger.connect(root).getKeyArnBalances(2, [stb('wbtc'), stb('ether')])).eql([eth(0.2), eth(0.3)]);
+      expect(await ledger.connect(root).getContextArnBalances(0,0, [stb('ether')])).eql([eth(0.3)]);
+      expect(await ledger.connect(root).getContextArnBalances(0,0, [stb('link')])).eql([eth(0.1)]);
+      expect(await ledger.connect(root).getContextArnBalances(0,0, [stb('wbtc')])).eql([eth(0.2)]);
+      expect(await ledger.connect(root).getContextArnBalances(2,0, [stb('ether')])).eql([eth(0)]);
+      expect(await ledger.connect(root).getContextArnBalances(2,1, [stb('link')])).eql([eth(0.1)]);
+      expect(await ledger.connect(root).getContextArnBalances(2,2, [stb('wbtc'), stb('link')])).eql([eth(0.2), eth(0.3)]);
+      expect(await ledger.connect(root).getContextArnRegistry(2,0)).has.length(1); 
+      expect(await ledger.connect(root).getContextArnRegistry(2,1)).has.length(1); 
+      expect(await ledger.connect(root).getContextArnRegistry(2,2)).has.length(2); 
     });
   });
-  
+ 
+  /*
   ////////////////////////////////////////////////////////////
   // Move 
   //
@@ -389,10 +375,10 @@ describe("Ledger", function () {
       
       await expect(await ledger.connect(owner).deposit(0, stb('ether'), eth(1)))
         .to.emit(ledger, 'depositOccurred')
-        .withArgs(owner.address, owner.address, 0, stb('ether'), eth(1), eth(1));
+        .withArgs(owner.address, owner.address, 0, stb('ether'), eth(1), eth(1), eth(1));
       await expect(await ledger.connect(owner).deposit(1, stb('link'), eth(2)))
         .to.emit(ledger, 'depositOccurred')
-        .withArgs(owner.address, owner.address, 1, stb('link'), eth(2), eth(2));
+        .withArgs(owner.address, owner.address, 1, stb('link'), eth(2), eth(2), eth(2));
 
       // move both assets in different directions
       await expect(await ledger.connect(owner).move(0, 1, stb('ether'), eth(0.4)))
@@ -404,15 +390,15 @@ describe("Ledger", function () {
     
       // validate balances
       expect(await ledger.connect(root).ledgerArnCount()).to.equal(2);
-      expect(await ledger.connect(root).ledgerRegisteredArns(stb("ether"))).to.equal(true);
-      expect(await ledger.connect(root).ledgerRegisteredArns(stb("link"))).to.equal(true);
+      expect(await ledger.connect(root).getContextArnRegistry(0,0).stb("ether"))).to.equal(true);
+      expect(await ledger.connect(root).getContextArnRegistry(0,0).stb("link"))).to.equal(true);
       expect(await ledger.connect(root).ledgerArnBalances(stb("ether"))).to.equal(eth(1));
       expect(await ledger.connect(root).ledgerArnBalances(stb("link"))).to.equal(eth(2));
       expect(await ledger.connect(root).getKeyArnBalances(0, [stb('ether'), stb('link')])).eql([eth(0.6), eth(0.1)]);
       expect(await ledger.connect(root).getKeyArnBalances(1, [stb('ether'), stb('link')])).eql([eth(0.4), eth(1.9)]);
     });
   });
-
+  */
   ////////////////////////////////////////////////////////////
   // Peer Security 
   //
@@ -506,8 +492,7 @@ describe("Ledger", function () {
         .withArgs(second.address, peer.address, 0, stb('ether'), eth(1), eth(3), eth(2));
 
       // check ledger balance
-      expect(await ledger.connect(root).ledgerArnCount()).to.equal(1);
-      expect(await ledger.connect(root).ledgerRegisteredArns(stb("ether"))).to.equal(true);
+      expect(await ledger.connect(root).getContextArnRegistry(0,0)).eql([stb("ether")]);
       expect(await ledger.connect(root).getKeyArnBalances(0, [stb('ether')])).eql([eth(3)]);
     });
   });
