@@ -201,7 +201,6 @@ contract Locksmith is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         // the key has been minted at least once
         (trustRegistry[keyTrustAssociations[keyId]].keyMintCounts[keyId] > 0);
     }
-
     
     /**
      * createKey
@@ -296,7 +295,8 @@ contract Locksmith is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     /**
      * inspectKey 
      * 
-     * Takes a key id and inspects it. 
+     * Takes a key id and inspects it.
+     * TODO: Add Key inventory
      * 
      * @return true if the key is a valid key
      * @return alias of the key 
@@ -312,8 +312,7 @@ contract Locksmith is Initializable, OwnableUpgradeable, UUPSUpgradeable {
             // trust Id of the key
             keyTrustAssociations[keyId],
             // the key is a root key 
-            isRootKey(keyId) &&  
-            (trustRegistry[keyTrustAssociations[keyId]].keyMintCounts[keyId] > 0),
+            isRootKey(keyId),
             // the keys associated with the trust
             trustRegistry[keyTrustAssociations[keyId]].keys);
     }
@@ -337,13 +336,12 @@ contract Locksmith is Initializable, OwnableUpgradeable, UUPSUpgradeable {
      * @param receiver  receiving address of the newly minted key
      */
     function mintKey(Trust storage trust, uint256 keyId, address receiver) internal {
-        keyVault.mint(receiver, keyId, 1, "");
-        
         // keep track of the number of times we minted this key.
         // this is good for reporting, and prevents key out of range
         // attacks to the first trust in the contract.
         trust.keyMintCounts[keyId]++;
-
+        
+        keyVault.mint(receiver, keyId, 1, "");
         emit keyMinted(msg.sender, trust.id, keyId, trust.keyNames[keyId], receiver);
     }
     

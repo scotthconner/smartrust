@@ -30,11 +30,13 @@ import "./Ledger.sol";
 /**
  * EtherVault
  *
- * This contract has a single role to play as vault: Receiving, storing,
- * and sending ether. It does not hold trust or key balances,
- * that is the ledger's job. Only the ether itself.
- * 
- * It takes a dependency on the Locksmith, and uses the 
+ * A simple implementation of an ether vault that acts as 
+ * a trusted collateral provider to the ledger.
+ *
+ * A root key holder can deposit their funds, and entrust the
+ * ledger to maintain withdrawal-rights to the vault.
+ *
+ * It takes the same dependency as the ledger does - the Locksmith, and uses the 
  * ERC1155 keys minted from that contract for access control.
  *
  * EtherVault requires to act as Collateral Provider to the Ledger, and relies on it
@@ -54,11 +56,7 @@ contract EtherVault is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     Ledger public ledger;
 
     // We hard-code the arn into the contract.
-    bytes32 public ethArn = AssetResourceName.AssetType({
-        contractAddress: AssetResourceName.GAS_TOKEN_CONTRACT,
-        tokenStandard: AssetResourceName.GAS_TOKEN_STANDARD,
-        id: AssetResourceName.GAS_ID
-    }).arn();
+    bytes32 public ethArn;
 
     ///////////////////////////////////////////////////////
     // Constructor and Upgrade Methods
@@ -89,6 +87,12 @@ contract EtherVault is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         // must be mined first.
         locksmith = Locksmith(_locksmith);
         ledger = Ledger(_ledger);
+
+        ethArn = AssetResourceName.AssetType({
+            contractAddress: AssetResourceName.GAS_TOKEN_CONTRACT,
+            tokenStandard: AssetResourceName.GAS_TOKEN_STANDARD,
+            id: AssetResourceName.GAS_ID
+        }).arn();
     }
 
     /**

@@ -17,14 +17,15 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 // pattern because its more gas efficient and comes with some better trade-offs.
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
-// The Ledger respects keys minted for trusts by it's associated locksmith.
-import './Locksmith.sol';
-
 // This struct and methods help clean up balance tracking in
 // different contexts, which will help drive the understanding
 // of the trust's asset composition.
 import "../libraries/CollateralProviderLedger.sol";
 using CollateralProviderLedger for CollateralProviderLedger.CollateralProviderContext;
+
+// the ledger relies on a notary to sign off on the
+// deposits, withdrawals, and fund movements on behalf of the key holders.
+import "./Notary.sol";
 ///////////////////////////////////////////////////////////
 
 /**
@@ -95,21 +96,6 @@ contract Ledger is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         uint256 keyBalance, uint256 trustBalance, uint256 ledgerBalance); 
 
     /**
-     * withdrawalAllowanceAssigned 
-     *
-     * This event fires when a hey holder approves a collateral provider
-     * for a specific amount to withdrawal.
-     *
-     * @param keyHolder address of the key holder
-     * @param keyId     key ID to approve withdraws for
-     * @param provider  collateral provider address to approve
-     * @param arn       asset you want to approve withdrawal for
-     * @param amount    amount of asset to approve
-     */
-    event withdrawalAllowanceAssigned(address keyHolder, uint256 keyId,
-        address provider, bytes32 arn, uint256 amount);
-
-    /**
      * ledgerTransferOccurred
      *
      * This event fires when assets move from one key to
@@ -127,40 +113,12 @@ contract Ledger is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     event ledgerTransferOccurred(address origin, address provider, bytes32 arn,
         uint256 fromKey, uint256 toKey, uint256 amount, uint256 fromBalance, uint256 toBalance);
     
-    /**
-     * collateralProviderChange 
-     *
-     * This event fires when a trust root key holder modifies 
-     * a collateral provider.
-     *
-     * @param keyHolder  address of the keyHolder
-     * @param trustId    the trust ID for the keyHolder
-     * @param rootKeyId  the key ID used as root for the trust
-     * @param provider   address of the contract trusted for providing collateral 
-     * @param isProvider the collateral provider flag, true or false 
-     */
-    event collateralProviderChange(address keyHolder, uint256 trustId, uint256 rootKeyId,
-        address provider, bool isProvider);
-
     ///////////////////////////////////////////////////////
     // Storage
     ///////////////////////////////////////////////////////
-    // the ledger only respects one locksmith
-    Locksmith public locksmith;
-
-    // trusted providers at the trust level 
-    mapping(uint256 => uint256) public trustedProviderRegistrySize; 
-    mapping(uint256 => address[]) public trustedProviderRegistry;
-    mapping(uint256 => mapping(address => bool)) public registeredTrustedProviders;
-    mapping(uint256 => mapping(address => bool)) public trustedProviderStatus;
-  
-    // keep track of approved withdrawal instances.
-    // the root key holder approves blanket collateral deposits
-    // with a trusted provider, but the key holders need to approve 
-    // each withdrawal.
-    // keyId / providerAddress / arn => approvedAmount 
-    mapping(uint256 => mapping(address => mapping(bytes32 => uint256))) public withdrawalAllowances;
-
+    // the ledger only respects the notary
+    Notary public notary;
+    
     // ledger context
     CollateralProviderLedger.CollateralProviderContext private ledgerContext;
     uint256 public constant LEDGER_CONTEXT_ID = 0;
@@ -190,12 +148,12 @@ contract Ledger is Initializable, OwnableUpgradeable, UUPSUpgradeable {
      *
      * Fundamentally replaces the constructor for an upgradeable contract.
      *
-     * @param _locksmith the address for the locksmith
+     * @param _notary the address for the notary 
      */
-    function initialize(address _locksmith) initializer public {
+    function initialize(address _notary) initializer public {
         __Ownable_init();
         __UUPSUpgradeable_init();
-        locksmith = Locksmith(_locksmith);
+        notary = Notary(_notary);
     }
 
     /**
@@ -210,51 +168,6 @@ contract Ledger is Initializable, OwnableUpgradeable, UUPSUpgradeable {
      */
     function _authorizeUpgrade(address newImplementation) internal view onlyOwner override
     { newImplementation; }
-
-    /**
-     * setCollateralProvider 
-     *
-     * Individual trusts bring their own collateral providers, who can provide
-     * collateral for any number of ARNs.
-     *
-     * @param rootKeyId  the root key the caller is trying to use to enable a provider
-     * @param provider   the contract of the collateral provider
-     * @param isProvider the flag to set the collateral policy to true or false
-     */
-    function setCollateralProvider(uint256 rootKeyId, address provider, bool isProvider) external {
-        // make sure that the caller is holding the key they are trying to use
-        require(locksmith.keyVault().balanceOf(msg.sender, rootKeyId) > 0, "KEY_NOT_HELD");
-
-        // make sure that the key being used is a root key
-        uint256 trustId = resolveTrustWithRootKey(rootKeyId); 
-
-        if (isProvider) {
-            // make sure they are not already a provider on the trust
-            require(!trustedProviderStatus[trustId][provider], 'REDUNDANT_PROVISION');
-  
-            // register them with the trust if not already done so
-            if (!registeredTrustedProviders[trustId][provider]) {
-                trustedProviderRegistry[trustId].push(provider);
-                trustedProviderRegistrySize[trustId]++;
-                registeredTrustedProviders[trustId][provider] = true;
-            }
-
-            // set their provider status to true for the trust
-            trustedProviderStatus[trustId][provider] = true;
-        } else {
-            // we are trying to revoke status, so make sure they are one
-            require(trustedProviderStatus[trustId][provider], 'NOT_CURRENT_PROVIDER');
-
-            // make sure this provider has no collateral in the trust context
-            require(!trustContext[trustId].hasCollateral(provider), 'STILL_COLLATERALIZED');
-
-            // set their provider status to false
-            trustedProviderStatus[trustId][provider] = false;
-        }
-
-        // keep an entry for auditing purposes
-        emit collateralProviderChange(msg.sender, trustId, rootKeyId, provider, isProvider);
-    }
 
     ////////////////////////////////////////////////////////
     // External Methods
@@ -294,11 +207,13 @@ contract Ledger is Initializable, OwnableUpgradeable, UUPSUpgradeable {
      * Returns a full list of assets balances for the context. 
      *
      * @param context LEDGER_CONTEXT_ID, TRUST_CONTEXT_ID, KEY_CONTEXT_ID 
-     ' @param identifier either 0, a trustId, or keyId depending on context.
-     ' @param arns the array of arns you want to inspect 
+     * @param identifier either 0, a trustId, or keyId depending on context.
+     * @param provider the address of the specific provider, or address(0) for all providers
+     * @param arns the array of arns you want to inspect 
      * @return the array of registered arns for the given context.
      */
-    function getContextArnBalances(uint256 context, uint256 identifier, bytes32[] calldata arns) external view returns(uint256[] memory) {
+    function getContextArnBalances(uint256 context, uint256 identifier, 
+        address provider, bytes32[] calldata arns) external view returns(uint256[] memory) {
         require(context < 3, "INVALID_CONTEXT");
         
         uint256[] memory balances = new uint256[](arns.length);
@@ -316,7 +231,7 @@ contract Ledger is Initializable, OwnableUpgradeable, UUPSUpgradeable {
 
         // gather the request arn balances for that context
         for(uint256 x = 0; x < arns.length; x++) {
-            balances[x] = balanceContext.contextArnBalances[arns[x]];
+            balances[x] = balanceContext.getArnBalance(provider, arns[x]);
         }
 
         return balances;
@@ -354,11 +269,8 @@ contract Ledger is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         // make sure the deposit is measurable 
         require(amount > 0, 'ZERO_AMOUNT');
         
-        // make sure that the key being used is a root key
-        uint256 trustId = resolveTrustWithRootKey(rootKeyId); 
-      
-        // make sure the provider (the message sender) is a trusted one
-        requireTrustedCollateralProvider(trustId);
+        // make sure the provider (the message sender) is trusted
+        uint256 trustId = notary.notarizeDeposit(msg.sender, rootKeyId);
         
         // make the deposit at the ledger, trust, and key contexts
         uint256 ledgerBalance = ledgerContext.deposit(arn, amount);
@@ -368,38 +280,6 @@ contract Ledger is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         emit depositOccurred(msg.sender, trustId, rootKeyId, arn, amount,
             keyBalance, trustBalance, ledgerBalance);
         return (keyBalance, trustBalance, ledgerBalance);
-    }
-
-    /**
-     * setWithdrawalAllowance 
-     *
-     * A collateral provider can't simply withdrawal funds from the trust
-     * ledger any time they want. The root key holder may have allowed
-     * the collateral provider to *deposit* into the root key whenever,
-     * but every key holder needs to approve a withdrawal amount before
-     * the collateral provider can do-so on their behalf.
-     *
-     * The caller must be holding the key at time of call. This can be a
-     * proxy to the key holder, but the true key holder must trust the proxy
-     * to give the key back.
-     *
-     * The semantics of this call are to *override* the approved withdrawal
-     * amounts. So if it is set to 10, and then called again with 5, the
-     * approved amount is 5, not 15.
-     *
-     * Upon withdrawal from the collateral provider, this amount is reduced
-     * by the amount that was withdrawn.
-     *
-     * @param keyId    key ID to approve withdraws for
-     * @param provider collateral provider address to approve
-     * @param arn      asset you want to approve withdrawal for
-     * @param amount   amount of asset to approve
-     */
-    function setWithdrawalAllowance(uint256 keyId, address provider, bytes32 arn, uint256 amount) external {
-        // panic if the message sender isn't the key holder
-        require(locksmith.keyVault().balanceOf(msg.sender, keyId) > 0, 'KEY_NOT_HELD');
-        withdrawalAllowances[keyId][provider][arn] = amount;    
-        emit withdrawalAllowanceAssigned(msg.sender, keyId, provider, arn, amount); 
     }
 
     /**
@@ -416,23 +296,11 @@ contract Ledger is Initializable, OwnableUpgradeable, UUPSUpgradeable {
      * @return final resulting provider arn balance for the ledger 
      */
     function withdrawal(uint256 keyId, bytes32 arn, uint256 amount) external returns(uint256, uint256, uint256) {
-        // make sure the deposit is measurable 
+        // make sure the withdrawal is measurable 
         require(amount > 0, 'ZERO_AMOUNT');
      
-        // this could be an invalid key, but if it is, the
-        // trust ID will be zero and the withdrawal will
-        // look like an overdraft because there is no balance
-        // for the key
-        uint256 trustId = locksmith.keyTrustAssociations(keyId);
-       
-        // make sure the provider (the message sender) is a trusted one
-        requireTrustedCollateralProvider(trustId);
-
-        // make sure the withdrawal amount is approved by the keyholder
-        // and then reduce the amount
-        require(withdrawalAllowances[keyId][msg.sender][arn] >= amount, 
-            'UNAPPROVED_AMOUNT');
-        withdrawalAllowances[keyId][msg.sender][arn] -= amount;
+        // make sure the withdrawal can be notarized with the key-holder 
+        uint256 trustId = notary.notarizeWithdrawal(msg.sender, keyId, arn, amount);
 
         // make the withdrawal at the ledger, trust, and key contexts
         uint256 ledgerBalance = ledgerContext.withdrawal(arn, amount);
@@ -471,40 +339,4 @@ contract Ledger is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         emit ledgerTransferOccurred(tx.origin, msg.sender, arn, fromKey, toKey, amount, fromFinal, toFinal); 
         return (fromFinal, toFinal);
     }*/
-    
-    ////////////////////////////////////////////////////////
-    // Internal Methods
-    //
-    // These methods are only used within this contract, or
-    // any extensions of it, and are not designed to be called
-    // by external wallet holders.
-    ////////////////////////////////////////////////////////
-    
-    /**
-     * resolveTrustWithRootKey 
-     *
-     * This method will panic if the key isn't a root key.
-     *
-     * @param rootKeyId this better be a root key. 
-     * @return the trustId of the root key
-     */
-    function resolveTrustWithRootKey(uint256 rootKeyId) internal view returns (uint256){
-        // make sure the key is valid and it is a root key
-        require(locksmith.isRootKey(rootKeyId), "KEY_NOT_ROOT");
-
-        // return the trust Id for the valid root key
-        return locksmith.keyTrustAssociations(rootKeyId);
-    }
-
-    /**
-     * requireTrustedCollateralProvider
-     *
-     * This code will panic if the message sender is not
-     * a trusted collateral provider for the given trust.
-     *
-     * @param trustId the id of the trust the provider is operating on/
-     */
-    function requireTrustedCollateralProvider(uint256 trustId) internal view {
-        require(trustedProviderStatus[trustId][msg.sender], 'UNTRUSTED_PROVIDER');
-    }
 }

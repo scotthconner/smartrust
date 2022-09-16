@@ -28,6 +28,10 @@ eth = function(ethAmount) {
   return ethers.utils.parseEther("" + ethAmount);
 };
 
+zero = function() {
+  return ethers.constants.AddressZero;
+}
+
 doTransaction = async function(promise) {
   const _tx = (await promise); 
       
@@ -116,18 +120,50 @@ TrustTestFixtures = (function() {
       const {keyVault, locksmith, owner, root, second, third} =
         await TrustTestFixtures.singleRoot();
 
-      // deploy the ledger using the collteral provider library 
+      // deploy the required notary
+      const Notary = await ethers.getContractFactory("Notary");
+
+      // since the contract is upgradeable, use a proxy
+      const notary = await upgrades.deployProxy(Notary, [locksmith.address]);
+      await notary.deployed();
+
+      // deploy the ledger 
       const Ledger = await ethers.getContractFactory("Ledger");
 
       // since the contract is upgradeable, use a proxy
-      const ledger = await upgrades.deployProxy(Ledger, [locksmith.address]);
+      const ledger = await upgrades.deployProxy(Ledger, [notary.address]);
       await ledger.deployed();
 
       // let's give the owner collateral trust for the sake of
       // testing simplicity
-      await ledger.connect(root).setCollateralProvider(0, owner.address, true);
+      await notary.connect(root).setCollateralProvider(0, owner.address, true);
 
-      return {keyVault, locksmith, ledger, owner, root, second, third};
+      return {keyVault, locksmith, notary, ledger, owner, root, second, third};
+    },
+    ////////////////////////////////////////////////////////////
+    // freshEtherVault 
+    //
+    // Takes an established ledger and providers a simple eth
+    // collateral provider controled by root key deposits.
+    ////////////////////////////////////////////////////////////
+    freshEtherVault: async function() {
+      const {keyVault, locksmith, notary, ledger, owner, root, second, third} =
+        await TrustTestFixtures.freshLedgerProxy();
+
+      // deploy the vault 
+      const Vault = await ethers.getContractFactory("EtherVault");
+
+      // since the contract is upgradeable, use a proxy
+      const vault = await upgrades.deployProxy(Vault, [
+        locksmith.address,
+        ledger.address
+      ]);
+      await vault.deployed();
+
+      return { owner, keyVault, locksmith, 
+        notary, ledger, vault, 
+        root, second, third
+      };
     },
     ////////////////////////////////////////////////////////////
     // freshTrustProxy 

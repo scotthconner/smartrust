@@ -91,22 +91,22 @@ library CollateralProviderLedger {
     }
 
     /**
-     * hasCollateral 
+     * getArnBalance
      *
-     * For a given Collateral Provider, determines if they have any
-     * non-zero deposits across all assets in the context.
+     * For the context, get the balance for a specific collateral
+     * provider and asset. For a provider-agnostic balance,
+     * the provider can be zero.
      *
-     * @param c        the context in question
-     * @param provider the collateral provider in question
-     * @return true if the provider has any assets in the context 
+     * @param c        the context
+     * @param provider what provider balance you want, or 0 for all
+     * @param arn      the arn you want the balance for
+     * @return the balance
      */
-    function hasCollateral(CollateralProviderContext storage c, address provider) internal view returns (bool) {
-        for(uint256 arn = 0; arn < c.arnRegistry.length; arn++) {
-            if(c.contextProviderArnBalances[provider][c.arnRegistry[arn]] > 0) {
-                return true;
-            }
+    function getArnBalance(CollateralProviderContext storage c, address provider, bytes32 arn) internal view returns (uint256) {
+        if (address(0) == provider) {
+            return c.contextArnBalances[arn];
         }
-
-        return false;
+        
+        return c.contextProviderArnBalances[provider][arn];
     }
 }
