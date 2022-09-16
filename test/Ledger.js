@@ -205,13 +205,13 @@ describe("Ledger", function () {
     it("Can't withdrawal with an invalid key", async function() {
       const { ledger, owner } = await loadFixture(TrustTestFixtures.freshLedgerProxy);
       await expect(ledger.connect(owner).withdrawal(1, stb('ether'), eth(0.000001)))
-        .to.be.revertedWith('OVERDRAFT');
+        .to.be.revertedWith('UNAPPROVED_AMOUNT');
     });
     
     it("Withdrawal something that was never there", async function() {
       const { ledger, owner } = await loadFixture(TrustTestFixtures.freshLedgerProxy);
       await expect(ledger.connect(owner).withdrawal(0, stb('ether'), eth(1)))
-        .to.be.revertedWith('OVERDRAFT');
+        .to.be.revertedWith('UNAPPROVED_AMOUNT');
     });
     
     it("Withdrawal it all, then overdraft", async function() {
@@ -225,7 +225,16 @@ describe("Ledger", function () {
       await expect(await ledger.connect(owner).deposit(0, stb('ether'), eth(1)))
         .to.emit(ledger, 'depositOccurred')
         .withArgs(owner.address, 0, 0, stb('ether'), eth(1), eth(1), eth(1), eth(1));
-    
+   
+      // make a blanket approval for the test
+      await expect(await ledger.connect(root).setWithdrawalAllowance(0, owner.address, stb('ether'), eth(100)))
+        .to.emit(ledger, 'withdrawalAllowanceAssigned')
+        .withArgs(root.address, 0, owner.address, stb('ether'), eth(100));
+      
+      await expect(await ledger.connect(root).setWithdrawalAllowance(0, owner.address, stb('link'), eth(100)))
+        .to.emit(ledger, 'withdrawalAllowanceAssigned')
+        .withArgs(root.address, 0, owner.address, stb('link'), eth(100));
+
       // withdrawal and check balances, twice
       await expect(await ledger.connect(owner).withdrawal(0, stb('ether'), eth(0.4)))
         .to.emit(ledger, 'withdrawalOccurred')
@@ -273,7 +282,21 @@ describe("Ledger", function () {
       await expect(await ledger.connect(owner).deposit(2, stb('ether'), eth(4)))
         .to.emit(ledger, 'depositOccurred')
         .withArgs(owner.address, 2, 2, stb('ether'), eth(4), eth(4), eth(4), eth(5));
-  
+ 
+      // do some blanket approvals for testing
+      await expect(await ledger.connect(root).setWithdrawalAllowance(0, owner.address, stb('ether'), eth(100)))
+        .to.emit(ledger, 'withdrawalAllowanceAssigned')
+        .withArgs(root.address, 0, owner.address, stb('ether'), eth(100));
+      await expect(await ledger.connect(second).setWithdrawalAllowance(1, owner.address, stb('link'), eth(100)))
+        .to.emit(ledger, 'withdrawalAllowanceAssigned')
+        .withArgs(second.address, 1, owner.address, stb('link'), eth(100));
+      await expect(await ledger.connect(third).setWithdrawalAllowance(2, owner.address, stb('wbtc'), eth(100)))
+        .to.emit(ledger, 'withdrawalAllowanceAssigned')
+        .withArgs(third.address, 2, owner.address, stb('wbtc'), eth(100));
+      await expect(await ledger.connect(third).setWithdrawalAllowance(2, owner.address, stb('ether'), eth(100)))
+        .to.emit(ledger, 'withdrawalAllowanceAssigned')
+        .withArgs(third.address, 2, owner.address, stb('ether'), eth(100));
+
       // check the initial ledger and key balances
       expect(await ledger.connect(root).getContextArnRegistry(0,0)).eql([stb('ether'),stb('link'),stb('wbtc')]);
       expect(await ledger.connect(root).getContextArnBalances(0,0, [stb('ether'),stb('link'),stb('wbtc')]))
@@ -475,7 +498,51 @@ describe("Ledger", function () {
       await expect(ledger.connect(root).setCollateralProvider(0, owner.address, true))
         .to.be.revertedWith('REDUNDANT_PROVISION');
     });
-    
+   
+    it("Can't withdrawal without approval from key holder", async function() {
+      const { ledger, owner, root, second, third } = await loadFixture(TrustTestFixtures.freshLedgerProxy);
+      
+      // make that single deposit
+      await expect(await ledger.connect(owner).deposit(0, stb('ether'), eth(1)))
+        .to.emit(ledger, 'depositOccurred')
+        .withArgs(owner.address, 0, 0, stb('ether'), eth(1), eth(1), eth(1), eth(1));
+   
+      // withdrawal
+      await expect(ledger.connect(owner).withdrawal(0, stb('ether'), eth(0.4)))
+        .to.be.revertedWith('UNAPPROVED_AMOUNT');
+    });
+
+    it("Can't approve withdrawals unless holding key", async function() {
+      const { ledger, owner, root, second, third } = await loadFixture(TrustTestFixtures.freshLedgerProxy);
+      
+      // make a small approval for the test
+      await expect(ledger.connect(second).setWithdrawalAllowance(0, owner.address, stb('ether'), eth(0.5)))
+        .to.be.revertedWith('KEY_NOT_HELD');
+    });
+
+    it("Extinguish withdrawal allowance with withdrawals", async function() {
+      const { ledger, owner, root, second, third } = await loadFixture(TrustTestFixtures.freshLedgerProxy);
+      
+      // make that single deposit
+      await expect(await ledger.connect(owner).deposit(0, stb('ether'), eth(1)))
+        .to.emit(ledger, 'depositOccurred')
+        .withArgs(owner.address, 0, 0, stb('ether'), eth(1), eth(1), eth(1), eth(1));
+   
+      // make a small approval for the test
+      await expect(await ledger.connect(root).setWithdrawalAllowance(0, owner.address, stb('ether'), eth(0.5)))
+        .to.emit(ledger, 'withdrawalAllowanceAssigned')
+        .withArgs(root.address, 0, owner.address, stb('ether'), eth(0.5));
+
+      // withdrawal
+      await expect(await ledger.connect(owner).withdrawal(0, stb('ether'), eth(0.4)))
+        .to.emit(ledger, 'withdrawalOccurred')
+        .withArgs(owner.address, 0, 0, stb('ether'), eth(0.4), eth(0.6), eth(0.6), eth(0.6));
+     
+      // withdrawal should fail because allowance is exhausted
+      await expect(ledger.connect(owner).withdrawal(0, stb('ether'), eth(0.12)))
+        .to.be.revertedWith('UNAPPROVED_AMOUNT');
+    });
+
     it("Provider can't disconnect with outstanding collateral", async function() {
       const { ledger, owner, root, second, third } = await loadFixture(TrustTestFixtures.freshLedgerProxy);
       
@@ -493,6 +560,11 @@ describe("Ledger", function () {
         .to.emit(ledger, 'depositOccurred')
         .withArgs(owner.address, 0, 0, stb('link'), eth(0.1), eth(0.1), eth(0.1), eth(0.1));
 
+      // allow the ether to be removed
+      await expect(await ledger.connect(root).setWithdrawalAllowance(0, owner.address, stb('ether'), eth(100)))
+        .to.emit(ledger, 'withdrawalAllowanceAssigned')
+        .withArgs(root.address, 0, owner.address, stb('ether'), eth(100));
+      
       // remove the ether 
       await expect(await ledger.connect(owner).withdrawal(0, stb('ether'), eth(0.1)))
         .to.emit(ledger, 'withdrawalOccurred')
@@ -501,6 +573,11 @@ describe("Ledger", function () {
       // the provider still has link on the ledger, so fail here too 
       await expect(ledger.connect(root).setCollateralProvider(0, owner.address, false))
         .to.be.revertedWith('STILL_COLLATERALIZED');
+
+      // allow the chainlink to be removed
+      await expect(await ledger.connect(root).setWithdrawalAllowance(0, owner.address, stb('link'), eth(100)))
+        .to.emit(ledger, 'withdrawalAllowanceAssigned')
+        .withArgs(root.address, 0, owner.address, stb('link'), eth(100));
 
       // remove the link asset
       await expect(await ledger.connect(owner).withdrawal(0, stb('link'), eth(0.1)))

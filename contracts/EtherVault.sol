@@ -31,20 +31,17 @@ import "./Ledger.sol";
  * EtherVault
  *
  * This contract has a single role to play as vault: Receiving, storing,
- * and sending ether. 
+ * and sending ether. It does not hold trust or key balances,
+ * that is the ledger's job. Only the ether itself.
  * 
  * It takes a dependency on the Locksmith, and uses the 
  * ERC1155 keys minted from that contract for access control.
  *
- * Only holders of root keys to Trusts can deposit assets. Key
- * holders are only able to withdrawal what is explicitly
- * available under their key.
- *
- * EtherVault also takes a peering relationship with the Ledger, and relies on it
+ * EtherVault requires to act as Collateral Provider to the Ledger, and relies on it
  * to deposit key holder allocation entries or verify a key balance for withdrawal.
  *
  * In the end, this contract holds the ether and abstracts out the ARN 
- * into their designated standard protocol implementation.
+ * into the protocol implementation.
  */
 contract EtherVault is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     ///////////////////////////////////////////////////////
@@ -128,36 +125,21 @@ contract EtherVault is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         // stop right now if the message sender doesn't hold the key
         require(locksmith.keyVault().balanceOf(msg.sender, keyId) > 0, 'KEY_NOT_HELD');
 
-        // only the root key is capable of depositing funds
-        bool isValidKey;
-        bytes32 keyAlias;
-        uint256 trustId;
-        bool isRootKey;
-        uint256[] memory keys;
-        (isValidKey, keyAlias, trustId, isRootKey, keys) = locksmith.inspectKey(keyId);
-        require(isRootKey, 'KEY_NOT_ROOT');
+        // TODO: Add trust key permissions 
+        require(locksmith.isRootKey(keyId), 'KEY_NOT_ROOT');
 
         // track the deposit on the ledger
-        uint256 finalKeyBalance;
-        uint256 finalTrustBalance;
-        uint256 finalLedgerBalance; 
-        (finalKeyBalance, finalTrustBalance, finalLedgerBalance) = ledger.deposit(keyId, ethArn, msg.value);
+        (,,uint256 finalLedgerBalance) = ledger.deposit(keyId, ethArn, msg.value);
 
-        // jam the vault if the ledger's balance for its 
+        // jam the vault if the ledger's balance 
         // provisions doesn't match the vault balance
         assert(finalLedgerBalance == address(this).balance);
-
-        // record keep the contract's vault balance
-        emit AssetResourceName.arnVaultBalanceChange('deposit',
-            msg.sender, trustId, keyId,
-            ethArn, msg.value,
-            finalKeyBalance, address(this).balance); 
     }
 
     /**
      * withdrawal
      *
-     * Given a key, attempt to withdrawal funds from the trust. This will only
+     * Given a key, attempt to withdrawal ether from the vault. This will only
      * succeed if the key is held by the user, the key has the permission to
      * withdrawal, the rules of the trust are satisified (whatever those may be),
      * and there is sufficient balance. If any of those fail, the entire
@@ -171,34 +153,17 @@ contract EtherVault is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         // stop right now if the message sender doesn't hold the key
         require(locksmith.keyVault().balanceOf(msg.sender, keyId) > 0, 'KEY_NOT_HELD');
 
-        // inspect the key. We need this for events but ultimately access
-        // to the funds is based on what the ledger thinks
-        bool isValidKey;
-        bytes32 keyAlias;
-        uint256 trustId;
-        bool isRootKey;
-        uint256[] memory keys;
-        (isValidKey, keyAlias, trustId, isRootKey, keys) = locksmith.inspectKey(keyId);
-        
         // withdrawal from the ledger *first*. if there is an overdraft,
         // the entire transaction will revert.
-        uint256 finalKeyBalance;
-        uint256 finalTrustBalance;
-        uint256 finalLedgerBalance; 
-        (finalKeyBalance, finalTrustBalance, finalLedgerBalance) = ledger.withdrawal(keyId, ethArn, amount);
+        (,, uint256 finalLedgerBalance) = ledger.withdrawal(keyId, ethArn, amount);
 
         // jam the vault if the ledger's balance doesn't
         // match the vault balance after withdrawal
         assert(finalLedgerBalance == (address(this).balance - amount));
 
-        // critically, we rely on the ledger withdrawal to require() the
-        // proper balance.
-        payable(msg.sender).transfer(amount);
-        
-        // record keep the contract's vault balance
-        emit AssetResourceName.arnVaultBalanceChange('withdrawal',
-            msg.sender, trustId, keyId,
-            ethArn, amount,
-            finalKeyBalance, address(this).balance); 
+        // We trust that the ledger didn't overdraft so 
+        // send at the end to prevent re-entrancy.
+        (bool sent,) = msg.sender.call{value: amount}("");
+        require(sent, "Failed to send Ether");
     }
 }

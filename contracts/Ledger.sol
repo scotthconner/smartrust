@@ -31,9 +31,9 @@ using CollateralProviderLedger for CollateralProviderLedger.CollateralProviderCo
  * Ledger 
  *
  * The ledger keeps track of all the balance rights of the assets
- * stored in the vaults, across every trust. The withdrawal rights 
+ * provided as collateral across every trust. The withdrawal rights 
  * are assigned to individual keys, on a per-asset basis. To this
- * extent, the ledger itself is trust and asset agnostic. This provides
+ * extent, the ledger itself is asset agnostic. This provides
  * powerful flexibility on the entitlement layer to move funds easily,
  * quickly, and without multiple transactions or gas.
  *
@@ -42,8 +42,10 @@ using CollateralProviderLedger for CollateralProviderLedger.CollateralProviderCo
  * rights have been moved to another key, they are considered outside
  * of the trust, even if they are still in the vault.
  *
- * This contract is designed to only be called by peer contracts,  
- * or the application owner.
+ * This contract is designed to only be called by trusted peers 
+ * or key holders. Some level of public state reflection
+ * is available, any state mutation functions require a trusted
+ * contract relationship.
  *
  */
 contract Ledger is Initializable, OwnableUpgradeable, UUPSUpgradeable {
@@ -93,6 +95,21 @@ contract Ledger is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         uint256 keyBalance, uint256 trustBalance, uint256 ledgerBalance); 
 
     /**
+     * withdrawalAllowanceAssigned 
+     *
+     * This event fires when a hey holder approves a collateral provider
+     * for a specific amount to withdrawal.
+     *
+     * @param keyHolder address of the key holder
+     * @param keyId     key ID to approve withdraws for
+     * @param provider  collateral provider address to approve
+     * @param arn       asset you want to approve withdrawal for
+     * @param amount    amount of asset to approve
+     */
+    event withdrawalAllowanceAssigned(address keyHolder, uint256 keyId,
+        address provider, bytes32 arn, uint256 amount);
+
+    /**
      * ledgerTransferOccurred
      *
      * This event fires when assets move from one key to
@@ -131,12 +148,19 @@ contract Ledger is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     // the ledger only respects one locksmith
     Locksmith public locksmith;
 
-    // trusted providers for trusts
+    // trusted providers at the trust level 
     mapping(uint256 => uint256) public trustedProviderRegistrySize; 
     mapping(uint256 => address[]) public trustedProviderRegistry;
     mapping(uint256 => mapping(address => bool)) public registeredTrustedProviders;
     mapping(uint256 => mapping(address => bool)) public trustedProviderStatus;
-    
+  
+    // keep track of approved withdrawal instances.
+    // the root key holder approves blanket collateral deposits
+    // with a trusted provider, but the key holders need to approve 
+    // each withdrawal.
+    // keyId / providerAddress / arn => approvedAmount 
+    mapping(uint256 => mapping(address => mapping(bytes32 => uint256))) public withdrawalAllowances;
+
     // ledger context
     CollateralProviderLedger.CollateralProviderContext private ledgerContext;
     uint256 public constant LEDGER_CONTEXT_ID = 0;
@@ -347,6 +371,38 @@ contract Ledger is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     }
 
     /**
+     * setWithdrawalAllowance 
+     *
+     * A collateral provider can't simply withdrawal funds from the trust
+     * ledger any time they want. The root key holder may have allowed
+     * the collateral provider to *deposit* into the root key whenever,
+     * but every key holder needs to approve a withdrawal amount before
+     * the collateral provider can do-so on their behalf.
+     *
+     * The caller must be holding the key at time of call. This can be a
+     * proxy to the key holder, but the true key holder must trust the proxy
+     * to give the key back.
+     *
+     * The semantics of this call are to *override* the approved withdrawal
+     * amounts. So if it is set to 10, and then called again with 5, the
+     * approved amount is 5, not 15.
+     *
+     * Upon withdrawal from the collateral provider, this amount is reduced
+     * by the amount that was withdrawn.
+     *
+     * @param keyId    key ID to approve withdraws for
+     * @param provider collateral provider address to approve
+     * @param arn      asset you want to approve withdrawal for
+     * @param amount   amount of asset to approve
+     */
+    function setWithdrawalAllowance(uint256 keyId, address provider, bytes32 arn, uint256 amount) external {
+        // panic if the message sender isn't the key holder
+        require(locksmith.keyVault().balanceOf(msg.sender, keyId) > 0, 'KEY_NOT_HELD');
+        withdrawalAllowances[keyId][provider][arn] = amount;    
+        emit withdrawalAllowanceAssigned(msg.sender, keyId, provider, arn, amount); 
+    }
+
+    /**
      * withdrawal 
      *
      * Vaults will call withdrawal to update the ledger when a key
@@ -362,7 +418,7 @@ contract Ledger is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     function withdrawal(uint256 keyId, bytes32 arn, uint256 amount) external returns(uint256, uint256, uint256) {
         // make sure the deposit is measurable 
         require(amount > 0, 'ZERO_AMOUNT');
-        
+     
         // this could be an invalid key, but if it is, the
         // trust ID will be zero and the withdrawal will
         // look like an overdraft because there is no balance
@@ -371,13 +427,20 @@ contract Ledger is Initializable, OwnableUpgradeable, UUPSUpgradeable {
        
         // make sure the provider (the message sender) is a trusted one
         requireTrustedCollateralProvider(trustId);
-        
-        // make the deposit at the ledger, trust, and key contexts
+
+        // make sure the withdrawal amount is approved by the keyholder
+        // and then reduce the amount
+        require(withdrawalAllowances[keyId][msg.sender][arn] >= amount, 
+            'UNAPPROVED_AMOUNT');
+        withdrawalAllowances[keyId][msg.sender][arn] -= amount;
+
+        // make the withdrawal at the ledger, trust, and key contexts
         uint256 ledgerBalance = ledgerContext.withdrawal(arn, amount);
         uint256 trustBalance  = trustContext[trustId].withdrawal(arn, amount);
         uint256 keyBalance    = keyContext[keyId].withdrawal(arn, amount);
 
-        // TODO: integrate panic integrity here
+        // invariant protection
+        assert((ledgerBalance >= trustBalance) && (trustBalance >= keyBalance));
 
         emit withdrawalOccurred(msg.sender, trustId, keyId, arn, amount,
             keyBalance, trustBalance, ledgerBalance);
