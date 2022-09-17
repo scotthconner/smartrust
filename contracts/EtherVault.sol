@@ -88,6 +88,9 @@ contract EtherVault is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         locksmith = Locksmith(_locksmith);
         ledger = Ledger(_ledger);
 
+        // This is a more transparent way of holding the bytes32,
+        // it could have been an immutable as well but its good
+        // to use the library in case things change.
         ethArn = AssetResourceName.AssetType({
             contractAddress: AssetResourceName.GAS_TOKEN_CONTRACT,
             tokenStandard: AssetResourceName.GAS_TOKEN_STANDARD,
@@ -129,8 +132,9 @@ contract EtherVault is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         // stop right now if the message sender doesn't hold the key
         require(locksmith.keyVault().balanceOf(msg.sender, keyId) > 0, 'KEY_NOT_HELD');
 
-        // TODO: Add trust key permissions 
-        require(locksmith.isRootKey(keyId), 'KEY_NOT_ROOT');
+        // TODO: Add trust key permissions, we may not need
+        // this check because the notary will take care of it
+        // require(locksmith.isRootKey(keyId), 'KEY_NOT_ROOT');
 
         // track the deposit on the ledger
         (,,uint256 finalLedgerBalance) = ledger.deposit(keyId, ethArn, msg.value);

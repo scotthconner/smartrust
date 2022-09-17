@@ -32,6 +32,15 @@ zero = function() {
   return ethers.constants.AddressZero;
 }
 
+ethArn = function() {
+  return ethers.utils.keccak256(
+    ethers.utils.defaultAbiCoder.encode(
+      ['address','uint256','uint256'],
+      [zero(), 0, 0]
+    )
+  );
+}
+
 doTransaction = async function(promise) {
   const _tx = (await promise); 
       
@@ -159,6 +168,11 @@ TrustTestFixtures = (function() {
         ledger.address
       ]);
       await vault.deployed();
+
+      // set the vault as a trusted collteral provider to the
+      // notary for the first trust. This makes it easy to test
+      // balances without more set up.
+      await notary.connect(root).setCollateralProvider(0, vault.address, true);
 
       return { owner, keyVault, locksmith, 
         notary, ledger, vault, 

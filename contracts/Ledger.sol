@@ -270,7 +270,7 @@ contract Ledger is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         require(amount > 0, 'ZERO_AMOUNT');
         
         // make sure the provider (the message sender) is trusted
-        uint256 trustId = notary.notarizeDeposit(msg.sender, rootKeyId);
+        uint256 trustId = notary.notarizeDeposit(msg.sender, rootKeyId, arn, amount);
         
         // make the deposit at the ledger, trust, and key contexts
         uint256 ledgerBalance = ledgerContext.deposit(arn, amount);

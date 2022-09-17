@@ -465,7 +465,7 @@ describe("Ledger", function () {
   });
   */
   ////////////////////////////////////////////////////////////
-  // Collateral Providers 
+  // Collateral Providers + Notary 
   //
   // We need to ensure that only collateral providers, and ones that 
   // go through upgrades, can properly deposit or withdrawal collateral. 
