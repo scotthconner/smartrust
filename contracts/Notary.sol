@@ -52,11 +52,12 @@ contract Notary is Initializable, OwnableUpgradeable, UUPSUpgradeable {
      * @param keyHolder  address of the keyHolder
      * @param trustId    the trust ID for the keyHolder
      * @param rootKeyId  the key ID used as root for the trust
+     * @param ledger     address of the ledger 
      * @param provider   address of the contract trusted for providing collateral
      * @param isProvider the collateral provider flag, true or false
      */
     event collateralProviderChange(address keyHolder, uint256 trustId, uint256 rootKeyId,
-        address provider, bool isProvider); 
+        address ledger, address provider, bool isProvider); 
 
     /**
      * withdrawalAllowanceAssigned 
@@ -88,15 +89,15 @@ contract Notary is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         mapping(address => 
         mapping(bytes32 => uint256)))) public withdrawalAllowances;
 
-    // trusted providers at the trust level
-    // trustId => list size
-    mapping(uint256 => uint256) public trustedProviderRegistrySize;
-    // trustId => [providers]
-    mapping(uint256 => address[]) public trustedProviderRegistry;
-    // trustId => (provider => registered?)
-    mapping(uint256 => mapping(address => bool)) public registeredTrustedProviders;
-    // trustId => (provider => trusted?)
-    mapping(uint256 => mapping(address => bool)) public trustedProviderStatus;
+    // trusted providers 
+    // ledger / trust => providerCount 
+    mapping(address => mapping(uint256 => uint256)) public trustedProviderRegistrySize;
+    // ledger / trust / [providers] 
+    mapping(address => mapping(uint256 => address[])) public trustedProviderRegistry;
+    // ledger / trust / provider => registered?
+    mapping(address => mapping(uint256 => mapping(address => bool))) public registeredTrustedProviders;
+    // ledger /trust / provider => trusted?
+    mapping(address => mapping(uint256 => mapping(address => bool))) public trustedProviderStatus;
 
     ///////////////////////////////////////////////////////
     // Constructor and Upgrade Methods
@@ -146,14 +147,20 @@ contract Notary is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     /**
      * setCollateralProvider
      *
-     * Individual trusts bring their own collateral providers, who can provide
-     * collateral for any number of ARNs.
+     * Root key holders entrust specific collateral providers to bring 
+     * their liabilities to a given ledger. The root key holder goes to
+     * the ledger used by their provider, and acknowledges the entire
+     * relationship chain between where the assets are, who is keeping track
+     * of them, who who is notarizing each action.
+     *
+     * (root) -> (provider) -> (ledger) -> (notary)
      *
      * @param rootKeyId  the root key the caller is trying to use to enable a provider
+     * @param ledger     the contract of the ledger used by the provider 
      * @param provider   the contract of the collateral provider
      * @param isProvider the flag to set the collateral policy to true or false
      */
-    function setCollateralProvider(uint256 rootKeyId, address provider, bool isProvider) external {
+    function setCollateralProvider(uint256 rootKeyId, address ledger, address provider, bool isProvider) external {
         // make sure that the caller is holding the key they are trying to use
         require(locksmith.keyVault().balanceOf(msg.sender, rootKeyId) > 0, "KEY_NOT_HELD");
         
@@ -165,31 +172,31 @@ contract Notary is Initializable, OwnableUpgradeable, UUPSUpgradeable {
 
         if (isProvider) {
             // make sure they are not already a provider on the trust
-            require(!trustedProviderStatus[trustId][provider], 'REDUNDANT_PROVISION');
+            require(!trustedProviderStatus[ledger][trustId][provider], 'REDUNDANT_PROVISION');
 
             // register them with the trust if not already done so
-            if (!registeredTrustedProviders[trustId][provider]) {
-                trustedProviderRegistry[trustId].push(provider);
-                trustedProviderRegistrySize[trustId]++;
-                registeredTrustedProviders[trustId][provider] = true;
+            if (!registeredTrustedProviders[ledger][trustId][provider]) {
+                trustedProviderRegistry[ledger][trustId].push(provider);
+                trustedProviderRegistrySize[ledger][trustId]++;
+                registeredTrustedProviders[ledger][trustId][provider] = true;
             }
 
             // set their provider status to true for the trust
-            trustedProviderStatus[trustId][provider] = true;
+            trustedProviderStatus[ledger][trustId][provider] = true;
         } else {
             // we are trying to revoke status, so make sure they are one
-            require(trustedProviderStatus[trustId][provider], 'NOT_CURRENT_PROVIDER');
+            require(trustedProviderStatus[ledger][trustId][provider], 'NOT_CURRENT_PROVIDER');
 
             // set their provider status to false. At this point
             // there could still be collateral in the trust from this provider.
             // the provider isn't trusted at this moment to facilitate deposits
             // or withdrawals. Adding them back would re-enable their trusted
             // status. This is useful if a collateral provider is somehow compromised.
-            trustedProviderStatus[trustId][provider] = false;
+            trustedProviderStatus[ledger][trustId][provider] = false;
         }
 
         // keep an entry for auditing purposes
-        emit collateralProviderChange(msg.sender, trustId, rootKeyId, provider, isProvider);
+        emit collateralProviderChange(msg.sender, trustId, rootKeyId, ledger, provider, isProvider);
     }
 
     /**
@@ -237,6 +244,13 @@ contract Notary is Initializable, OwnableUpgradeable, UUPSUpgradeable {
      *
      * If the ledger is trying to deposit on behalf of a root key holder,
      * this method is called to ensure the deposit can be notarized.
+     *
+     * A deposit notarization is a stateless examination of what an authorized 
+     * deposit needs to contain: the key needs to be root and the provider registered
+     * previously with a witnessed consent of the direct caller key holdership, against
+     * the in-bound ledger request.
+     *
+     * This call assumes its the ledger calling it
      *
      * @param provider the provider that is trying to deposit 
      * @param keyId    key to deposit the funds to 
@@ -289,8 +303,11 @@ contract Notary is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     /**
      * requireTrustedCollateralProvider 
      * 
-     * Given a key and an a provider, panic if its not trusted
-     * by the root key holder. This also ensures the key is valid.
+     * Given a key and an a provider, panic if the key isn't real,
+     * it's not root when it needs to be, or the trust
+     * doesn't trust the collateral provider against a gven ledger. 
+     *
+     * This method assumes the message sender is the ledger.
      *
      * @param keyId the key Id for the operation 
      * @param provider the provider address to check
@@ -298,7 +315,8 @@ contract Notary is Initializable, OwnableUpgradeable, UUPSUpgradeable {
      * @return the valid trust ID associated with the key 
      */
     function requireTrustedCollateralProvider(uint256 keyId, address provider, bool needsRoot) internal view returns (uint256) {
-        // make sure the key is valid 
+        // make sure the key is valid. you can't always ensure
+        // that the collateral provider is checking this 
         (bool valid,,uint256 trustId,bool isRoot,) = locksmith.inspectKey(keyId);
         require(valid, "INVALID_KEY");
         
@@ -308,7 +326,8 @@ contract Notary is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         }
     
         // make sure the provider is trusted
-        require(trustedProviderStatus[trustId][provider], 'UNTRUSTED_PROVIDER');
+        // we assume the message sender is the ledger
+        require(trustedProviderStatus[msg.sender][trustId][provider], 'UNTRUSTED_PROVIDER');
 
         return trustId;
     }

@@ -115,7 +115,7 @@ describe("Ledger", function () {
      
       // we need to generate a second trust key
       await locksmith.connect(second).createTrustAndRootKey(stb("Second Trust"));
-      await notary.connect(second).setCollateralProvider(1, owner.address, true)
+      await notary.connect(second).setCollateralProvider(1, ledger.address, owner.address, true)
 
       // check preconditions
       expect(await ledger.connect(root).getContextArnRegistry(0,0)).has.length(0);
@@ -151,7 +151,7 @@ describe("Ledger", function () {
       
       // we need to generate a second trust key
       await locksmith.connect(second).createTrustAndRootKey(stb("Second Trust"));
-      await notary.connect(second).setCollateralProvider(1, owner.address, true)
+      await notary.connect(second).setCollateralProvider(1, ledger.address, owner.address, true)
       
       // check preconditions
       expect(await ledger.connect(root).getContextArnRegistry(0,0)).has.length(0);
@@ -270,9 +270,9 @@ describe("Ledger", function () {
       
       // we need to generate two more trusts 
       await locksmith.connect(second).createTrustAndRootKey(stb("Second Trust"));
-      await notary.connect(second).setCollateralProvider(1, owner.address, true)
+      await notary.connect(second).setCollateralProvider(1, ledger.address, owner.address, true)
       await locksmith.connect(third).createTrustAndRootKey(stb("thirdTrust"));
-      await notary.connect(third).setCollateralProvider(2, owner.address, true)
+      await notary.connect(third).setCollateralProvider(2, ledger.address, owner.address, true)
       
       // initial deposits
       await expect(await ledger.connect(owner).deposit(0, stb('ether'), eth(1)))
@@ -475,25 +475,25 @@ describe("Ledger", function () {
       const { notary, ledger, owner, root, second, third } = await loadFixture(TrustTestFixtures.freshLedgerProxy);
 
       // de-register
-      await expect(notary.connect(root).setCollateralProvider(0, owner.address, false))
+      await expect(notary.connect(root).setCollateralProvider(0, ledger.address, owner.address, false))
         .to.emit(notary, 'collateralProviderChange')
-        .withArgs(root.address, 0, 0, owner.address, false);
+        .withArgs(root.address, 0, 0, ledger.address, owner.address, false);
      
       // re-register
-      await expect(notary.connect(root).setCollateralProvider(0, owner.address, true))
+      await expect(notary.connect(root).setCollateralProvider(0, ledger.address, owner.address, true))
         .to.emit(notary, 'collateralProviderChange')
-        .withArgs(root.address, 0, 0, owner.address, true);
+        .withArgs(root.address, 0, 0, ledger.address, owner.address, true);
 
       // trusted provider registry only has one entry in it
-      expect(await notary.connect(root).trustedProviderRegistrySize(0)).to.equal(1);
-      expect(await notary.connect(root).trustedProviderRegistry(0, 0)).to.equal(owner.address);
+      expect(await notary.connect(root).trustedProviderRegistrySize(ledger.address, 0)).to.equal(1);
+      expect(await notary.connect(root).trustedProviderRegistry(ledger.address, 0, 0)).to.equal(owner.address);
     });
     
     it("Untrusted disconnection reverts", async function() {
       const { notary, ledger, owner, root, second, third } = await loadFixture(TrustTestFixtures.freshLedgerProxy);
 
       //can't set to false when its already false
-      await expect(notary.connect(root).setCollateralProvider(0, second.address, false))
+      await expect(notary.connect(root).setCollateralProvider(0, ledger.address, second.address, false))
         .to.be.revertedWith('NOT_CURRENT_PROVIDER');
     });
     
@@ -501,7 +501,7 @@ describe("Ledger", function () {
       const { notary, ledger, owner, root, second, third } = await loadFixture(TrustTestFixtures.freshLedgerProxy);
 
       //can't set to false when its already false
-      await expect(notary.connect(root).setCollateralProvider(0, owner.address, true))
+      await expect(notary.connect(root).setCollateralProvider(0, ledger.address, owner.address, true))
         .to.be.revertedWith('REDUNDANT_PROVISION');
     });
    
@@ -560,7 +560,7 @@ describe("Ledger", function () {
 
     it("Non-key holders can not set collateral providers", async function() {
       const { notary, ledger, owner, root } = await loadFixture(TrustTestFixtures.freshLedgerProxy);
-      await expect(notary.connect(owner).setCollateralProvider(0, owner.address, true))
+      await expect(notary.connect(owner).setCollateralProvider(0, ledger.address, owner.address, true))
         .to.be.revertedWith('KEY_NOT_HELD');
     });
 
@@ -574,15 +574,15 @@ describe("Ledger", function () {
         .to.be.revertedWith('UNTRUSTED_PROVIDER');
    
       // set them as peers
-      await expect(await notary.connect(root).setCollateralProvider(0, root.address, true))
+      await expect(await notary.connect(root).setCollateralProvider(0, ledger.address, root.address, true))
         .to.emit(notary, 'collateralProviderChange')
-        .withArgs(root.address, 0, 0, root.address, true)
-      await expect(await notary.connect(root).setCollateralProvider(0, second.address, true))
+        .withArgs(root.address, 0, 0, ledger.address, root.address, true)
+      await expect(await notary.connect(root).setCollateralProvider(0, ledger.address, second.address, true))
         .to.emit(notary, 'collateralProviderChange')
-        .withArgs(root.address, 0, 0, second.address, true)
+        .withArgs(root.address, 0, 0, ledger.address, second.address, true)
 
       // however, peers can't change the policy, only the owner
-      await expect(notary.connect(second).setCollateralProvider(0, third.address, true))
+      await expect(notary.connect(second).setCollateralProvider(0, ledger.address, third.address, true))
         .to.be.revertedWith('KEY_NOT_HELD');
 
       // ensure second holds the key, but then gets a non-root error
@@ -590,7 +590,7 @@ describe("Ledger", function () {
         .to.emit(locksmith, "keyMinted")
         .withArgs(root.address, 0, 1, stb('beneficiary'), second.address);
       
-      await expect(notary.connect(second).setCollateralProvider(1, third.address, true))
+      await expect(notary.connect(second).setCollateralProvider(1, ledger.address, third.address, true))
         .to.be.revertedWith('KEY_NOT_ROOT');
     });
 
@@ -608,9 +608,9 @@ describe("Ledger", function () {
       await expect(peer.connect(owner).deposit()).to.be.revertedWith('UNTRUSTED_PROVIDER');
 
       // now set the peer properly
-      await expect(await notary.connect(root).setCollateralProvider(0, peer.address, true))
+      await expect(await notary.connect(root).setCollateralProvider(0, ledger.address, peer.address, true))
         .to.emit(notary, 'collateralProviderChange')
-        .withArgs(root.address, 0, 0, peer.address, true)
+        .withArgs(root.address, 0, 0, ledger.address, peer.address, true)
       
       // deposit will be successful, even though second isn't an owner or key holder.
       await expect(peer.connect(second).deposit())

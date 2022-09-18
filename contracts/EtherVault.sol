@@ -122,8 +122,8 @@ contract EtherVault is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     /**
      * deposit
      *
-     * This method will enable owners or trustees to deposit eth into
-     * the trust for their given key. This method operates as a payable
+     * This method will enable root key holders to deposit eth into
+     * the trust. This method operates as a payable
      * transaction where the message's value parameter is what is deposited.
      *
      * @param keyId the ID of the key that the depositor is using.
@@ -132,11 +132,10 @@ contract EtherVault is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         // stop right now if the message sender doesn't hold the key
         require(locksmith.keyVault().balanceOf(msg.sender, keyId) > 0, 'KEY_NOT_HELD');
 
-        // TODO: Add trust key permissions, we may not need
-        // this check because the notary will take care of it
-        // require(locksmith.isRootKey(keyId), 'KEY_NOT_ROOT');
-
         // track the deposit on the ledger
+        // this could revert for a few reasons:
+        // - the key is not root
+        // - the vault is not a trusted collateral provider the ledger
         (,,uint256 finalLedgerBalance) = ledger.deposit(keyId, ethArn, msg.value);
 
         // jam the vault if the ledger's balance 
@@ -172,6 +171,6 @@ contract EtherVault is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         // We trust that the ledger didn't overdraft so 
         // send at the end to prevent re-entrancy.
         (bool sent,) = msg.sender.call{value: amount}("");
-        require(sent, "Failed to send Ether");
+        assert(sent); // failed to send ether.
     }
 }

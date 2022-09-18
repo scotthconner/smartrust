@@ -145,7 +145,7 @@ TrustTestFixtures = (function() {
 
       // let's give the owner collateral trust for the sake of
       // testing simplicity
-      await notary.connect(root).setCollateralProvider(0, owner.address, true);
+      await notary.connect(root).setCollateralProvider(0, ledger.address, owner.address, true);
 
       return {keyVault, locksmith, notary, ledger, owner, root, second, third};
     },
@@ -172,8 +172,26 @@ TrustTestFixtures = (function() {
       // set the vault as a trusted collteral provider to the
       // notary for the first trust. This makes it easy to test
       // balances without more set up.
-      await notary.connect(root).setCollateralProvider(0, vault.address, true);
+      await notary.connect(root).setCollateralProvider(0, ledger.address, vault.address, true);
 
+      return { owner, keyVault, locksmith, 
+        notary, ledger, vault, 
+        root, second, third
+      };
+    },
+    ////////////////////////////////////////////////////////////
+    // fundedEtherVault 
+    //
+    // Takes a functioning vault and deposits some ether into it. 
+    ////////////////////////////////////////////////////////////
+    fundedEtherVault: async function() {
+      const {keyVault, locksmith, 
+        notary, ledger, vault, 
+        owner, root, second, third} =
+        await TrustTestFixtures.freshEtherVault();
+
+      await vault.connect(root).deposit(0, {value: eth(40)});
+      
       return { owner, keyVault, locksmith, 
         notary, ledger, vault, 
         root, second, third

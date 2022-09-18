@@ -80,7 +80,7 @@ describe("EtherVault", function () {
 
       // create a second trust with a different owner, set collateral provider
       await locksmith.connect(second).createTrustAndRootKey(stb("Second Trust"));
-      await notary.connect(second).setCollateralProvider(1, vault.address, true);
+      await notary.connect(second).setCollateralProvider(1, vault.ledger(), vault.address, true);
 
       // deposit some cash into the first trust
       var depositAmount = eth(10);
@@ -111,45 +111,51 @@ describe("EtherVault", function () {
     });
 
     it("Can't deposit without holding key", async function() {
-      const { trust, ethFund, owner, otherAccount } = 
-        await loadFixture(TrustTestFixtures.singleEtherFund);
+      const { owner, keyVault, locksmith,
+        notary, ledger, vault,
+        root, second, third
+      } = await loadFixture(TrustTestFixtures.freshEtherVault);
 
-      // try to deposit with a key not held, otherAccount isn't a trustee...
-      await expect(ethFund.connect(otherAccount).deposit(1, {value: eth(10)}))
-        .to.be.revertedWith("MISSING_KEY");
+      // try to deposit with a key not held
+      await expect(vault.connect(second).deposit(1, {value: eth(10)}))
+        .to.be.revertedWith("KEY_NOT_HELD");
     });
 
     it("Can't deposit if a beneficiary", async function() {
-      const { trust, ethFund, owner, otherAccount } =
-        await loadFixture(TrustTestFixtures.singleEtherFund);
+      const { owner, keyVault, locksmith,
+        notary, ledger, vault,
+        root, second, third
+      } = await loadFixture(TrustTestFixtures.freshEtherVault);
 
-      // give the the other account a beneficiary key 
-      await expect(await trust.connect(owner).createTrustKeys(0, BENEFICIARY(), [otherAccount.address]))
-        .to.emit(trust, "keyMinted")
-        .withArgs(owner.address, 0, 2, otherAccount.address);
+      //give the the other account a beneficiary key 
+      await expect(await locksmith.connect(root).createKey(0, stb('beneficiary'), second.address))
+        .to.emit(locksmith, "keyMinted")
+        .withArgs(root.address, 0, 1, stb('beneficiary'), second.address);
 
       // try to deposit as a beneficiary, not good!
-      await expect(ethFund.connect(otherAccount).deposit(2, {value: eth(10)}))
-        .to.be.revertedWith("NO_PERM");
+      await expect(vault.connect(second).deposit(1, {value: eth(10)}))
+        .to.be.revertedWith("KEY_NOT_ROOT");
     })
 
-    it("Can deposit if a trustee", async function() {
-      const { trust, ethFund, owner, otherAccount } = 
-        await loadFixture(TrustTestFixtures.singleEtherFund);
+    it("Can't deposit if not root", async function() {
+      const { owner, keyVault, locksmith,
+        notary, ledger, vault,
+        root, second, third
+      } = await loadFixture(TrustTestFixtures.freshEtherVault);
 
       // give the other account a trustee key
-      await expect(await trust.connect(owner).createTrustKeys(0, TRUSTEE(), [otherAccount.address]))
-        .to.emit(trust, "keyMinted")
-        .withArgs(owner.address, 0, TRUSTEE(), otherAccount.address);
+      await expect(await locksmith.connect(root).createKey(0, stb('t'), second.address))
+        .to.emit(locksmith, "keyMinted")
+        .withArgs(root.address, 0, 1, stb('t'), second.address);
 
       // try to deposit as a trustee
-      await expect(await ethFund.connect(otherAccount).deposit(1, {value: eth(10)}))
-        .to.emit(ethFund, "ethDepositOccurred")
-        .withArgs(otherAccount.address, 0, 1, eth(10), eth(10));
+      await expect(vault.connect(second).deposit(1, {value: eth(10)}))
+        .to.be.revertedWith('KEY_NOT_ROOT');
 
       // validate the trust balances
-      expect(await ethers.provider.getBalance(ethFund.address)).to.equal(eth(10));
-      expect(await ethFund.connect(owner).getEtherBalance(0)).to.equal(eth(10));
+      expect(await ethers.provider.getBalance(vault.address)).to.equal(eth(0));
+      expect(await ledger.getContextArnBalances(TRUST(),0,vault.address,[ethArn()]))
+        .eql([eth(0)]);
     });
   });
 
@@ -160,146 +166,114 @@ describe("EtherVault", function () {
   // withdrawals and ensure that all requirements are safely gaurded.
   ////////////////////////////////////////////////////////////
   describe("Basic Withdrawal Use Cases", function() {
-    it("Owner withdrawal happy case", async function() {
-      const { trust, ethFund, owner, otherAccount } = 
-        await loadFixture(TrustTestFixtures.singleEtherFunded);
+    it("Owner withdrawal with and without approval", async function() {
+      const { owner, keyVault, locksmith,
+        notary, ledger, vault,
+        root, second, third
+      } = await loadFixture(TrustTestFixtures.fundedEtherVault);
         
-      let ownerBalance = await ethers.provider.getBalance(owner.address);
-
       // asset preconditions
-      expect(await ethers.provider.getBalance(ethFund.address)).to.equal(eth(40));
-
+      expect(await ethers.provider.getBalance(vault.address)).to.equal(eth(40));
+      
       // withdrawal some eth and ensure the right events are emitted
-      const t = await doTransaction(ethFund.connect(owner).withdrawal(0, eth(2))); 
-      await expect(t.transaction).to.emit(ethFund, "ethWithdrawalOccurred")
-        .withArgs(owner.address, 0, 0, eth(2), eth(38));
+      await expect(vault.connect(root).withdrawal(0, eth(2)))
+        .to.be.revertedWith('UNAPPROVED_AMOUNT');
+
+      // approve the withdrawal with the ledger this time
+      await notary.connect(root).setWithdrawalAllowance(vault.ledger(),
+        vault.address, 0, ethArn(), eth(2));
+
+      let rootBalance = await ethers.provider.getBalance(root.address);
+      
+      // withdrawal some eth and ensure the right events are emitted
+      const tx = await doTransaction(vault.connect(root).withdrawal(0, eth(2))); 
+      await expect(tx.transaction).to.emit(ledger, "withdrawalOccurred")
+        .withArgs(vault.address, 0, 0, ethArn(), eth(2), eth(38), eth(38), eth(38)); 
 
       // check balances
-      expect(await ethers.provider.getBalance(ethFund.address)).to.equal(eth(38));
-      expect(await ethers.provider.getBalance(owner.address))
-        .to.equal(ownerBalance.sub(t.gasCost).add(eth(2)));
-
-      // make sure the actual internal trust balance is also 8 ether
-      expect(await ethFund.connect(owner).getEtherBalance(0)).to.equal(eth(38));
+      expect(await ethers.provider.getBalance(vault.address)).to.equal(eth(38));
+      expect(await ethers.provider.getBalance(root.address))
+        .to.equal(rootBalance.sub(tx.gasCost).add(eth(2)));
     });
 
-    it("Beneficiary withdrawal happy case", async function() {
-      const { trust, ethFund, owner, otherAccount } = 
-        await loadFixture(TrustTestFixtures.singleEtherFunded);
-      let otherBalance = await ethers.provider.getBalance(otherAccount.address);
-
-      // the owner should not have a beneficiary key at the beginning
-      expect(await trust.balanceOf(otherAccount.address, 2)).to.equal(0);
-
-      // asset preconditions
-      expect(await ethers.provider.getBalance(ethFund.address)).to.equal(eth(40));
-      expect(await ethFund.connect(owner).getEtherBalance(0)).to.equal(eth(40)); 
-
-      // provide a beneficiary key
-      await expect(await trust.connect(owner).createTrustKeys(0, BENEFICIARY(), [otherAccount.address]))
-        .to.emit(trust, "keyMinted").withArgs(owner.address, 0, 2, otherAccount.address);
-
-      // lets see if the account now is a beneficiary
-      expect(await trust.balanceOf(otherAccount.address, 2)).to.equal(1);
-
-      // withdrawal some eth as beneficiary and ensure the right events are emitted
-      const t = await doTransaction(ethFund.connect(otherAccount).withdrawal(2, eth(2)));
-      await expect(t.transaction).to.emit(ethFund, "ethWithdrawalOccurred")
-        .withArgs(otherAccount.address, 0, 2, eth(2), eth(38));
-
-      // check balances
-      expect(await ethers.provider.getBalance(ethFund.address)).to.equal(eth(38));
-      expect(await ethers.provider.getBalance(otherAccount.address))
-        .to.equal(otherBalance.sub(t.gasCost).add(eth(2)));
+    it("Non-root withdrawal happy case", async function() {
+      // TODO: Functionally this is the same thing
+      // as root, but its good to cover. However, I need
+      // a scribe to move the funds and I haven't gotten
+      // that far yet.
+      expect(true); 
     });
 
     it("Can't withdrawal more than balance", async function() {
-      const { trust, ethFund, owner, otherAccount } = 
-        await loadFixture(TrustTestFixtures.singleEtherFunded);
-      let ownerBalance = await ethers.provider.getBalance(owner.address);
+      const { owner, keyVault, locksmith,
+        notary, ledger, vault,
+        root, second, third
+      } = await loadFixture(TrustTestFixtures.fundedEtherVault);
 
       // create a second trust wih a different owner
-      await trust.connect(otherAccount).createTrustAndOwnerKey(stb("Second Trust"));
+      await locksmith.connect(second).createTrustAndRootKey(stb("Second Trust"));
+
+      // set the collateral provider with the notary
+      await notary.connect(second).setCollateralProvider(1, vault.ledger(), vault.address, true);
+      await notary.connect(second).setWithdrawalAllowance(
+        vault.ledger(), vault.address, 1, ethArn(), eth(100));
 
       // put money into the second trust
-      await expect(await ethFund.connect(otherAccount).deposit(3, {value: eth(20)}))
-        .to.emit(ethFund, 'ethDepositOccurred')
-        .withArgs(otherAccount.address, 1, 3, eth(20), eth(20));
+      await expect(await vault.connect(second).deposit(1, {value: eth(20)}))
+        .to.emit(ledger, "depositOccurred")
+        .withArgs(vault.address, 1, 1, ethArn(), eth(20), eth(20), eth(20), eth(60)); 
 
       // asset preconditions for the entire trust contract
-      expect(await ethers.provider.getBalance(ethFund.address)).to.equal(eth(60));
+      expect(await ethers.provider.getBalance(vault.address)).to.equal(eth(60));
 
       // withdrawal some eth and ensure the right events are emitted
-      await expect(ethFund.connect(owner).withdrawal(0, eth(41)))
+      await expect(vault.connect(second).withdrawal(1, eth(61)))
         .to.be.revertedWith('OVERDRAFT');
 
-      // ensure the balances in each trust are right
-      expect(await ethFund.connect(owner).getEtherBalance(0)).to.equal(eth(40));
-      expect(await ethFund.connect(otherAccount).getEtherBalance(3)).to.equal(eth(20));
-
-      // check balance of trust isn't changed.
-      expect(await ethers.provider.getBalance(ethFund.address)).to.equal(eth(60));
+      // check balance of vault isn't changed.
+      expect(await ethers.provider.getBalance(vault.address)).to.equal(eth(60));
     });
 
     it("Can't withdrawal without owning key used", async function() {
-      const { trust, ethFund, owner, otherAccount } = 
-        await loadFixture(TrustTestFixtures.singleEtherFunded);
-      let ownerBalance = await ethers.provider.getBalance(owner.address);
-
-      // asset preconditions
-      expect(await ethers.provider.getBalance(ethFund.address)).to.equal(eth(40));
-
-      // withdrawal some eth and ensure the right events are emitted
-      await expect(ethFund.connect(otherAccount).withdrawal(0, eth(3)))
-        .to.be.revertedWith('MISSING_KEY');
-
-      // check balance of trust isn't changed.
-      expect(await ethers.provider.getBalance(ethFund.address)).to.equal(eth(40));
-      expect(await ethFund.connect(owner).getEtherBalance(0)).to.equal(eth(40));
-    });
-
-    it("Can't withdrawal if trust does not exist", async function() {
-      const { trust, ethFund, owner, otherAccount } = 
-        await loadFixture(TrustTestFixtures.singleEtherFunded);
-      let ownerBalance = await ethers.provider.getBalance(owner.address);
-
-      // asset preconditions
-      expect(await ethers.provider.getBalance(ethFund.address)).to.equal(eth(40));
-
-      // withdrawal some eth and ensure the right events are emitted
-      await expect(ethFund.connect(owner).withdrawal(3, eth(3)))
-        .to.be.revertedWith('BAD_TRUST_ID');
-
-      // check balance of trust isn't changed.
-      expect(await ethers.provider.getBalance(ethFund.address)).to.equal(eth(40));
-      expect(await ethFund.connect(owner).getEtherBalance(0)).to.equal(eth(40));
-    });
-
-    it("Can't withdrawal as a trustee", async function() {
-      const { trust, ethFund, owner, otherAccount } = 
-        await loadFixture(TrustTestFixtures.singleEtherFunded);
-
-      // pre-condition check balances
-      expect(await ethers.provider.getBalance(ethFund.address)).to.equal(eth(40));
-      expect(await ethFund.connect(owner).getEtherBalance(0)).to.equal(eth(40)); 
+      const { owner, keyVault, locksmith,
+        notary, ledger, vault,
+        root, second, third
+      } = await loadFixture(TrustTestFixtures.fundedEtherVault);
         
-      // no trustee key exists 
-      expect(await trust.balanceOf(otherAccount.address, 1)).to.equal(0);
+      // asset preconditions
+      expect(await ethers.provider.getBalance(vault.address)).to.equal(eth(40));
+      
+      // approve the withdrawal with the ledger this time
+      await notary.connect(root).setWithdrawalAllowance(vault.ledger(),
+        vault.address, 0, ethArn(), eth(2));
 
-      // give out a trustee key
-      await expect(await trust.connect(owner).createTrustKeys(0, 1, [otherAccount.address]))
-        .to.emit(trust, "keyMinted").withArgs(owner.address, 0, 1, otherAccount.address);;
-
-      // the account now has a trustee key
-      expect(await trust.balanceOf(otherAccount.address, 1)).to.equal(1);
-
-      // try to withdrawal some eth and ensure it fails for permission errors
-      await expect(ethFund.connect(otherAccount).withdrawal(1, eth(3)))
-        .to.be.revertedWith('NO_PERM');
+      // withdrawal some eth and ensure the right events are emitted
+      await expect(vault.connect(second).withdrawal(0, eth(3)))
+        .to.be.revertedWith('KEY_NOT_HELD');
 
       // check balance of trust isn't changed.
-      expect(await ethers.provider.getBalance(ethFund.address)).to.equal(eth(40));
-      expect(await ethFund.connect(owner).getEtherBalance(0)).to.equal(eth(40)); 
+      expect(await ethers.provider.getBalance(vault.address)).to.equal(eth(40));
+    });
+
+    it("Can't withdrawal if key does not exist", async function() {
+      const { owner, keyVault, locksmith,
+        notary, ledger, vault,
+        root, second, third
+      } = await loadFixture(TrustTestFixtures.fundedEtherVault);
+        
+      // asset preconditions
+      expect(await ethers.provider.getBalance(vault.address)).to.equal(eth(40));
+      
+      // approve the withdrawal with the ledger this time
+      await notary.connect(root).setWithdrawalAllowance(vault.ledger(),
+        vault.address, 0, ethArn(), eth(200));
+
+      // withdrawal some eth and ensure the right events are emitted
+      await expect(vault.connect(owner).withdrawal(3, eth(3)))
+        .to.be.revertedWith('KEY_NOT_HELD');
+
+      // check balance of trust isn't changed.
+      expect(await ethers.provider.getBalance(vault.address)).to.equal(eth(40));
     });
   });
 });
