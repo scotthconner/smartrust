@@ -96,7 +96,7 @@ contract Notary is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     mapping(address => mapping(uint256 => address[])) public trustedProviderRegistry;
     // ledger / trust / provider => registered?
     mapping(address => mapping(uint256 => mapping(address => bool))) public registeredTrustedProviders;
-    // ledger /trust / provider => trusted?
+    // ledger / trust / provider => trusted?
     mapping(address => mapping(uint256 => mapping(address => bool))) public trustedProviderStatus;
 
     ///////////////////////////////////////////////////////
