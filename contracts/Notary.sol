@@ -87,11 +87,12 @@ contract Notary is Initializable, OwnableUpgradeable, UUPSUpgradeable {
      *
      * @param ledger    the ledger the deposit request came from
      * @param provider  the provider the collateral is coming from
+     * @param trustId   the trust id for the associated root key
      * @param rootKeyId the root key the deposit occured on
      * @param arn       the asset being deposited
      * @param amount    the amount being deposited
      */
-    event notaryDepositApproval(address ledger, address provider, uint256 rootKeyId,
+    event notaryDepositApproval(address ledger, address provider, uint256 trustId, uint256 rootKeyId,
         bytes32 arn, uint256 amount);
 
     /**
@@ -102,13 +103,33 @@ contract Notary is Initializable, OwnableUpgradeable, UUPSUpgradeable {
      *
      * @param ledger    the ledger the withdrawal request came from
      * @param provider  the provider the collateral is coming from
+     * @param trustId   the trust id for the associated root key
      * @param keyId     the key the withdrawal occured on
      * @param arn       the asset being withdrawn 
      * @param amount    the amount being withdrawn 
      * @param allowance the remaining allowance for this tuple
      */
-    event notaryWithdrawalApproval(address ledger, address provider, uint256 keyId,
-        bytes32 arn, uint256 amount, uint256 allowance);
+    event notaryWithdrawalApproval(address ledger, address provider, uint256 trustId, 
+        uint256 keyId, bytes32 arn, uint256 amount, uint256 allowance);
+
+    /**
+     * notaryDistributionApproval
+     *
+     * This event fires when a trust distribution request from a ledger
+     * is approved for a root key, ledger, and provider.
+     *
+     * @param ledger    the ledger tracking fund balances
+     * @param provider  the collateral provider for the funds
+     * @param scribe    the scribe moving the funds
+     * @param arn       the asset being distributed
+     * @param trustId   the trust id associated with the root key
+     * @param rootKeyId the root key funds are moved from
+     * @param keys      array of in-trust destination keys
+     * @param amounts   array of amounts per key
+     */
+    event notaryDistributionApproval(address ledger, address provider, address scribe,
+        bytes32 arn, uint256 trustId, uint256 rootKeyId,
+        uint256[] keys, uint256[] amounts);
 
     ///////////////////////////////////////////////////////
     // Storage
@@ -314,7 +335,7 @@ contract Notary is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         // we need a trusted provider, and the key to be root.
         uint256 trustId = requireTrustedActor(keyId, provider, COLLATERAL_PROVIDER, true);
 
-        emit notaryDepositApproval(msg.sender, provider, keyId, arn, amount);
+        emit notaryDepositApproval(msg.sender, provider, trustId, keyId, arn, amount);
         return trustId;
     }
 
@@ -346,7 +367,7 @@ contract Notary is Initializable, OwnableUpgradeable, UUPSUpgradeable {
             'UNAPPROVED_AMOUNT');
         withdrawalAllowances[msg.sender][keyId][provider][arn] -= amount;
 
-        emit notaryWithdrawalApproval(msg.sender, provider, keyId, arn, amount,
+        emit notaryWithdrawalApproval(msg.sender, provider, trustId, keyId, arn, amount,
             withdrawalAllowances[msg.sender][keyId][provider][arn]);
         return trustId;
     }
@@ -370,14 +391,14 @@ contract Notary is Initializable, OwnableUpgradeable, UUPSUpgradeable {
      *
      * @param scribe     the address of the scribe that is supposedly trusted
      * @param provider   the address of the provider whose funds are to be moved
-     * // UNUSED -param arn the arn of the asset being moved
+     * @param arn        the arn of the asset being moved
      * @param rootKeyId  the root key that the funds are moving from
      * @param keys       array of keys to move the funds to
      * @param amounts    array of amounts corresponding for each destination keys
      * @return the trustID for the rootKey
      */
-    function notarizeDistribution(address scribe, address provider, bytes32, 
-        uint256 rootKeyId, uint256[] calldata keys, uint256[] calldata amounts) external view returns (uint256) {
+    function notarizeDistribution(address scribe, address provider, bytes32 arn, 
+        uint256 rootKeyId, uint256[] calldata keys, uint256[] calldata amounts) external returns (uint256) {
         
         // the scribe needs to be trusted and the funds need
         // to be coming out of the root key
@@ -396,13 +417,15 @@ contract Notary is Initializable, OwnableUpgradeable, UUPSUpgradeable {
             // make sure the key is a valid locksmith key. This
             // prevents funds on the ledger being allocated to future-minted
             // keys within different trusts.
-            require(keys[x] < keyCount, 'INVALID_KEY');
+            require(keys[x] < keyCount, 'INVALID_DESTINATION');
             
             // make sure this valid key belongs to the same trust. this
             // call is only safe after checking that the key is valid.
             require(trustId == locksmith.keyTrustAssociations(keys[x]), "NON_TRUST_KEY");
         }
-
+    
+        emit notaryDistributionApproval(msg.sender, provider, scribe,
+            arn, trustId, rootKeyId, keys, amounts);
         return trustId;
     }
     ////////////////////////////////////////////////////////
@@ -440,6 +463,10 @@ contract Notary is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         // make sure the actor is trusted
         // we assume the message sender is the ledger
         require(actorTrustStatus[msg.sender][trustId][role][actor], 'UNTRUSTED_ACTOR');
+
+        //event notaryDistributionApproval(address ledger, address provider, address scribe,
+        //bytes32 arn, uint256 trustId, uint256 rootKeyId,
+        // uint256[] keys, uint256[] amounts);
 
         return trustId;
     }

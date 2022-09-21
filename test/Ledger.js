@@ -16,7 +16,6 @@ const {
 require('./TrustTestUtils.js');        // custom helpers
 //////////////////////////////////////////////////////////////
 
-/*
 //////////////////////////////////////////////////////////////
 describe("Ledger", function () {
   ////////////////////////////////////////////////////////////
@@ -380,7 +379,6 @@ describe("Ledger", function () {
       expect(await ledger.connect(root).getContextArnRegistry(2,2)).has.length(2); 
     });
   });
-*/
   /*
   ////////////////////////////////////////////////////////////
   // Distributions 
@@ -644,5 +642,5 @@ describe("Ledger", function () {
       expect(await ledger.connect(root).getContextArnBalances(2,0,peer.address, [stb('ether')])).eql([eth(3)]);
     });
   });
-});
 */
+});
