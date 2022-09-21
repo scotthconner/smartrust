@@ -41,13 +41,14 @@ import "./Notary.sol";
  * Conceptually, any balances associated with a Trust's root key
  * should be considered the trust's balance itself. Once the asset
  * rights have been moved to another key, they are considered outside
- * of the trust, even if they are still in the vault.
+ * of the trust, even if they are still on the ledger.
  *
- * This contract is designed to only be called by trusted peers 
- * or key holders. Some level of public state reflection
- * is available, any state mutation functions require a trusted
- * contract relationship.
+ * This contract is designed to only be called by trusted peers. 
+ * Some level of public state reflection is available, any state 
+ * mutation functions require a trusted contract relationship.
  *
+ * All trusted relationships are managed through the ledger's
+ * associated Notary, and are annointed by a root key holder.
  */
 contract Ledger is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     ////////////////////////////////////////////////////////
@@ -66,7 +67,6 @@ contract Ledger is Initializable, OwnableUpgradeable, UUPSUpgradeable {
      * @param provider      address of the collateral provider that deposited the asset
      * @param trustId       ID of the trust that has approved the collateral provider 
      * @param keyId         keyId associated with the deposit, most often a root key
-     * @param trustId       the trust id associated with the root key
      * @param arn           asset resource name hash of the asset deposited
      * @param amount        amount of asset that was deposited
      * @param keyBalance    provider's total arn balance for that key
@@ -101,17 +101,17 @@ contract Ledger is Initializable, OwnableUpgradeable, UUPSUpgradeable {
      * This event fires when assets move from one key to
      * another, usually as part of receiving a trust benefit.
      *
-     * @param origin      transaction origin address
-     * @param provider    address of the contract or user that initiated the ledger transfer
-     * @param arn         asset resource name of the asset that was moved
-     * @param fromKey     keyId that will have a reduction in asset balance
-     * @param toKey       keyId that will have an increase in asset balance
-     * @param amount      amount of assets to move
-     * @param fromBalance resulting balance for the fromKey's arn rights
-     * @param toBalance   resulting balance for the toKey's arn rights
+     * @param scribe           the trusted scribe for the action 
+     * @param provider         address of the contract or user that initiated the ledger transfer
+     * @param arn              asset resource name of the asset that was moved
+     * @param trustId          the associated trust that is being operated on
+     * @param rootKeyId        keyId that will have a reduction in asset balance
+     * @param keys             keyIds that will have an increase in asset balance
+     * @param amounts          amount of assets to move
+     * @param finalRootBalance resulting balance for the root key's arn rights
      */
-    event ledgerTransferOccurred(address origin, address provider, bytes32 arn,
-        uint256 fromKey, uint256 toKey, uint256 amount, uint256 fromBalance, uint256 toBalance);
+    event ledgerTransferOccurred(address scribe, address provider, bytes32 arn, uint256 trustId,
+        uint256 rootKeyId, uint256[] keys, uint256[] amounts, uint256 finalRootBalance); 
     
     ///////////////////////////////////////////////////////
     // Storage
@@ -273,9 +273,9 @@ contract Ledger is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         uint256 trustId = notary.notarizeDeposit(msg.sender, rootKeyId, arn, amount);
         
         // make the deposit at the ledger, trust, and key contexts
-        uint256 ledgerBalance = ledgerContext.deposit(arn, amount);
-        uint256 trustBalance  = trustContext[trustId].deposit(arn, amount);
-        uint256 keyBalance    = keyContext[rootKeyId].deposit(arn, amount);
+        uint256 ledgerBalance = ledgerContext.deposit(msg.sender, arn, amount);
+        uint256 trustBalance  = trustContext[trustId].deposit(msg.sender, arn, amount);
+        uint256 keyBalance    = keyContext[rootKeyId].deposit(msg.sender, arn, amount);
 
         emit depositOccurred(msg.sender, trustId, rootKeyId, arn, amount,
             keyBalance, trustBalance, ledgerBalance);
@@ -285,7 +285,7 @@ contract Ledger is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     /**
      * withdrawal 
      *
-     * Vaults will call withdrawal to update the ledger when a key
+     * Collateral providers will call withdrawal to update the ledger when a key
      * withdrawals funds from a trust.
      *
      * @param keyId  key to withdrawal the funds from 
@@ -303,9 +303,9 @@ contract Ledger is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         uint256 trustId = notary.notarizeWithdrawal(msg.sender, keyId, arn, amount);
 
         // make the withdrawal at the ledger, trust, and key contexts
-        uint256 ledgerBalance = ledgerContext.withdrawal(arn, amount);
-        uint256 trustBalance  = trustContext[trustId].withdrawal(arn, amount);
-        uint256 keyBalance    = keyContext[keyId].withdrawal(arn, amount);
+        uint256 ledgerBalance = ledgerContext.withdrawal(msg.sender, arn, amount);
+        uint256 trustBalance  = trustContext[trustId].withdrawal(msg.sender, arn, amount);
+        uint256 keyBalance    = keyContext[keyId].withdrawal(msg.sender, arn, amount);
 
         // invariant protection
         assert((ledgerBalance >= trustBalance) && (trustBalance >= keyBalance));
@@ -316,18 +316,54 @@ contract Ledger is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     }
    
     /**
-     * move 
+     * distribute
      *
-     * Trust rules will call move to update the ledger when certain 
-     * conditions are met. Funds are moved between keys to enable others
-     * the permission to withdrawal.
+     * Funds are moved between keys to enable others the permission to withdrawal.
+     * Distributions can only happen via trusted scribes, whose identifies are managed
+     * by the notary. The notary must also approve the content
+     * of each transaction as valid.
      *
-     * @param fromKey key ID to remove the funds from
-     * @param toKey   key ID to add the funds to 
-     * @param arn     asset resource hash of the asset to move 
-     * @param amount the amount of that asset withdrawn.
-     * @return final resulting balance of that asset for the from and to keys. 
+     * The caller must be the scribe moving the funds.
+     *
+     * @param provider  the provider we are moving collateral for
+     * @param arn       the asset we are moving
+     * @param rootKeyId the root key we are moving funds from 
+     * @param keys      the destination keys we are moving funds to 
+     * @param amounts   the amounts we are moving into each key 
+     * @return final resulting balance of that asset for the root key 
      */
+    function distribute(address provider, bytes32 arn, uint256 rootKeyId, uint256[] calldata keys, uint256[] calldata amounts) 
+        external returns (uint256) {
+
+        // notarize the distribution and obtain the trust ID
+        uint256 trustId = notary.notarizeDistribution(msg.sender, provider, arn, rootKeyId, keys, amounts);
+
+        // now that it is notarized, for each key context make the deposits.
+        // to save on gas, we aren't doing a withdrawal against the root for
+        // each key. It's super important not to leave this contract as we could
+        // end up with a re-entrancy attack.
+        uint256 moveSum;
+        for(uint256 x = 0; x < keys.length; x++) {
+            // the reason we aren't doing the ledger or trust context
+            // is because logically we are only moving existing funds
+            // between trust keys. The overal ledger or trust
+            // balance or arn registration doesn't change. Any
+            // invariants can be detected on withdrawal or deposit
+            // from a collateral provider.
+            keyContext[keys[x]].deposit(provider, arn, amounts[x]);
+            moveSum += amounts[x];
+        }
+
+        // finally, for the root key, do a single withdrawal on the sum.
+        // if the root key doesn't have sufficient balance, the entire
+        // transaction will revert with an overdraft. 
+        uint256 finalRootBalance = keyContext[rootKeyId].withdrawal(provider, arn, moveSum);
+
+        emit ledgerTransferOccurred(msg.sender, provider, arn, trustId, 
+            rootKeyId, keys, amounts, finalRootBalance);
+
+        return finalRootBalance;
+    }
     /*
     function move(uint256 fromKey, uint256 toKey, bytes32 arn, uint256 amount) external returns(uint256, uint256) {
         // TODO: We need to require ensure that the scribe

@@ -12,13 +12,12 @@ const { expect } = require("chai");    // used for assertions
 //
 // Easily be able to read what sort of key types you're using.
 //////////////////////////////////////////////////////
-OWNER       = function() { return 0;}
-TRUSTEE     = function() { return 1;}
-BENEFICIARY = function() { return 2;}
-
 LEDGER = function() { return 0;}
 TRUST  = function() { return 1;}
 KEY    = function() { return 2;}
+
+COLLATERAL_PROVIDER = function() { return 0; }
+SCRIBE = function() { return 1; }
 
 stb = function(string) {
   return ethers.utils.formatBytes32String(string);
@@ -128,6 +127,25 @@ TrustTestFixtures = (function() {
       return {keyVault, locksmith, owner, root, second, third};
     },
     ////////////////////////////////////////////////////////////
+    // freshNotaryProxy
+    // 
+    // Builds on top of a functioning locksmith and generates
+    // a proper Notary.
+    ////////////////////////////////////////////////////////////
+    freshNotaryProxy: async function() {
+      const {keyVault, locksmith, owner, root, second, third} =
+        await TrustTestFixtures.singleRoot();
+
+      // deploy the required notary
+      const Notary = await ethers.getContractFactory("Notary");
+
+      // since the contract is upgradeable, use a proxy
+      const notary = await upgrades.deployProxy(Notary, [locksmith.address]);
+      await notary.deployed();
+
+      return {keyVault, locksmith, notary, owner, root, second, third};
+    },
+    ////////////////////////////////////////////////////////////
     // freshLedgerProxy
     //
     // This fixture should represent the contract as it would
@@ -136,7 +154,7 @@ TrustTestFixtures = (function() {
     ////////////////////////////////////////////////////////////
     freshLedgerProxy: async function() {
       const {keyVault, locksmith, owner, root, second, third} =
-        await TrustTestFixtures.singleRoot();
+        await TrustTestFixtures.freshNotaryProxy();
 
       // deploy the required notary
       const Notary = await ethers.getContractFactory("Notary");
@@ -154,7 +172,7 @@ TrustTestFixtures = (function() {
 
       // let's give the owner collateral trust for the sake of
       // testing simplicity
-      await notary.connect(root).setCollateralProvider(0, ledger.address, owner.address, true);
+      await notary.connect(root).setTrustedLedgerRole(0, 0, ledger.address, owner.address, true);
 
       return {keyVault, locksmith, notary, ledger, owner, root, second, third};
     },
@@ -181,7 +199,7 @@ TrustTestFixtures = (function() {
       // set the vault as a trusted collteral provider to the
       // notary for the first trust. This makes it easy to test
       // balances without more set up.
-      await notary.connect(root).setCollateralProvider(0, ledger.address, vault.address, true);
+      await notary.connect(root).setTrustedLedgerRole(0, 0, ledger.address, vault.address, true);
 
       return { owner, keyVault, locksmith, 
         notary, ledger, vault, 
@@ -242,8 +260,8 @@ TrustTestFixtures = (function() {
       await coin.connect(second).approve(tokenVault.address, ethers.constants.MaxUint256);
       await coin.connect(third).approve(tokenVault.address, ethers.constants.MaxUint256);
 
-      await notary.connect(root).setCollateralProvider(
-        0, ledger.address, tokenVault.address, true);
+      await notary.connect(root).setTrustedLedgerRole(
+        0, 0, ledger.address, tokenVault.address, true);
 
       return {keyVault, locksmith, 
         notary, ledger, vault, tokenVault, coin, 

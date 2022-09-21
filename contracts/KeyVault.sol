@@ -34,6 +34,18 @@ contract KeyVault is ERC1155PresetMinterPauserUpgradeable {
         _disableInitializers();
     }
 
+    /**
+     * minterBurn
+     *
+     * We want to provide some extra functionality to allow the Locksmith
+     * to burn Trust Keys on behalf of the root key holder. While the KeyVault
+     * "trusts" the locksmith, the locksmith will only call this method on behalf
+     * of the root key holder.
+     *
+     * @param holder     the address of the key holder you want to burn from
+     * @param keyId      the ERC1155 NFT ID you want to burn
+     * @param burnAmount the number of said keys you want to burn from the holder's possession.
+     */
     function minterBurn(address holder, uint256 keyId, uint256 burnAmount) external {
         require(hasRole(MINTER_ROLE, _msgSender()), "NOT_MINTER");
         _burn(holder, keyId, burnAmount);

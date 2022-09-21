@@ -80,7 +80,7 @@ describe("EtherVault", function () {
 
       // create a second trust with a different owner, set collateral provider
       await locksmith.connect(second).createTrustAndRootKey(stb("Second Trust"));
-      await notary.connect(second).setCollateralProvider(1, vault.ledger(), vault.address, true);
+      await notary.connect(second).setTrustedLedgerRole(1, 0, vault.ledger(), vault.address, true);
 
       // deposit some cash into the first trust
       var depositAmount = eth(10);
@@ -214,7 +214,7 @@ describe("EtherVault", function () {
       await locksmith.connect(second).createTrustAndRootKey(stb("Second Trust"));
 
       // set the collateral provider with the notary
-      await notary.connect(second).setCollateralProvider(1, vault.ledger(), vault.address, true);
+      await notary.connect(second).setTrustedLedgerRole(1, 0, vault.ledger(), vault.address, true);
       await notary.connect(second).setWithdrawalAllowance(
         vault.ledger(), vault.address, 1, ethArn(), eth(100));
 

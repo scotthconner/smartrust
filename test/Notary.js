@@ -1,9 +1,8 @@
 //////////////////////////////////////////////////////////////
-/// Ledger.js
+/// Notary.js 
 // 
 //  Testing each use case that we expect to work, and a bunch
-//  that we expect to fail, specifically for withdrawal
-//  management.
+//  that we expect to fail, specifically for the Notary. 
 //////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////
@@ -16,9 +15,8 @@ const {
 require('./TrustTestUtils.js');        // custom helpers
 //////////////////////////////////////////////////////////////
 
-/*
 //////////////////////////////////////////////////////////////
-describe("Ledger", function () {
+describe("Notary", function () {
   ////////////////////////////////////////////////////////////
   // Deployment
   //
@@ -27,14 +25,8 @@ describe("Ledger", function () {
   ////////////////////////////////////////////////////////////
   describe("Contract deployment", function () {
     it("Should not fail the deployment", async function () {
-      const { ledger } = await loadFixture(TrustTestFixtures.freshLedgerProxy);
+      const { notary } = await loadFixture(TrustTestFixtures.freshNotaryProxy);
       expect(true);
-    });
-
-    it("Should have no ledger balance or activity", async function () {
-      const { ledger, owner, root } = await loadFixture(TrustTestFixtures.freshLedgerProxy);
-    
-      expect(await ledger.connect(root).getContextArnRegistry(2,0)).has.length(0); 
     });
   });
   
@@ -46,17 +38,455 @@ describe("Ledger", function () {
   ////////////////////////////////////////////////////////////
   describe("Contract upgrade", function() {
     it("Should be able to upgrade", async function() {
-      const { notary, ledger } = await loadFixture(TrustTestFixtures.freshLedgerProxy);
-      
-      const ledgerv2 = await ethers.getContractFactory("Ledger")
-      const ledgerAgain = await upgrades.upgradeProxy(ledger.address, ledgerv2);
-      
+      const { notary } = await loadFixture(TrustTestFixtures.freshNotaryProxy);
       const notaryv2 = await ethers.getContractFactory("Notary")
       const notaryAgain = await upgrades.upgradeProxy(notary.address, notaryv2);
       expect(true);
     });
   });
+
+  ////////////////////////////////////////////////////////////
+  // Set Trusted Ledger Role
+  //
+  // Ensure that setting the trusted ledger role works
+  // as expected.
+  //
+  // We will operate that the owner is the ledger, third is
+  // the role actor.
+  ////////////////////////////////////////////////////////////
+  describe("Set Trusted Ledger Roles", function() {
+    it("Can't set trusted role without holding key", async function() {
+      const { locksmith, notary, owner, root, second, third } = 
+        await loadFixture(TrustTestFixtures.freshNotaryProxy);
+
+      for(var role = COLLATERAL_PROVIDER(); role <= SCRIBE(); role++) {
+        await expect(notary.connect(second).setTrustedLedgerRole(1, role, owner.address, third.address, true))
+          .to.be.revertedWith('KEY_NOT_HELD');
+      }
+    });
+
+    it("Can't set trusted role without key being root", async function() {
+      const { locksmith, notary, owner, root, second, third } = 
+        await loadFixture(TrustTestFixtures.freshNotaryProxy);
+
+      // create a second key
+      await locksmith.connect(root).createKey(0, stb('second'), second.address);
+
+      for(var role = COLLATERAL_PROVIDER(); role <= SCRIBE(); role++) {
+        await expect(notary.connect(second).setTrustedLedgerRole(1, role, owner.address, third.address, true))
+          .to.be.revertedWith('KEY_NOT_ROOT');
+      }
+    });
+    
+    it("Setting Trusted Role shows up in proper trusted actor status", async function() {
+      const { locksmith, notary, owner, root, second, third } = 
+        await loadFixture(TrustTestFixtures.freshNotaryProxy);
+
+      for(var role = COLLATERAL_PROVIDER(); role <= SCRIBE(); role++) {
+        await expect(await notary.connect(root).setTrustedLedgerRole(0, role, owner.address, third.address, true))
+          .to.emit(notary, 'trustedRoleChange')
+          .withArgs(root.address, 0, 0, owner.address, third.address, true, role);
+
+        expect(await notary.actorTrustStatus(owner.address, 0, role, third.address)).eql(true);
+      }
+    });
+
+    it("Can't set trusted role if actor is already trusted", async function() {
+      const { locksmith, notary, owner, root, second, third } = 
+        await loadFixture(TrustTestFixtures.freshNotaryProxy);
+
+      for(var role = COLLATERAL_PROVIDER(); role <= SCRIBE(); role++) {
+        await expect(await notary.connect(root).setTrustedLedgerRole(0, role, owner.address, third.address, true))
+          .to.emit(notary, 'trustedRoleChange')
+          .withArgs(root.address, 0, 0, owner.address, third.address, true, role);
+
+        await expect(notary.connect(root).setTrustedLedgerRole(0, role, owner.address, third.address, true))
+          .to.be.revertedWith('REDUNDANT_PROVISION');
+      }
+    });
+
+    it("Successful deregistration changes trusted status", async function() {
+      const { locksmith, notary, owner, root, second, third } = 
+        await loadFixture(TrustTestFixtures.freshNotaryProxy);
+
+      for(var role = COLLATERAL_PROVIDER(); role <= SCRIBE(); role++) {
+        await expect(await notary.connect(root).setTrustedLedgerRole(0, role, owner.address, third.address, true))
+          .to.emit(notary, 'trustedRoleChange')
+          .withArgs(root.address, 0, 0, owner.address, third.address, true, role);
+        expect(await notary.actorTrustStatus(owner.address, 0, role, third.address)).eql(true);
+
+        await expect(await notary.connect(root).setTrustedLedgerRole(0, role, owner.address, third.address, false))
+          .to.emit(notary, 'trustedRoleChange')
+          .withArgs(root.address, 0, 0, owner.address, third.address, false, role);
+        expect(await notary.actorTrustStatus(owner.address, 0, role, third.address)).eql(false);
+      }
+    });
+
+    it("Bouncing Trusted Role doesn't create duplicate entries", async function() {
+      const { locksmith, notary, owner, root, second, third } = 
+        await loadFixture(TrustTestFixtures.freshNotaryProxy);
+
+      for(var role = COLLATERAL_PROVIDER(); role <= SCRIBE(); role++) {
+        await expect(await notary.connect(root).setTrustedLedgerRole(0, role, owner.address, third.address, true))
+          .to.emit(notary, 'trustedRoleChange')
+          .withArgs(root.address, 0, 0, owner.address, third.address, true, role);
+        expect(await notary.actorTrustStatus(owner.address, 0, role, third.address)).eql(true);
+        expect(await notary.actorRegistrySize(owner.address, 0, role)).to.equal(1);
+
+        await expect(await notary.connect(root).setTrustedLedgerRole(0, role, owner.address, third.address, false))
+          .to.emit(notary, 'trustedRoleChange')
+          .withArgs(root.address, 0, 0, owner.address, third.address, false, role);
+        expect(await notary.actorTrustStatus(owner.address, 0, role, third.address)).eql(false);
+        expect(await notary.actorRegistrySize(owner.address, 0, role)).to.equal(1);
+        
+        await expect(await notary.connect(root).setTrustedLedgerRole(0, role, owner.address, third.address, true))
+          .to.emit(notary, 'trustedRoleChange')
+          .withArgs(root.address, 0, 0, owner.address, third.address, true, role);
+        expect(await notary.actorTrustStatus(owner.address, 0, role, third.address)).eql(true);
+        expect(await notary.actorRegistrySize(owner.address, 0, role)).to.equal(1);
+        
+        await expect(await notary.connect(root).setTrustedLedgerRole(0, role, owner.address, second.address, true))
+          .to.emit(notary, 'trustedRoleChange')
+          .withArgs(root.address, 0, 0, owner.address, second.address, true, role);
+        expect(await notary.actorTrustStatus(owner.address, 0, role, second.address)).eql(true);
+        expect(await notary.actorRegistrySize(owner.address, 0, role)).to.equal(2);
+      }
+    });
+    
+    it("Can't de-register actor that isn't currently trusted", async function() {
+      const { locksmith, notary, owner, root, second, third } = 
+        await loadFixture(TrustTestFixtures.freshNotaryProxy);
+
+      for(var role = COLLATERAL_PROVIDER(); role <= SCRIBE(); role++) {
+        await expect(notary.connect(root).setTrustedLedgerRole(0, role, owner.address, third.address, false))
+          .to.be.revertedWith('NOT_CURRENT_ACTOR');
+      }
+    });
+  });
   
+  ////////////////////////////////////////////////////////////
+  // Setting Withdrawal Allowances 
+  //
+  // All withdrawals need to be allowed, cover all edge cases.
+  ////////////////////////////////////////////////////////////
+  describe("Setting Withdrawal Allowances", function() {
+    it("Can't set withdrawal allowance without holding key", async function() {
+      const { locksmith, notary, owner, root, second, third } = 
+        await loadFixture(TrustTestFixtures.freshNotaryProxy);
+
+      await expect(notary.connect(root).setWithdrawalAllowance(
+        owner.address, third.address, 1, stb('ether'), eth(1)))
+        .to.be.revertedWith('KEY_NOT_HELD');
+    });
+
+    it("Withdrawal allowance is set/reset and events emitted", async function() {
+      const { locksmith, notary, owner, root, second, third } = 
+        await loadFixture(TrustTestFixtures.freshNotaryProxy);
+
+      await expect(await notary.connect(root).setWithdrawalAllowance(
+        owner.address, third.address, 0, stb('ether'), eth(1)))
+        .to.emit(notary, 'withdrawalAllowanceAssigned')
+        .withArgs(root.address, 0, owner.address, third.address, stb('ether'), eth(1));
+      expect(await notary.withdrawalAllowances(owner.address, 0, third.address, stb('ether')))
+        .to.equal(eth(1));
+      
+      await expect(await notary.connect(root).setWithdrawalAllowance(
+        owner.address, third.address, 0, stb('ether'), eth(3)))
+        .to.emit(notary, 'withdrawalAllowanceAssigned')
+        .withArgs(root.address, 0, owner.address, third.address, stb('ether'), eth(3));
+      expect(await notary.withdrawalAllowances(owner.address, 0, third.address, stb('ether')))
+        .to.equal(eth(3));
+    });
+  });
+  
+  ////////////////////////////////////////////////////////////
+  // Notarize Deposits
+  // 
+  // We make sure that notarization occures correctly based
+  // on the trusted role.
+  //
+  // The owner will generally act as the ledger, and the
+  // collateral provider will be 'third'. 
+  ////////////////////////////////////////////////////////////
+  describe("Notarize Deposits", function() {
+    it("No Trusted Collateral Providers fails notarization", async function() {
+      const { locksmith, notary, owner, root, second, third } =
+        await loadFixture(TrustTestFixtures.freshNotaryProxy);
+
+      await expect(notary.connect(owner).notarizeDeposit(third.address, 0, stb('ether'), eth(1)))
+        .to.be.revertedWith('UNTRUSTED_ACTOR');
+    });
+
+    it("Invalid Key fails notarization", async function() {
+      const { locksmith, notary, owner, root, second, third } =
+        await loadFixture(TrustTestFixtures.freshNotaryProxy);
+
+      await expect(notary.connect(owner).notarizeDeposit(third.address, 90, stb('ether'), eth(1)))
+        .to.be.revertedWith('INVALID_KEY');
+    });
+
+    it("Attempting to notarize against non root-key fails", async function() {
+      const { locksmith, notary, owner, root, second, third } =
+        await loadFixture(TrustTestFixtures.freshNotaryProxy);
+
+      // mint a second key that is valid
+      await locksmith.connect(root).createKey(0, stb('beneficiary'), second.address);
+
+      await expect(notary.connect(owner).notarizeDeposit(third.address, 1, stb('ether'), eth(1)))
+        .to.be.revertedWith('KEY_NOT_ROOT');
+    });
+
+    it("Attempting to notarize an untrusted provider fails", async function() {
+      const { locksmith, notary, owner, root, second, third } =
+        await loadFixture(TrustTestFixtures.freshNotaryProxy);
+
+      // trust 'third', but attempt to notarize against 'second'
+      await expect(await notary.connect(root).setTrustedLedgerRole(0, COLLATERAL_PROVIDER(), owner.address,
+        third.address, true)).to.emit(notary, 'trustedRoleChange')
+        .withArgs(root.address, 0, 0, owner.address, third.address, true, COLLATERAL_PROVIDER());
+
+      // notarize against second isn't any good
+      await expect(notary.connect(owner).notarizeDeposit(second.address, 0, stb('ether'), eth(1)))
+        .to.be.revertedWith('UNTRUSTED_ACTOR');
+    });
+
+    it("Attempting to notarize from an untrusted ledger with valid provider fails", async function() {
+      const { locksmith, notary, owner, root, second, third } =
+        await loadFixture(TrustTestFixtures.freshNotaryProxy);
+
+      // trust 'third'
+      await expect(await notary.connect(root).setTrustedLedgerRole(0, COLLATERAL_PROVIDER(), owner.address,
+        third.address, true)).to.emit(notary, 'trustedRoleChange')
+        .withArgs(root.address, 0, 0, owner.address, third.address, true, COLLATERAL_PROVIDER());
+
+      // call from 'second', which is not a valid ledger based on the trust relationship 
+      await expect(notary.connect(second).notarizeDeposit(third.address, 0, stb('ether'), eth(1)))
+        .to.be.revertedWith('UNTRUSTED_ACTOR');
+    });
+
+    it("Everything is trusted, but we are using a different valid root key, fails", async function() {
+      const { locksmith, notary, owner, root, second, third } =
+        await loadFixture(TrustTestFixtures.freshNotaryProxy);
+
+      // trust 'third'
+      await expect(await notary.connect(root).setTrustedLedgerRole(0, COLLATERAL_PROVIDER(), owner.address,
+        third.address, true)).to.emit(notary, 'trustedRoleChange')
+        .withArgs(root.address, 0, 0, owner.address, third.address, true, COLLATERAL_PROVIDER());
+
+      // create another trust, that gives us a valid root key '1'.
+      await expect(await locksmith.connect(second).createTrustAndRootKey(stb('Second Trust')))
+        .to.emit(locksmith, 'trustCreated');
+
+      // call from the right ledger, the right collateral provide, AND a root key, just not
+      // one that was explicitly trusted
+      await expect(notary.connect(owner).notarizeDeposit(third.address, 1, stb('ether'), eth(1)))
+        .to.be.revertedWith('UNTRUSTED_ACTOR');
+    });
+
+    it("Trying to notarize against a trusted scribe fails", async function() {
+      const { locksmith, notary, owner, root, second, third } =
+        await loadFixture(TrustTestFixtures.freshNotaryProxy);
+
+      // trust 'third' with a SCRIBE role
+      await expect(await notary.connect(root).setTrustedLedgerRole(0, SCRIBE(), owner.address,
+        third.address, true)).to.emit(notary, 'trustedRoleChange')
+        .withArgs(root.address, 0, 0, owner.address, third.address, true, SCRIBE());
+
+      // everything about this seems right, but 'third' has a scribe role not
+      // a collateral provider role - so the deposit notarization should fail.
+      await expect(notary.connect(owner).notarizeDeposit(third.address, 0, stb('ether'), eth(1)))
+        .to.be.revertedWith('UNTRUSTED_ACTOR');
+    });
+
+    it("Successful notarization", async function() {
+      const { locksmith, notary, owner, root, second, third } =
+        await loadFixture(TrustTestFixtures.freshNotaryProxy);
+
+      // trust 'third'
+      await expect(await notary.connect(root).setTrustedLedgerRole(0, COLLATERAL_PROVIDER(), owner.address,
+        third.address, true)).to.emit(notary, 'trustedRoleChange')
+        .withArgs(root.address, 0, 0, owner.address, third.address, true, COLLATERAL_PROVIDER());
+
+      // this represents the only way it succeeds - the ledger, provider, and root key are
+      // all valid parts of the relationship.
+      await expect(notary.connect(owner).notarizeDeposit(third.address, 0, stb('ether'), eth(1)))
+        .to.emit(notary, 'notaryDepositApproval')
+        .withArgs(owner.address, third.address, 0, stb('ether'), eth(1));
+    });
+  });
+  
+  ////////////////////////////////////////////////////////////
+  // Notarize Withdrawals 
+  // 
+  // We make sure that notarization occures correctly based
+  // on the trusted role.
+  //
+  // The owner will generally act as the ledger, and the
+  // collateral provider will be 'third'. 
+  ////////////////////////////////////////////////////////////
+  describe("Notarize Withdrawals", function() {
+    it("Empty Collateral Provider fails notarization", async function() {
+      const { locksmith, notary, owner, root, second, third } =
+        await loadFixture(TrustTestFixtures.freshNotaryProxy);
+
+      await expect(notary.connect(owner).notarizeWithdrawal(third.address, 0, stb('ether'), eth(1)))
+        .to.be.revertedWith('UNTRUSTED_ACTOR');
+    });
+
+    it("Invalid Key fails notarization", async function() {
+      const { locksmith, notary, owner, root, second, third } =
+        await loadFixture(TrustTestFixtures.freshNotaryProxy);
+
+      await expect(notary.connect(owner).notarizeWithdrawal(third.address, 1, stb('ether'), eth(1)))
+        .to.be.revertedWith('INVALID_KEY');
+    });
+
+    it("Attempting to notarize an untrusted provider fails", async function() {
+      const { locksmith, notary, owner, root, second, third } =
+        await loadFixture(TrustTestFixtures.freshNotaryProxy);
+
+      // trust 'third', but attempt to notarize against 'second'
+      await expect(await notary.connect(root).setTrustedLedgerRole(0, COLLATERAL_PROVIDER(), owner.address,
+        third.address, true)).to.emit(notary, 'trustedRoleChange')
+        .withArgs(root.address, 0, 0, owner.address, third.address, true, COLLATERAL_PROVIDER());
+
+      // notarize against second isn't any good
+      await expect(notary.connect(owner).notarizeWithdrawal(second.address, 0, stb('ether'), eth(1)))
+        .to.be.revertedWith('UNTRUSTED_ACTOR');
+    });
+
+    it("Attempting to notarize from an untrusted ledger with valid provider fails", async function() {
+      const { locksmith, notary, owner, root, second, third } =
+        await loadFixture(TrustTestFixtures.freshNotaryProxy);
+
+      // trust 'third'
+      await expect(await notary.connect(root).setTrustedLedgerRole(0, COLLATERAL_PROVIDER(), owner.address,
+        third.address, true)).to.emit(notary, 'trustedRoleChange')
+        .withArgs(root.address, 0, 0, owner.address, third.address, true, COLLATERAL_PROVIDER());
+
+      // call from 'second', which is not a valid ledger based on the trust relationship
+      await expect(notary.connect(second).notarizeWithdrawal(third.address, 0, stb('ether'), eth(1)))
+        .to.be.revertedWith('UNTRUSTED_ACTOR');
+    });
+
+    it("Everything is trusted, but we are using a different valid root key, fails", async function() {
+      const { locksmith, notary, owner, root, second, third } =
+        await loadFixture(TrustTestFixtures.freshNotaryProxy);
+
+      // trust 'third'
+      await expect(await notary.connect(root).setTrustedLedgerRole(0, COLLATERAL_PROVIDER(), owner.address,
+        third.address, true)).to.emit(notary, 'trustedRoleChange')
+        .withArgs(root.address, 0, 0, owner.address, third.address, true, COLLATERAL_PROVIDER());
+
+      // create another trust, that gives us a valid root key '1'.
+      await expect(await locksmith.connect(second).createTrustAndRootKey(stb('Second Trust')))
+        .to.emit(locksmith, 'trustCreated');
+
+      // call from the right ledger, the right collateral provide, AND a root key, just not
+      // one that was explicitly trusted
+      await expect(notary.connect(owner).notarizeWithdrawal(third.address, 1, stb('ether'), eth(1)))
+        .to.be.revertedWith('UNTRUSTED_ACTOR');
+    });
+
+    it("Trying to notarize against a trusted scribe fails", async function() {
+      const { locksmith, notary, owner, root, second, third } =
+        await loadFixture(TrustTestFixtures.freshNotaryProxy);
+
+      // trust 'third' with a SCRIBE role
+      await expect(await notary.connect(root).setTrustedLedgerRole(0, SCRIBE(), owner.address,
+        third.address, true)).to.emit(notary, 'trustedRoleChange')
+        .withArgs(root.address, 0, 0, owner.address, third.address, true, SCRIBE());
+
+      // everything about this seems right, but 'third' has a scribe role not
+      // a collateral provider role - so the deposit notarization should fail.
+      await expect(notary.connect(owner).notarizeWithdrawal(third.address, 0, stb('ether'), eth(1)))
+        .to.be.revertedWith('UNTRUSTED_ACTOR');
+    });
+
+    it("Notarization fails due to empty allowance", async function() {
+      const { locksmith, notary, owner, root, second, third } =
+        await loadFixture(TrustTestFixtures.freshNotaryProxy);
+
+      // trust 'third'
+      await expect(await notary.connect(root).setTrustedLedgerRole(0, COLLATERAL_PROVIDER(), owner.address,
+        third.address, true)).to.emit(notary, 'trustedRoleChange')
+        .withArgs(root.address, 0, 0, owner.address, third.address, true, COLLATERAL_PROVIDER());
+
+      // everything about this seems right, but we haven't set a withdrawal allowance
+      await expect(notary.connect(owner).notarizeWithdrawal(third.address, 0, stb('ether'), eth(1)))
+        .to.be.revertedWith('UNAPPROVED_AMOUNT');
+    });
+
+    it("Successful notarization on multiple keys, and drain allowance", async function() {
+      const { locksmith, notary, owner, root, second, third } =
+        await loadFixture(TrustTestFixtures.freshNotaryProxy);
+
+      // trust 'third'
+      await expect(await notary.connect(root).setTrustedLedgerRole(0, COLLATERAL_PROVIDER(), owner.address,
+        third.address, true)).to.emit(notary, 'trustedRoleChange')
+        .withArgs(root.address, 0, 0, owner.address, third.address, true, COLLATERAL_PROVIDER());
+
+      // create another key
+      await locksmith.connect(root).createKey(0, stb('beneficiary'), second.address);
+
+      // set the withdrawal allowance
+      await notary.connect(root).setWithdrawalAllowance(owner.address, third.address, 0, stb('ether'), eth(1));
+      await notary.connect(second).setWithdrawalAllowance(owner.address, third.address, 1, stb('ether'), eth(1));
+
+      // everything about this seems right
+      await expect(await notary.connect(owner).notarizeWithdrawal(third.address, 0, stb('ether'), eth(0.9)))
+        .to.emit(notary, 'notaryWithdrawalApproval')
+        .withArgs(owner.address, third.address, 0, stb('ether'), eth(0.9), eth(0.1));
+      await expect(await notary.connect(owner).notarizeWithdrawal(third.address, 1, stb('ether'), eth(0.6)))
+        .to.emit(notary, 'notaryWithdrawalApproval')
+        .withArgs(owner.address, third.address, 1, stb('ether'), eth(0.6), eth(0.4));
+
+      // this one should fail with an unapproved amount
+      await expect(notary.connect(owner).notarizeWithdrawal(third.address, 0, stb('ether'), eth(0.9)))
+        .to.be.revertedWith('UNAPPROVED_AMOUNT');
+    });
+  });
+  
+  ////////////////////////////////////////////////////////////
+  // Notarize Distribution 
+  // 
+  // We make sure that notarization occures correctly based
+  // on the trusted role.
+  //
+  // The owner will generally act as the ledger, the 
+  // collateral provider will be 'third', and the scribe, 'second'. 
+  ////////////////////////////////////////////////////////////
+  describe("Notarize Distribution", function() {
+    it("Distribution fails notary on untrusted provider", async function() {
+
+    });
+
+    it("Distribution fails notary on untrusted scribe", async function() {
+
+    });
+
+    it("Distrbution fails notary when root key isn't valid", async function() {
+
+    });
+
+    it("Distribution fails notary when root key isn't root", async function() {
+
+    });
+
+    it("Distribution fails notary when key and amounts lengths are different", async function() {
+
+    });
+
+    it("Distrbution fails notary when any destination key is invalid", async function() {
+
+    });
+
+    it("Distribution fails notary when valid destination key isn't within trust", async function() {
+
+    });
+  });
+
+  /* 
   ////////////////////////////////////////////////////////////
   // Deposit 
   //
@@ -380,7 +810,7 @@ describe("Ledger", function () {
       expect(await ledger.connect(root).getContextArnRegistry(2,2)).has.length(2); 
     });
   });
-*/
+  */
   /*
   ////////////////////////////////////////////////////////////
   // Distributions 
@@ -465,7 +895,6 @@ describe("Ledger", function () {
     });
   });
   */
-
   /*
   ////////////////////////////////////////////////////////////
   // Collateral Providers + Notary 
@@ -644,5 +1073,5 @@ describe("Ledger", function () {
       expect(await ledger.connect(root).getContextArnBalances(2,0,peer.address, [stb('ether')])).eql([eth(3)]);
     });
   });
-});
 */
+});

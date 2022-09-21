@@ -78,8 +78,8 @@ describe("TokenVault", function () {
       // have the owner deposit some tokens into the account
       await expect(tokenVault.connect(second)
         .deposit(1, coin.address, eth(3))) 
-        .to.be.revertedWith('UNTRUSTED_PROVIDER');
-      await notary.connect(second).setCollateralProvider(1, ledger.address, tokenVault.address, true);
+        .to.be.revertedWith('UNTRUSTED_ACTOR');
+      await notary.connect(second).setTrustedLedgerRole(1, 0, ledger.address, tokenVault.address, true);
 
       await expect(await tokenVault.connect(second).deposit(1, coin.address, eth(3)) )
         .to.emit(ledger, "depositOccurred")

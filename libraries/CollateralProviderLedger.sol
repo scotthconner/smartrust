@@ -37,16 +37,17 @@ library CollateralProviderLedger {
      * Use this method to deposit funds from a collateral provider
      * into a context.
      *
-     * @param c   the context you want to deposit to
-     * @param arn the arn you want to deposit
-     * @param amount the amount of asset you want to deposit
+     * @param c        the context you want to deposit to
+     * @param provider the provider of the collateral
+     * @param arn      the arn you want to deposit
+     * @param amount   the amount of asset you want to deposit
      * @return the context arn's resulting balance
      */
-    function deposit(CollateralProviderContext storage c, bytes32 arn, uint256 amount) internal returns (uint256) {
+    function deposit(CollateralProviderContext storage c, address provider, bytes32 arn, uint256 amount) internal returns (uint256) {
         // register the provider and the arn
-        if(!c.registeredCollateralProviders[msg.sender]) {
-            c.collateralProviderRegistry.push(msg.sender);
-            c.registeredCollateralProviders[msg.sender] = true;    
+        if(!c.registeredCollateralProviders[provider]) {
+            c.collateralProviderRegistry.push(provider);
+            c.registeredCollateralProviders[provider] = true;    
         }
         if(!c.registeredArns[arn]) {
             c.arnRegistry.push(arn);
@@ -55,13 +56,13 @@ library CollateralProviderLedger {
 
         // add the amount to the context and provider totals
         c.contextArnBalances[arn] += amount;
-        c.contextProviderArnBalances[msg.sender][arn] += amount;
+        c.contextProviderArnBalances[provider][arn] += amount;
             
         // invariant protection: the context balance should be equal or
         // bigger than the provider's balance.
-        assert(c.contextArnBalances[arn] >= c.contextProviderArnBalances[msg.sender][arn]);
+        assert(c.contextArnBalances[arn] >= c.contextProviderArnBalances[provider][arn]);
 
-        return c.contextProviderArnBalances[msg.sender][arn];
+        return c.contextProviderArnBalances[provider][arn];
     }
     
     /**
@@ -70,24 +71,25 @@ library CollateralProviderLedger {
      * Use this method to withdrawal funds from a collateral provider
      * out a context.
      *
-     * @param c   the context you want to withdrawal from
-     * @param arn the arn you want to withdrawal 
-     * @param amount the amount of asset you want to remove 
+     * @param c        the context you want to withdrawal from
+     * @param provider the provider of the collateral
+     * @param arn      the arn you want to withdrawal 
+     * @param amount   the amount of asset you want to remove 
      * @return the context arn's resulting balance
      */
-    function withdrawal(CollateralProviderContext storage c, bytes32 arn, uint256 amount) internal returns (uint256) {
+    function withdrawal(CollateralProviderContext storage c, address provider, bytes32 arn, uint256 amount) internal returns (uint256) {
         // make sure we are not overdrafting
-        require(c.registeredArns[arn] && c.contextProviderArnBalances[msg.sender][arn] >= amount, "OVERDRAFT");
+        require(c.registeredArns[arn] && c.contextProviderArnBalances[provider][arn] >= amount, "OVERDRAFT");
 
         // remove the amount from the context and provider totals
         c.contextArnBalances[arn] -= amount;
-        c.contextProviderArnBalances[msg.sender][arn] -= amount;
+        c.contextProviderArnBalances[provider][arn] -= amount;
 
         // invariant protection: the context balance should be equal or
         // bigger than the provider's balance.
-        assert(c.contextArnBalances[arn] >= c.contextProviderArnBalances[msg.sender][arn]);
+        assert(c.contextArnBalances[arn] >= c.contextProviderArnBalances[provider][arn]);
 
-        return c.contextProviderArnBalances[msg.sender][arn];
+        return c.contextProviderArnBalances[provider][arn];
     }
 
     /**

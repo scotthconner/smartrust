@@ -110,7 +110,7 @@ contract Locksmith is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     // between a key and it's trust. This enables O(1) key
     // to trust resolution
     mapping(uint256 => uint256) public keyTrustAssociations;
-    uint256 private keyCount; // the total number of keys
+    uint256 public keyCount; // the total number of keys
     
     ///////////////////////////////////////////////////////
     // Constructor and Upgrade Methods
@@ -146,10 +146,9 @@ contract Locksmith is Initializable, OwnableUpgradeable, UUPSUpgradeable {
      * I think it works by reverting if upgrade() is called from someone other than
      * the owner.
      *
-     * @param newImplementation the new address implementation to upgrade to
+     * //UNUSED -param newImplementation the new address implementation to upgrade to
      */
-    function _authorizeUpgrade(address newImplementation) internal view onlyOwner override
-    { newImplementation; }
+    function _authorizeUpgrade(address) internal view onlyOwner override {}
 
     ////////////////////////////////////////////////////////
     // External Methods
@@ -296,7 +295,7 @@ contract Locksmith is Initializable, OwnableUpgradeable, UUPSUpgradeable {
      * inspectKey 
      * 
      * Takes a key id and inspects it.
-     * TODO: Add Key inventory
+     * TODO: Add Key inventory, or use an indexer here.
      * 
      * @return true if the key is a valid key
      * @return alias of the key 
