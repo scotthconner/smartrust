@@ -301,6 +301,20 @@ TrustTestFixtures = (function() {
       return {keyVault, locksmith, 
         notary, ledger, vault, tokenVault, coin, 
         owner, root, second, third};
+    },
+    ////////////////////////////////////////////////////////////
+    // freshTrustEventLog 
+    //
+    // This deploys the TrustEventLog and nothing else.
+    ////////////////////////////////////////////////////////////
+    freshTrustEventLog: async function() {
+      const [owner, root, second, third] = await ethers.getSigners();
+      
+      const TrustEventLog = await ethers.getContractFactory("TrustEventLog");
+      const events = await upgrades.deployProxy(TrustEventLog, []);
+      await events.deployed();
+
+      return {owner, root, second, third, events};
     }
   };
 })();

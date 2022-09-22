@@ -18,7 +18,7 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
 // Be able to produce the ethereum arn
-import "../libraries/AssetResourceName.sol";
+import "../../libraries/AssetResourceName.sol";
 using AssetResourceName for AssetResourceName.AssetType;
 
 // We want to use the ERC20 interface so each trust can hold any arbitrary
@@ -27,8 +27,8 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 // We have a full contract dependency on the locksmith, which
 // must be deployed first.
-import "./Locksmith.sol";
-import "./Ledger.sol";
+import "../Locksmith.sol";
+import "../Ledger.sol";
 ///////////////////////////////////////////////////////////
 
 /**
