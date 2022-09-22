@@ -177,6 +177,23 @@ TrustTestFixtures = (function() {
       return {keyVault, locksmith, notary, ledger, owner, root, second, third};
     },
     ////////////////////////////////////////////////////////////
+    // fundedLedgerProxy 
+    //
+    // Set up provider/scribe relationship and fund a root key
+    ////////////////////////////////////////////////////////////
+    fundedLedgerProxy: async function() {
+      const {keyVault, locksmith, notary, ledger, owner, root, second, third} =
+        await TrustTestFixtures.freshLedgerProxy();
+
+      // set up a trusted scribe 
+      await notary.connect(root).setTrustedLedgerRole(0, SCRIBE(), ledger.address, third.address, true);
+
+      // deposit the bat guano
+      await ledger.connect(owner).deposit(0, stb('ether'), eth(10));
+
+      return {keyVault, locksmith, notary, ledger, owner, root, second, third};
+    },
+    ////////////////////////////////////////////////////////////
     // freshEtherVault 
     //
     // Takes an established ledger and providers a simple eth
