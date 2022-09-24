@@ -32,7 +32,7 @@ describe("Locksmith", function () {
 
     it("Should have no active trusts", async function () {
       const { locksmith } = await loadFixture(TrustTestFixtures.freshLocksmithProxy);
-      expect((await locksmith.inspectChildKey(0))[0]).to.equal(false);
+      expect((await locksmith.inspectKey(0))[0]).to.equal(false);
     });
   });
   
@@ -66,7 +66,7 @@ describe("Locksmith", function () {
     it("Can't mint key if not a locksmith", async function() {
       const { keyVault, locksmith, owner, root, second, third} =
         await loadFixture(TrustTestFixtures.freshLocksmithProxy);
-      await expect(keyVault.connect(root).mint(root.address, 0, 1, false, stb("")))
+      await expect(keyVault.connect(root).mint(root.address, 0, 1, stb("")))
         .to.be.revertedWith("NOT_LOCKSMITH");
     });
 
@@ -75,7 +75,7 @@ describe("Locksmith", function () {
         = await loadFixture(TrustTestFixtures.freshLocksmithProxy);
 
       // assert the preconditions 
-      expect((await locksmith.inspectChildKey(0))[0]).to.equal(false);
+      expect((await locksmith.inspectKey(0))[0]).to.equal(false);
       expect(await ethers.provider.getBalance(locksmith.address)).to.equal(0);
 
       // ensure no account holds any root keys 
@@ -103,7 +103,7 @@ describe("Locksmith", function () {
         await loadFixture(TrustTestFixtures.freshLocksmithProxy);
 
       // make sure there are no trusts and there are no root keys 
-      expect((await locksmith.inspectChildKey(0))[0]).to.equal(false);
+      expect((await locksmith.inspectKey(0))[0]).to.equal(false);
       expect(await keyVault.balanceOf(root.address, 0)).to.equal(0);
       expect(await keyVault.balanceOf(second.address, 0)).to.equal(0);
 

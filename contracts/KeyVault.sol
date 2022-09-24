@@ -32,7 +32,6 @@ contract KeyVault is Initializable, ERC1155Upgradeable, OwnableUpgradeable, UUPS
     ///////////////////////////////////////////////////////
     // Storage
     ///////////////////////////////////////////////////////
-    // only the locksmith can mint and burn
     address public respectedLocksmith;
 
     ///////////////////////////////////////////////////////
@@ -103,17 +102,11 @@ contract KeyVault is Initializable, ERC1155Upgradeable, OwnableUpgradeable, UUPS
      * @param receiver   the address to send the new key to 
      * @param keyId      the ERC1155 NFT ID you want to mint 
      * @param amount     the number of keys you want to mint to the receiver
-     * @param soulbound  true if you want this token to be non-transferrable.
      * @param data       the data field for the key 
      */
-    function mint(address receiver, uint256 keyId, uint256 amount, bool soulbound, bytes calldata data) external {
+    function mint(address receiver, uint256 keyId, uint256 amount, bytes calldata data) external {
         require(respectedLocksmith == msg.sender, "NOT_LOCKSMITH");
         _mint(receiver, keyId, amount, data);
-
-        // prevent transfers of that key id if soulbound
-        if (soulbound) {
-
-        }
     }
 
     /**

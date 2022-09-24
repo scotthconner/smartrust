@@ -64,7 +64,7 @@ doTransaction = async function(promise) {
 };
 
 assertKey = async function(locksmith, account, keyId, isValid, name, trustId, isRoot, keys = null) {
-  let [valid, alias, id, root, _keys] = (await locksmith.connect(account).inspectChildKey(keyId));
+  let [valid, alias, id, root, _keys] = (await locksmith.connect(account).inspectKey(keyId));
   expect(valid).to.equal(isValid);
   expect(id).to.equal(trustId);
   expect(root).to.equal(isRoot);

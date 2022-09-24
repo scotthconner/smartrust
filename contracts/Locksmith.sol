@@ -106,14 +106,10 @@ contract Locksmith is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     mapping(uint256 => Trust) private trustRegistry;
     uint256 private trustCount; // total number of trusts
 
-    // a mapping that keeps a top level association
-    // between a root key and it's trust. This enables O(1) root 
+    // a reverse mapping that keeps a top level association
+    // between a key and it's trust. This enables O(1) key
     // to trust resolution
-    mapping(uint256 => uint256) public rootKeyTrustAssociations;
-    
-    // keep track of every key's root key
-    mapping(uint256 => uint256) public parentRootKeys;
-
+    mapping(uint256 => uint256) public keyTrustAssociations;
     uint256 public keyCount; // the total number of keys
     
     ///////////////////////////////////////////////////////
@@ -181,11 +177,7 @@ contract Locksmith is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         // the key with the trust
         t.keys.push(t.rootKeyId);
         t.keyNames[t.rootKeyId] = 'root';
-        rootKeyTrustAssociations[t.rootKeyId] = t.id;
-
-        // because this key is an origin key, its root
-        // is itself
-        parentRootKeys[t.rootKeyId] = t.rootKeyId;
+        keyTrustAssociations[t.rootKeyId] = t.id;
 
         // mint the root key, give it to the sender.
         mintKey(t, t.rootKeyId, msg.sender);
@@ -204,9 +196,9 @@ contract Locksmith is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         // key is valid
         return (keyId < keyCount) &&
         // the root key for the trust is the key in question
-        (keyId == trustRegistry[rootKeyTrustAssociations[keyId]].rootKeyId) &&
+        (keyId == trustRegistry[keyTrustAssociations[keyId]].rootKeyId) &&
         // the key has been minted at least once
-        (trustRegistry[rootKeyTrustAssociations[keyId]].keyMintCounts[keyId] > 0);
+        (trustRegistry[keyTrustAssociations[keyId]].keyMintCounts[keyId] > 0);
     }
     
     /**
@@ -233,10 +225,8 @@ contract Locksmith is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         // keep track of the association at O(1), along
         t.keys.push(keyCount);
         t.keyNames[keyCount] = keyName;
-        
-        // keep track of this key's root key
-        parentRootKeys[keyCount] = rootKeyId;
-
+        keyTrustAssociations[keyCount] = t.id; 
+       
         // mint the key into the target wallet
         mintKey(t, keyCount, receiver); 
 
@@ -302,28 +292,28 @@ contract Locksmith is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     }
 
     /**
-     * inspectChildKey 
+     * inspectKey 
      * 
-     * Takes a key id and inspects it, as the key acts as a child to a root
-     * within a trust.
+     * Takes a key id and inspects it.
+     * TODO: Add Key inventory, or use an indexer here.
      * 
      * @return true if the key is a valid key
      * @return alias of the key 
-     * @return the parent trust id of the key (only if its considered valid)
+     * @return the trust id of the key (only if its considered valid)
      * @return true if the key is a root key
      * @return the keys associated with the given trust
      */ 
-    function inspectChildKey(uint256 keyId) external view returns (bool, bytes32, uint256, bool, uint256[] memory) {
+    function inspectKey(uint256 keyId) external view returns (bool, bytes32, uint256, bool, uint256[] memory) {
         // the key is a valid key number 
         return ((keyId < keyCount),
             // the human readable name of the key
-            trustRegistry[rootKeyTrustAssociations[parentRootKeys[keyId]]].keyNames[keyId],
+            trustRegistry[keyTrustAssociations[keyId]].keyNames[keyId],
             // trust Id of the key
-            rootKeyTrustAssociations[parentRootKeys[keyId]],
+            keyTrustAssociations[keyId],
             // the key is a root key 
             isRootKey(keyId),
             // the keys associated with the trust
-            trustRegistry[rootKeyTrustAssociations[parentRootKeys[keyId]]].keys);
+            trustRegistry[keyTrustAssociations[keyId]].keys);
     }
 
     /**
@@ -392,7 +382,7 @@ contract Locksmith is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         // attacks to the first trust in the contract.
         trust.keyMintCounts[keyId]++;
         
-        keyVault.mint(receiver, keyId, 1, false, "");
+        keyVault.mint(receiver, keyId, 1, "");
         emit keyMinted(msg.sender, trust.id, keyId, trust.keyNames[keyId], receiver);
     }
     
@@ -413,7 +403,7 @@ contract Locksmith is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         require(keyVault.balanceOf(msg.sender, rootKeyId) > 0, 'KEY_NOT_HELD');    
 
         // make sure that the keyID is the rootKeyID
-        uint256 trustId = rootKeyTrustAssociations[rootKeyId];
+        uint256 trustId = keyTrustAssociations[rootKeyId];
         require(rootKeyId == trustRegistry[trustId].rootKeyId, 'KEY_NOT_ROOT');
 
         return trustId;

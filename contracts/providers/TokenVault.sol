@@ -158,7 +158,7 @@ contract TokenVault is Initializable, OwnableUpgradeable, UUPSUpgradeable {
 
         // update the witnessed token addresses, so we can easily describe
         // the trust-level tokens in this vault.
-        (,,uint256 trustId,,) = locksmith.inspectChildKey(keyId);
+        (,,uint256 trustId,,) = locksmith.inspectKey(keyId);
         if(!witnessedTokenRegistry[trustId][token]) {
             witnessedTokenAddresses[trustId].push(token);
             witnessedTokenRegistry[trustId][token] = true;
@@ -213,7 +213,7 @@ contract TokenVault is Initializable, OwnableUpgradeable, UUPSUpgradeable {
      * @return the token registry for that trust
      */
     function getTokenTypes(uint256 keyId) external view returns(address[] memory) {
-        (,,uint256 trustId,,) = locksmith.inspectChildKey(keyId);
+        (,,uint256 trustId,,) = locksmith.inspectKey(keyId);
         return witnessedTokenAddresses[trustId];
     }
 }
