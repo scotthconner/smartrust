@@ -42,7 +42,7 @@ import '../TrustEventLog.sol';
  * trusted to the notary before distributions will be respected.
  *
  * The trustee role does *not* by nature have permission to
- * manage, deposit, or withdrawal funds from the trust. They simply
+  manage, deposit, or withdrawal funds from the trust. They simply
  * gain permission to distribute funds from the root key (trust) to
  * pre-configured keys on the ring based on an optional list
  * of triggering events from a dispatcher.
@@ -57,7 +57,7 @@ contract Trustee is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     ////////////////////////////////////////////////////////
 
     /**
-     * trusteeConfigurationAdded
+     * trusteePolicySet
      *
      * This event is fired when a root key holder configures
      * a trustee.
@@ -68,11 +68,11 @@ contract Trustee is Initializable, OwnableUpgradeable, UUPSUpgradeable {
      * @param beneficiaries the keys the trustee can move funds to
      * @param events        the list of events that must occur before activating the role
      */
-    event trusteeConfigurationAdded(address actor, uint256 rootKeyId, uint256 trusteeKeyId,
+    event trusteePolicySet(address actor, uint256 rootKeyId, uint256 trusteeKeyId,
         uint256[] beneficiaries, bytes32[] events);
 
     /**
-     * trusteeConfigurationRemoved
+     * trusteePolicyRemoved
      *
      * This event is fired when a root key holder removes
      * a trustee configuration from the scribe contract.
@@ -81,7 +81,7 @@ contract Trustee is Initializable, OwnableUpgradeable, UUPSUpgradeable {
      * @param rootKeyId    the root key used as authority to remove
      * @param trusteeKeyId the key to remove as trustee
      */
-    event trusteeConfigurationRemoved(address actor, uint256 rootKeyId, uint256 trusteeKeyId);
+    event trusteePolicyRemoved(address actor, uint256 rootKeyId, uint256 trusteeKeyId);
 
     ///////////////////////////////////////////////////////
     // Storage
@@ -237,12 +237,12 @@ contract Trustee is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         t.requiredEvents = events;
         t.enabled = (0 == events.length);
     
-        emit trusteeConfigurationAdded(msg.sender, rootKeyId, trusteeKeyId,
+        emit trusteePolicySet(msg.sender, rootKeyId, trusteeKeyId,
             beneficiaries, events);
     }
 
     /**
-     * remove
+     * removePolicy
      *
      * If a root key holder wants to remove a trustee, they can
      * call this method.
@@ -273,7 +273,7 @@ contract Trustee is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         // at this point, we can delete the entry
         delete trustees[trusteeKeyId];
 
-        emit trusteeConfigurationRemoved(msg.sender, rootKeyId, trusteeKeyId);
+        emit trusteePolicyRemoved(msg.sender, rootKeyId, trusteeKeyId);
     }
     
     ////////////////////////////////////////////////////////
