@@ -411,19 +411,10 @@ contract Notary is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         // check to ensure the array sizes are 1:1
         require(keys.length == amounts.length, "KEY_AMOUNT_SIZE_MISMATCH");
 
-        // check to ensure all destination keys belong to the trust
-        uint256 keyCount = locksmith.keyCount();
-        for(uint256 x = 0; x < keys.length; x++) {
-            // make sure the key is a valid locksmith key. This
-            // prevents funds on the ledger being allocated to future-minted
-            // keys within different trusts.
-            require(keys[x] < keyCount, 'INVALID_DESTINATION');
-            
-            // make sure this valid key belongs to the same trust. this
-            // call is only safe after checking that the key is valid.
-            require(trustId == locksmith.keyTrustAssociations(keys[x]), "NON_TRUST_KEY");
-        }
-    
+        // this method will fully panic if its not valid.
+        // we should also panic if the root key is on the ring
+        locksmith.validateKeyRing(trustId, keys, false);
+
         emit notaryDistributionApproval(msg.sender, provider, scribe,
             arn, trustId, rootKeyId, keys, amounts);
         return trustId;
@@ -456,17 +447,11 @@ contract Notary is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         require(valid, "INVALID_KEY");
         
         // make sure the root is key if needed 
-        if (needsRoot) {
-            require(isRoot, "KEY_NOT_ROOT");
-        }
+        require(!needsRoot || isRoot, "KEY_NOT_ROOT");
     
         // make sure the actor is trusted
         // we assume the message sender is the ledger
         require(actorTrustStatus[msg.sender][trustId][role][actor], 'UNTRUSTED_ACTOR');
-
-        //event notaryDistributionApproval(address ledger, address provider, address scribe,
-        //bytes32 arn, uint256 trustId, uint256 rootKeyId,
-        // uint256[] keys, uint256[] amounts);
 
         return trustId;
     }

@@ -520,7 +520,7 @@ describe("Ledger", function () {
       // mint another key
       await locksmith.connect(root).createKey(0, stb('second'), second.address);
       await locksmith.connect(root).createKey(0, stb('third'), third.address);
-      
+     
       // move once
       await expect(await ledger.connect(third).distribute(owner.address, stb('ether'), 0, [1], [eth(1)]))
         .to.emit(ledger, 'ledgerTransferOccurred')
@@ -564,7 +564,16 @@ describe("Ledger", function () {
         .to.be.revertedWith('OVERDRAFT');
     });
 
-     it("Distibute Multiple Asset Types and Balances", async function() {
+    it("Distributing back to the root key fails", async function() {
+      const { locksmith, ledger, owner, root, second, third } =
+        await loadFixture(TrustTestFixtures.fundedLedgerProxy);
+
+      // there is a bug - i shouldn't be able to successfully move 1 of nothing that isn't there
+      await expect(ledger.connect(third).distribute(owner.address, stb('nothing'), 0, [0], [eth(1)]))
+        .to.be.revertedWith('ROOT_ON_RING');
+    });
+
+    it("Distibute Multiple Asset Types and Balances", async function() {
       const { locksmith, ledger, owner, root, second, third } =
         await loadFixture(TrustTestFixtures.fundedLedgerProxy);
 

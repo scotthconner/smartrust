@@ -67,10 +67,11 @@ contract TrustEventLog is Initializable, OwnableUpgradeable, UUPSUpgradeable {
      * This event is emitted when a dispatcher registers
      * itself as the origin for a future event.
      *
-     * @param dispatcher the event dispatcher who will log the event in the future
-     * @param eventHash  the event hash the dispatcher will log.
+     * @param dispatcher       the event dispatcher who will log the event in the future
+     * @param eventHash        the event hash the dispatcher will log.
+     * @param eventDescription the alias event description from the dispatcher
      */
-    event trustEventRegistered(address dispatcher, bytes32 eventHash);
+    event trustEventRegistered(address dispatcher, bytes32 eventHash, bytes32 eventDescription);
 
     /**
      * trustEventLogged
@@ -89,6 +90,8 @@ contract TrustEventLog is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     // eventHash => dispatcher
     // holds the event hash to the dispatcher who has registered it
     mapping(bytes32 => address) public eventDispatchers;
+    // holds an event description name
+    mapping(bytes32 => bytes32) public eventDescriptions;
 
     // eventHash => hasFired?
     // when an event is properly fired by its dispatcher, set that
@@ -152,9 +155,10 @@ contract TrustEventLog is Initializable, OwnableUpgradeable, UUPSUpgradeable {
      * Key holders cannot call this method unless they will also
      * act as the event dispatcher.
      *
-     * @param eventHash the event hash to register
+     * @param eventHash   the event hash to register
+     * @param description a small description of the event
      */
-    function registerTrustEvent(bytes32 eventHash) external {
+    function registerTrustEvent(bytes32 eventHash, bytes32 description) external {
         // make sure the hash isn't already registered
         require(address(0) == eventDispatchers[eventHash], 
             "DUPLICATE_REGISTRATION");
@@ -164,7 +168,8 @@ contract TrustEventLog is Initializable, OwnableUpgradeable, UUPSUpgradeable {
 
         // register the event and emit the same
         eventDispatchers[eventHash] = msg.sender;
-        emit trustEventRegistered(msg.sender, eventHash);
+        eventDescriptions[eventHash] = description;
+        emit trustEventRegistered(msg.sender, eventHash, description);
     }
 
     /**

@@ -48,7 +48,7 @@ import "./Notary.sol";
  * mutation functions require a trusted contract relationship.
  *
  * All trusted relationships are managed through the ledger's
- * associated Notary, and are annointed by a root key holder.
+ * associated Notary, and are anointed by a root key holder.
  */
 contract Ledger is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     ////////////////////////////////////////////////////////
@@ -364,15 +364,4 @@ contract Ledger is Initializable, OwnableUpgradeable, UUPSUpgradeable {
 
         return finalRootBalance;
     }
-    /*
-    function move(uint256 fromKey, uint256 toKey, bytes32 arn, uint256 amount) external returns(uint256, uint256) {
-        // TODO: We need to require ensure that the scribe
-        // can move this amount of assets
-        require(amount > 0, 'ZERO_AMOUNT');
-        
-        uint256 fromFinal = _withdrawal(fromKey, arn, amount);
-        uint256 toFinal = _deposit(toKey, arn, amount);
-        emit ledgerTransferOccurred(tx.origin, msg.sender, arn, fromKey, toKey, amount, fromFinal, toFinal); 
-        return (fromFinal, toFinal);
-    }*/
 }

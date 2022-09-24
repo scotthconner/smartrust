@@ -425,4 +425,73 @@ describe("Locksmith", function () {
       expect(await keyVault.balanceOf(root.address, 0)).to.equal(0);
     });
   });
+  
+  ////////////////////////////////////////////////////////////
+  // Key Ring Inspection 
+  //
+  // Makes sure that all the use cases for key rings work
+  ////////////////////////////////////////////////////////////
+  describe("Key Ring Inspection", function() {
+    it("Invalid trust ids bomb out", async function() {
+      const { keyVault, locksmith, owner, root, second, third} = 
+        await loadFixture(TrustTestFixtures.singleRoot);
+
+      await expect(locksmith.validateKeyRing(1, [1,2,3], true))
+        .to.be.revertedWith('INVALID_TRUST');
+    });
+
+    it("Invalid keys on the ring bomb out", async function() {
+      const { keyVault, locksmith, owner, root, second, third} = 
+        await loadFixture(TrustTestFixtures.singleRoot);
+
+      await expect(locksmith.validateKeyRing(0, [1,2,3], true))
+        .to.be.revertedWith('INVALID_KEY_ON_RING');
+    });
+
+    it("Root not allowed on ring bombs out", async function() {
+      const { keyVault, locksmith, owner, root, second, third} = 
+        await loadFixture(TrustTestFixtures.singleRoot);
+      
+      await expect(locksmith.validateKeyRing(0, [0], false))
+        .to.be.revertedWith('ROOT_ON_RING');
+    });
+
+    it("Valid key from another trust on ring bombs out", async function() {
+      const { keyVault, locksmith, owner, root, second, third} = 
+        await loadFixture(TrustTestFixtures.singleRoot);
+
+      await locksmith.connect(second).createTrustAndRootKey(stb('second trust'));
+
+      await expect(locksmith.validateKeyRing(0, [1], false))
+        .to.be.revertedWith('NON_TRUST_KEY');
+    });
+
+    it("Normal key ring validates", async function() {
+      const { keyVault, locksmith, owner, root, second, third} = 
+        await loadFixture(TrustTestFixtures.singleRoot);
+
+      await locksmith.connect(root).createKey(0, stb('one'), second.address);
+      await locksmith.connect(root).createKey(0, stb('two'), third.address);
+      await locksmith.connect(root).createKey(0, stb('three'), owner.address);
+      
+      await expect(await locksmith.validateKeyRing(0, [1, 2, 3], false)).to.equal(true);
+      await expect(await locksmith.validateKeyRing(0, [0, 1, 2, 3], true)).to.equal(true);
+    });
+
+    it("Many trusts and rings", async function() {
+      const { keyVault, locksmith, owner, root, second, third} =
+        await loadFixture(TrustTestFixtures.singleRoot);
+
+      await locksmith.connect(root).createKey(0, stb('one'), second.address);
+      await locksmith.connect(root).createKey(0, stb('two'), third.address);
+      await locksmith.connect(root).createKey(0, stb('three'), owner.address);
+      await locksmith.connect(second).createTrustAndRootKey(stb('four'));
+      await locksmith.connect(second).createKey(4, stb('five'), owner.address);
+
+      await expect(await locksmith.validateKeyRing(1, [4], true)).to.equal(true);
+      await expect(locksmith.validateKeyRing(0, [0, 4, 2, 3], true))
+        .to.be.revertedWith('NON_TRUST_KEY');
+      await expect(await locksmith.validateKeyRing(1, [5], false)).to.equal(true);
+    });
+  });
 });

@@ -315,6 +315,50 @@ TrustTestFixtures = (function() {
       await events.deployed();
 
       return {owner, root, second, third, events};
+    },
+    ////////////////////////////////////////////////////////////
+    // fullTrusteeHarness 
+    //
+    // We are attempting to test distributions with a configured
+    // trustee scribe. This will be the first time funds are
+    // moved by a programmatic scribe on the ledger.
+    //
+    // We need:
+    //    - Locksmith and KeyVault
+    //    - a Notary
+    //    - a Ledger
+    //    - a collateral provider
+    //    - an event log
+    //    - a trustee scribe
+    ////////////////////////////////////////////////////////////
+    fullTrusteeHarness: async function() {
+      const {keyVault, locksmith, 
+        notary, ledger, vault, tokenVault, coin, 
+        owner, root, second, third} =
+        await TrustTestFixtures.fundedTokenVault();
+      const {events} = await TrustTestFixtures.freshTrustEventLog(); 
+
+      // deploy the trustee contract
+      const Trustee = await ethers.getContractFactory("Trustee");
+      const trustee = await upgrades.deployProxy(Trustee, [
+        locksmith.address, ledger.address, events.address
+      ]);
+      await trustee.deployed();
+
+      // register the trustee with the notary
+      await notary.connect(root).setTrustedLedgerRole(0, SCRIBE(), 
+        ledger.address, trustee.address, true);
+
+      // pass out a few keys
+      await locksmith.connect(root).createKey(0, stb('one'), owner.address); 
+      await locksmith.connect(root).createKey(0, stb('two'), second.address); 
+      await locksmith.connect(root).createKey(0, stb('three'), third.address); 
+
+      // here's everything but a blanket dispatcher
+      return {keyVault, locksmith,
+        notary, ledger, vault, tokenVault, coin,
+        events, trustee,
+        owner, root, second, third};
     }
   };
 })();

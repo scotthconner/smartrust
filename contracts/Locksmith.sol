@@ -303,7 +303,7 @@ contract Locksmith is Initializable, OwnableUpgradeable, UUPSUpgradeable {
      * @return true if the key is a root key
      * @return the keys associated with the given trust
      */ 
-    function inspectKey(uint256 keyId) external view returns(bool, bytes32, uint256, bool, uint256[] memory) {
+    function inspectKey(uint256 keyId) external view returns (bool, bytes32, uint256, bool, uint256[] memory) {
         // the key is a valid key number 
         return ((keyId < keyCount),
             // the human readable name of the key
@@ -315,6 +315,48 @@ contract Locksmith is Initializable, OwnableUpgradeable, UUPSUpgradeable {
             // the keys associated with the trust
             trustRegistry[keyTrustAssociations[keyId]].keys);
     }
+
+    /**
+     * validateKeyRing
+     *
+     * Contracts can call this method to determine if a set
+     * of keys belong to the same trust.
+     *
+     * @param trustId   the trust ID you want to validate against
+     * @param keys      the supposed keys that belong to the trust's key ring
+     * @param allowRoot true if having the trust's root key on the ring is acceptable
+     * @return true if valid, or will otherwise revert with a reason.
+     */
+    function validateKeyRing(uint256 trustId, uint256[] calldata keys, bool allowRoot) external view returns (bool) {
+        // make sure the trust is valid
+        require(trustId < trustCount, 'INVALID_TRUST');
+
+        // this is safe since the trust is valid
+        Trust storage t = trustRegistry[trustId];        
+
+        // invariant: make sure the root key was minted once
+        assert(t.keyMintCounts[t.rootKeyId] > 0);
+
+        for(uint256 x = 0; x < keys.length; x++) {
+            // make sure the key is a valid locksmith key. This
+            // prevents funds on the ledger being allocated to future-minted
+            // keys within different trusts.
+            require(keys[x] < keyCount, 'INVALID_KEY_ON_RING');
+
+            // in some cases a root key can't be allowed on a key ring
+            require(allowRoot || (keys[x] != t.rootKeyId), 'ROOT_ON_RING');
+
+            // make sure this valid key belongs to the same trust. this
+            // call is only safe after checking that the key is valid.
+            require(t.keyMintCounts[keys[x]] > 0, "NON_TRUST_KEY");
+        }
+
+        // at this point, the trust is valid, the root has been minted
+        // at least once, every key in the array is valid, meets the
+        // allowed root criteria, and has been validated to belong
+        // to the trustId
+        return true;
+    } 
 
     ////////////////////////////////////////////////////////
     // Internal Methods
