@@ -396,11 +396,123 @@ describe("Trustee", function () {
   ////////////////////////////////////////////////////////////
   describe('Event Gating', function() {
     it("Single Event Must Fire", async function() {
+      const {locksmith, notary, trustee, ledger, events, 
+        vault, owner, root, second, third} =
+        await loadFixture(TrustTestFixtures.fullTrusteeHarness);
 
+      // blanket approval because we aren't testing that
+      await notary.connect(owner).setWithdrawalAllowance(vault.ledger(),
+        vault.address, 1, ethArn(), eth(40));
+
+      // register the event
+      await expect(await events.connect(third).registerTrustEvent(stb('death'), stb('The owner dies')))
+        .to.emit(events, 'trustEventRegistered')
+        .withArgs(third.address, stb('death'), stb('The owner dies'));
+
+      // set the policy
+      await expect(await trustee.connect(root).setPolicy(0, 1, [1,2,3], [stb('death')]))
+        .to.emit(trustee, 'trusteePolicySet')
+        .withArgs(root.address, 0, 1, [1,2,3], [stb('death')]);
+
+      // attempt to execute the distrbution
+      await expect(trustee.connect(owner).distribute(1, vault.address, ethArn(),
+        [1,2,3], [eth(1), eth(1), eth(1)])).to.be.revertedWith('MISSING_EVENT');
+
+      // now fire the event
+      await expect(await events.connect(third).logTrustEvent(stb('death')))
+        .to.emit(events, 'trustEventLogged')
+        .withArgs(third.address, stb('death'));
+      
+      await expect(await trustee.connect(owner).distribute(1, vault.address, ethArn(),
+        [1,2,3], [eth(38), eth(1), eth(1)])).to.emit(ledger, 'ledgerTransferOccurred')
+        .withArgs(trustee.address, vault.address, ethArn(), 0, 0, [1,2,3], 
+          [eth(38), eth(1), eth(1)], eth(0));
+
+      // attempt a successful withdrawal
+      let ownerBalance = await ethers.provider.getBalance(owner.address);
+
+      // withdrawal some eth and ensure the right events are emitted
+      const tx = await doTransaction(vault.connect(owner).withdrawal(1, eth(1)));
+      await expect(tx.transaction).to.emit(ledger, "withdrawalOccurred")
+        .withArgs(vault.address, 0, 1, ethArn(), eth(1), eth(37), eth(39), eth(39));
+
+      // check balances
+      expect(await ethers.provider.getBalance(vault.address)).to.equal(eth(39));
+      expect(await ethers.provider.getBalance(owner.address))
+        .to.equal(ownerBalance.sub(tx.gasCost).add(eth(1)));
     });
 
     it("All three events must fire", async function() {
+       const {locksmith, notary, trustee, ledger, events,
+        vault, owner, root, second, third} =
+        await loadFixture(TrustTestFixtures.fullTrusteeHarness);
 
+      // blanket approval because we aren't testing that
+      await notary.connect(owner).setWithdrawalAllowance(vault.ledger(),
+        vault.address, 1, ethArn(), eth(40));
+
+      // register the event
+      await expect(await events.connect(third).registerTrustEvent(stb('death'), stb('The owner dies')))
+        .to.emit(events, 'trustEventRegistered')
+        .withArgs(third.address, stb('death'), stb('The owner dies'));
+      await expect(await events.connect(third).registerTrustEvent(stb('10 years'), stb('2032')))
+        .to.emit(events, 'trustEventRegistered')
+        .withArgs(third.address, stb('10 years'), stb('2032'));
+      await expect(await events.connect(third).registerTrustEvent(stb('momApproves'), stb('Call Home')))
+        .to.emit(events, 'trustEventRegistered')
+        .withArgs(third.address, stb('momApproves'), stb('Call Home'));
+
+      // set the policy
+      await expect(await trustee.connect(root).setPolicy(0, 1, [1,2,3], [
+        stb('death'), stb('10 years'), stb('momApproves')]))
+        .to.emit(trustee, 'trusteePolicySet')
+        .withArgs(root.address, 0, 1, [1,2,3], [stb('death')]);
+
+      // attempt to execute the distrbution
+      await expect(trustee.connect(owner).distribute(1, vault.address, ethArn(),
+        [1,2,3], [eth(1), eth(1), eth(1)])).to.be.revertedWith('MISSING_EVENT');
+
+      // now fire the event
+      await expect(await events.connect(third).logTrustEvent(stb('death')))
+        .to.emit(events, 'trustEventLogged')
+        .withArgs(third.address, stb('death'));
+      
+      // we still have two more events 
+      await expect(trustee.connect(owner).distribute(1, vault.address, ethArn(),
+        [1,2,3], [eth(1), eth(1), eth(1)])).to.be.revertedWith('MISSING_EVENT');
+     
+      // its been 10 years
+      await expect(await events.connect(third).logTrustEvent(stb('10 years')))
+        .to.emit(events, 'trustEventLogged')
+        .withArgs(third.address, stb('10 years'));
+      
+      // we still have to call mom
+      await expect(trustee.connect(owner).distribute(1, vault.address, ethArn(),
+        [1,2,3], [eth(1), eth(1), eth(1)])).to.be.revertedWith('MISSING_EVENT');
+
+      // fine, call mom
+      await expect(await events.connect(third).logTrustEvent(stb('momApproves')))
+        .to.emit(events, 'trustEventLogged')
+        .withArgs(third.address, stb('momApproves'));
+
+      // this should finally work
+      await expect(await trustee.connect(owner).distribute(1, vault.address, ethArn(),
+        [1,2,3], [eth(38), eth(1), eth(1)])).to.emit(ledger, 'ledgerTransferOccurred')
+        .withArgs(trustee.address, vault.address, ethArn(), 0, 0, [1,2,3],
+          [eth(38), eth(1), eth(1)], eth(0));
+
+      // attempt a successful withdrawal
+      let ownerBalance = await ethers.provider.getBalance(owner.address);
+
+      // withdrawal some eth and ensure the right events are emitted
+      const tx = await doTransaction(vault.connect(owner).withdrawal(1, eth(1)));
+      await expect(tx.transaction).to.emit(ledger, "withdrawalOccurred")
+        .withArgs(vault.address, 0, 1, ethArn(), eth(1), eth(37), eth(39), eth(39));
+
+      // check balances
+      expect(await ethers.provider.getBalance(vault.address)).to.equal(eth(39));
+      expect(await ethers.provider.getBalance(owner.address))
+        .to.equal(ownerBalance.sub(tx.gasCost).add(eth(1)));
     });
   });
 });
