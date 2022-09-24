@@ -285,7 +285,7 @@ contract Locksmith is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         require(burnAmount > 0, 'ZERO_BURN_AMOUNT');
 
         // burn them, and count the burn for logging
-        keyVault.minterBurn(holder, keyId, burnAmount);
+        keyVault.burn(holder, keyId, burnAmount);
         t.keyBurnCounts[keyId] += burnAmount;
 
         emit keyBurned(msg.sender, t.id, keyId, holder, burnAmount);

@@ -44,10 +44,13 @@ describe("Locksmith", function () {
   ////////////////////////////////////////////////////////////
   describe("Contract upgrade", function() {
     it("Should be able to upgrade", async function() {
-      const { locksmith } = await loadFixture(TrustTestFixtures.freshLocksmithProxy);
+      const { keyVault, locksmith } = await loadFixture(TrustTestFixtures.freshLocksmithProxy);
       
       const lockv2 = await ethers.getContractFactory("Locksmith")
       const lockAgain = await upgrades.upgradeProxy(locksmith.address, lockv2);
+
+      const vaultv2 = await ethers.getContractFactory("KeyVault")
+      const vaultAgain = await upgrades.upgradeProxy(keyVault.address, vaultv2);
       expect(true);
     });
   });
@@ -60,6 +63,13 @@ describe("Locksmith", function () {
   // and interaction begins.
   ////////////////////////////////////////////////////////////
   describe("Basic Trust Creation", function () {
+    it("Can't mint key if not a locksmith", async function() {
+      const { keyVault, locksmith, owner, root, second, third} =
+        await loadFixture(TrustTestFixtures.freshLocksmithProxy);
+      await expect(keyVault.connect(root).mint(root.address, 0, 1, stb("")))
+        .to.be.revertedWith("NOT_LOCKSMITH");
+    });
+
     it("Trust should exist with one key created", async function () {
       const { keyVault, locksmith, owner, root, second, third } 
         = await loadFixture(TrustTestFixtures.freshLocksmithProxy);
@@ -312,8 +322,8 @@ describe("Locksmith", function () {
     it("Can't burn key if not a locksmith", async function() {
       const { keyVault, locksmith, owner, root, second, third} = 
         await loadFixture(TrustTestFixtures.singleRoot);
-      await expect(keyVault.connect(root).minterBurn(root.address, 0, 1))
-        .to.be.revertedWith("NOT_MINTER");
+      await expect(keyVault.connect(root).burn(root.address, 0, 1))
+        .to.be.revertedWith("NOT_LOCKSMITH");
     });
 
     it("Can't burn key without holding key used", async function() {

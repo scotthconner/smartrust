@@ -92,12 +92,8 @@ TrustTestFixtures = (function() {
 
       // generate a key vault for the locksmith to use, using a beacon
       const KeyVault = await ethers.getContractFactory("KeyVault");
-      const keyVaultBeacon = await upgrades.deployBeacon(KeyVault);
-      const keyVaultProxy = await upgrades.deployBeaconProxy(keyVaultBeacon, KeyVault, [""]);
-      await keyVaultProxy.deployed();
-      const keyVault = KeyVault.attach(keyVaultProxy.address);
-
-      expect(await keyVault.getRoleMemberCount(await keyVault.DEFAULT_ADMIN_ROLE())).to.equal(1);
+      const keyVault = await upgrades.deployProxy(KeyVault, []);
+      await keyVault .deployed();
 
       // create the locksmith, providing the key vault 
       const Locksmith = await ethers.getContractFactory("Locksmith");
@@ -107,7 +103,7 @@ TrustTestFixtures = (function() {
       await locksmith.deployed();
 
       // enable the locksmith to be a minter in the key vault
-      await keyVault.connect(owner).grantRole((await keyVault.MINTER_ROLE()), locksmith.address);
+      await keyVault.connect(owner).setRespectedLocksmith(locksmith.address);
 
       return {keyVault, locksmith, owner, root, second, third};
     },

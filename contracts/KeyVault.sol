@@ -4,10 +4,18 @@ pragma solidity ^0.8.16;
 ///////////////////////////////////////////////////////////
 // IMPORTS
 //
-// We need this to use the ERC1155 token standard. We also
-// want a specific minter role so we can enable only the locksmith
-// to create these keys.
-import "@openzeppelin/contracts-upgradeable/token/ERC1155/presets/ERC1155PresetMinterPauserUpgradeable.sol";
+// We need this to use the ERC1155 token standard and be able to ugprade
+import "@openzeppelin/contracts-upgradeable/token/ERC1155/ERC1155Upgradeable.sol";
+
+// We want the contract to be ownable by the deployer - only they can set the
+// locksmith.
+import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+
+// Required for Upgradeable Contracts
+import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+
+// UUPS Proxy Standard
+import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 ///////////////////////////////////////////////////////////
 
 /**
@@ -20,7 +28,12 @@ import "@openzeppelin/contracts-upgradeable/token/ERC1155/presets/ERC1155PresetM
  * Only the contract deployer and any associated minters (locksmith's)
  * can manage the keys.
  */
-contract KeyVault is ERC1155PresetMinterPauserUpgradeable {
+contract KeyVault is Initializable, ERC1155Upgradeable, OwnableUpgradeable, UUPSUpgradeable {
+    ///////////////////////////////////////////////////////
+    // Storage
+    ///////////////////////////////////////////////////////
+    address public respectedLocksmith;
+
     ///////////////////////////////////////////////////////
     // Constructor and Upgrade Methods
     //
@@ -34,8 +47,70 @@ contract KeyVault is ERC1155PresetMinterPauserUpgradeable {
         _disableInitializers();
     }
 
+     /**
+     * initialize()
+     *
+     * Fundamentally replaces the constructor for an upgradeable contract.
+     *
+     */
+    function initialize() initializer public {
+        __Ownable_init();
+        __UUPSUpgradeable_init();
+    }
+
+     /**
+     * _authorizeUpgrade
+     *
+     * This method is required to safeguard from un-authorized upgrades, since
+     * in the UUPS model the upgrade occures from this contract, and not the proxy.
+     * I think it works by reverting if upgrade() is called from someone other than
+     * the owner.
+     *
+     * //UNUSED -param newImplementation the new address implementation to upgrade to
+     */
+    function _authorizeUpgrade(address) internal view onlyOwner override {}
+
+    ////////////////////////////////////////////////////////
+    // Owner methods
+    //
+    // Only the contract owner can call these 
+    ////////////////////////////////////////////////////////
+
     /**
-     * minterBurn
+     * setRespectedLocksmith
+     *
+     * Only the owner can call this method, to set
+     * the key vault owner to a specific locksmith.
+     *
+     * @param locksmith the address of the locksmith to respect
+     */
+    function setRespectedLocksmith(address locksmith) onlyOwner external {
+        respectedLocksmith = locksmith;
+    }
+
+    ////////////////////////////////////////////////////////
+    // Locksmith methods 
+    //
+    // Only the anointed locksmith can call these. 
+    ////////////////////////////////////////////////////////
+    
+    /**
+     * mint 
+     *
+     * Only the locksmith can mint keys. 
+     *
+     * @param receiver   the address to send the new key to 
+     * @param keyId      the ERC1155 NFT ID you want to mint 
+     * @param amount     the number of keys you want to mint to the receiver
+     * @param data       the data field for the key 
+     */
+    function mint(address receiver, uint256 keyId, uint256 amount, bytes calldata data) external {
+        require(respectedLocksmith == msg.sender, "NOT_LOCKSMITH");
+        _mint(receiver, keyId, amount, data);
+    }
+
+    /**
+     * burn 
      *
      * We want to provide some extra functionality to allow the Locksmith
      * to burn Trust Keys on behalf of the root key holder. While the KeyVault
@@ -46,8 +121,8 @@ contract KeyVault is ERC1155PresetMinterPauserUpgradeable {
      * @param keyId      the ERC1155 NFT ID you want to burn
      * @param burnAmount the number of said keys you want to burn from the holder's possession.
      */
-    function minterBurn(address holder, uint256 keyId, uint256 burnAmount) external {
-        require(hasRole(MINTER_ROLE, _msgSender()), "NOT_MINTER");
+    function burn(address holder, uint256 keyId, uint256 burnAmount) external {
+        require(respectedLocksmith == msg.sender, "NOT_LOCKSMITH");
         _burn(holder, keyId, burnAmount);
     }
 }
