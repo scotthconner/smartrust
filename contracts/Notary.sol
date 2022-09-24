@@ -242,7 +242,7 @@ contract Notary is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         require(locksmith.isRootKey(rootKeyId), "KEY_NOT_ROOT");
 
         // the caller is holding it a valid root key, this lookup is safe 
-        uint256 trustId = locksmith.keyTrustAssociations(rootKeyId); 
+        uint256 trustId = locksmith.rootKeyTrustAssociations(rootKeyId); 
 
         if (trustLevel) {
             // make sure they are not already a provider on the trust
@@ -443,7 +443,7 @@ contract Notary is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     function requireTrustedActor(uint256 keyId, address actor, uint8 role, bool needsRoot) internal view returns (uint256) {
         // make sure the key is valid. you can't always ensure
         // that the actor is checking this 
-        (bool valid,,uint256 trustId,bool isRoot,) = locksmith.inspectKey(keyId);
+        (bool valid,,uint256 trustId,bool isRoot,) = locksmith.inspectChildKey(keyId);
         require(valid, "INVALID_KEY");
         
         // make sure the root is key if needed 

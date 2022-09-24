@@ -205,7 +205,7 @@ contract Trustee is Initializable, OwnableUpgradeable, UUPSUpgradeable {
 
         // inspect the trustee key and ensure its on the trust's ring,
         // but that we also don't have the invariant that the key is root
-        (bool valid,,uint256 tid,bool isRoot,) = locksmith.inspectKey(trusteeKeyId);
+        (bool valid,,uint256 tid,bool isRoot,) = locksmith.inspectChildKey(trusteeKeyId);
         require(valid, "INVALID_TRUSTEE_KEY");
         require(tid == trustId, "TRUSTEE_OUTSIDE_TRUST");
         require(!isRoot, "TRUSTEE_CANT_BE_ROOT");
@@ -346,7 +346,7 @@ contract Trustee is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         require(locksmith.keyVault().balanceOf(msg.sender, rootKeyId) > 0, "KEY_NOT_HELD");
 
         // inspect the key they are holding and ensure its root
-        (,,uint256 trustId,bool isRoot,) = locksmith.inspectKey(rootKeyId);
+        (,,uint256 trustId,bool isRoot,) = locksmith.inspectChildKey(rootKeyId);
         require(isRoot, 'KEY_NOT_ROOT');
 
         return trustId;
