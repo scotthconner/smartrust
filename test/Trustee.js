@@ -148,7 +148,7 @@ describe("Trustee", function () {
 
       // create a second trust
       await locksmith.connect(second).createTrustAndRootKey(stb('second trust'));
-      await locksmith.connect(second).createKey(4, stb('five'), third.address);
+      await locksmith.connect(second).createKey(4, stb('five'), third.address, false);
 
       await expect(await trustee.connect(second).setPolicy(4, 5, [5], []))
         .to.emit(trustee, 'trusteePolicySet')
@@ -208,7 +208,7 @@ describe("Trustee", function () {
       // against a valid policy, but fail because the root doesnt own
       // the policy
       await locksmith.connect(second).createTrustAndRootKey(stb('second trust'));
-      await locksmith.connect(second).createKey(4, stb('five'), third.address);
+      await locksmith.connect(second).createKey(4, stb('five'), third.address, false);
 
       await expect(await trustee.connect(root).setPolicy(0, 1, [1,2,3], []))
         .to.emit(trustee, 'trusteePolicySet')

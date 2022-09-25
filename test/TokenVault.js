@@ -114,7 +114,7 @@ describe("TokenVault", function () {
         owner, root, second, third } = await loadFixture(TrustTestFixtures.freshTokenVault);
 
       // mint a beneficiary token to the other 
-      await locksmith.connect(root).createKey(0, stb('beneficiary'), second.address); 
+      await locksmith.connect(root).createKey(0, stb('beneficiary'), second.address, false); 
       expect(await keyVault.balanceOf(second.address, 1)).to.equal(1);
 
       // try to deposit as a beneficiary, and fail
@@ -206,7 +206,7 @@ describe("TokenVault", function () {
         owner, root, second, third } = await loadFixture(TrustTestFixtures.fundedTokenVault);
 
       // mint a trustee key real quick
-      await expect(await locksmith.connect(root).createKey(0, stb('beneficiary'), second.address))
+      await expect(await locksmith.connect(root).createKey(0, stb('beneficiary'), second.address, false))
         .to.emit(locksmith, "keyMinted").withArgs(root.address, 0, 1, stb('beneficiary'), second.address);
 
       // approve withdrawal for second keyholder

@@ -128,7 +128,7 @@ describe("EtherVault", function () {
       } = await loadFixture(TrustTestFixtures.freshEtherVault);
 
       //give the the other account a beneficiary key 
-      await expect(await locksmith.connect(root).createKey(0, stb('beneficiary'), second.address))
+      await expect(await locksmith.connect(root).createKey(0, stb('beneficiary'), second.address, false))
         .to.emit(locksmith, "keyMinted")
         .withArgs(root.address, 0, 1, stb('beneficiary'), second.address);
 
@@ -144,7 +144,7 @@ describe("EtherVault", function () {
       } = await loadFixture(TrustTestFixtures.freshEtherVault);
 
       // give the other account a trustee key
-      await expect(await locksmith.connect(root).createKey(0, stb('t'), second.address))
+      await expect(await locksmith.connect(root).createKey(0, stb('t'), second.address, false))
         .to.emit(locksmith, "keyMinted")
         .withArgs(root.address, 0, 1, stb('t'), second.address);
 

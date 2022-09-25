@@ -147,7 +147,7 @@ describe("Locksmith", function () {
       
       // try to create a key you dont hold 
       await expect(locksmith.connect(root)
-        .createKey(1, stb('beneficiary'), second.address))
+        .createKey(1, stb('beneficiary', false), second.address, false))
         .to.be.revertedWith('KEY_NOT_HELD');
 
       // couldn't mint an owner key, so its the same
@@ -167,7 +167,7 @@ describe("Locksmith", function () {
      
       // mint a second key to another user
       await expect(locksmith.connect(root)
-        .createKey(0, stb('beneficiary'), second.address))
+        .createKey(0, stb('beneficiary'), second.address, false))
         .to.emit(locksmith, "keyMinted")
         .withArgs(root.address, 0, 1, stb('beneficiary'), second.address);
 
@@ -177,7 +177,7 @@ describe("Locksmith", function () {
 
       // try to create trust keys without possessing the root key 
       await expect(locksmith.connect(second)
-        .createKey(1, stb('hacked'), third.address))
+        .createKey(1, stb('hacked'), third.address, false))
         .to.be.revertedWith('KEY_NOT_ROOT');
       
       // couldn't mint a key, so the third balance is the same
@@ -214,19 +214,19 @@ describe("Locksmith", function () {
 
       // use root keys to generate some more
       await expect(locksmith.connect(root)
-        .createKey(0, stb('two'), third.address))
+        .createKey(0, stb('two'), third.address, false))
         .to.emit(locksmith, "keyMinted")
         .withArgs(root.address, 0, 2, stb('two'), third.address);
       await expect(locksmith.connect(second)
-        .createKey(1, stb('three'), root.address))
+        .createKey(1, stb('three'), root.address, false))
         .to.emit(locksmith, "keyMinted")
         .withArgs(second.address, 1, 3, stb('three'), root.address);
       await expect(locksmith.connect(second)
-        .createKey(1, stb('four'), second.address))
+        .createKey(1, stb('four'), second.address, false))
         .to.emit(locksmith, "keyMinted")
         .withArgs(second.address, 1, 4, stb('four'), second.address);
       await expect(locksmith.connect(root)
-        .createKey(0, stb('five'), third.address))
+        .createKey(0, stb('five'), third.address, false))
         .to.emit(locksmith, "keyMinted")
         .withArgs(root.address, 0, 5, stb('five'), third.address);
      
@@ -258,7 +258,7 @@ describe("Locksmith", function () {
       const { locksmith, owner, root, second, third} = 
         await loadFixture(TrustTestFixtures.singleRoot);
    
-      await expect(locksmith.connect(root).copyKey(1, 0, second.address))
+      await expect(locksmith.connect(root).copyKey(1, 0, second.address, false))
         .to.be.revertedWith('KEY_NOT_HELD');
     });
     
@@ -268,11 +268,11 @@ describe("Locksmith", function () {
    
       // mint a second key
       await expect(await locksmith.connect(root)
-        .createKey(0, stb('second'), second.address))
+        .createKey(0, stb('second'), second.address, false))
         .to.emit(locksmith, "keyMinted")
         .withArgs(root.address, 0, 1, stb('second'), second.address);
 
-      await expect(locksmith.connect(second).copyKey(1, 1, third.address))
+      await expect(locksmith.connect(second).copyKey(1, 1, third.address, false))
         .to.be.revertedWith('KEY_NOT_ROOT');
     });
 
@@ -286,7 +286,7 @@ describe("Locksmith", function () {
         .to.emit(locksmith, "trustCreated").withArgs(second.address, 1, stb("SmartTrust"));
    
       // try to copy that key using the root of the first trust
-      await expect(locksmith.connect(root).copyKey(0, 1, third.address))
+      await expect(locksmith.connect(root).copyKey(0, 1, third.address, false))
         .to.be.revertedWith('TRUST_KEY_NOT_FOUND');
     });
     
@@ -299,12 +299,12 @@ describe("Locksmith", function () {
     
       // mint a second key
       await expect(await locksmith.connect(root)
-        .createKey(0, stb('second'), second.address))
+        .createKey(0, stb('second'), second.address, false))
         .to.emit(locksmith, "keyMinted")
         .withArgs(root.address, 0, 1, stb('second'), second.address);
 
       // copy the key
-      await expect(await locksmith.connect(root).copyKey(0, 1, third.address))
+      await expect(await locksmith.connect(root).copyKey(0, 1, third.address, false))
         .to.emit(locksmith, "keyMinted")
         .withArgs(root.address, 0, 1, stb('second'), third.address);
 
@@ -340,7 +340,7 @@ describe("Locksmith", function () {
 
       // mint a second key
       await expect(await locksmith.connect(root)
-        .createKey(0, stb('second'), second.address))
+        .createKey(0, stb('second'), second.address, false ))
         .to.emit(locksmith, "keyMinted")
         .withArgs(root.address, 0, 1, stb('second'), second.address);
       
@@ -354,7 +354,7 @@ describe("Locksmith", function () {
       
       // mint a second key
       await expect(await locksmith.connect(root)
-        .createKey(0, stb('second'), second.address))
+        .createKey(0, stb('second'), second.address, false))
         .to.emit(locksmith, "keyMinted")
         .withArgs(root.address, 0, 1, stb('second'), second.address);
       
@@ -384,7 +384,7 @@ describe("Locksmith", function () {
       
       // mint a second key
       await expect(await locksmith.connect(root)
-        .createKey(0, stb('second'), second.address))
+        .createKey(0, stb('second'), second.address, false))
         .to.emit(locksmith, "keyMinted")
         .withArgs(root.address, 0, 1, stb('second'), second.address);
      
@@ -406,11 +406,11 @@ describe("Locksmith", function () {
       
       // mint a second key
       await expect(await locksmith.connect(root)
-        .createKey(0, stb('second'), second.address))
+        .createKey(0, stb('second'), second.address, false))
         .to.emit(locksmith, "keyMinted")
         .withArgs(root.address, 0, 1, stb('second'), second.address);
       await expect(await locksmith.connect(root)
-        .copyKey(0, 1, second.address))
+        .copyKey(0, 1, second.address, false))
         .to.emit(locksmith, "keyMinted")
         .withArgs(root.address, 0, 1, stb('second'), second.address);
      
@@ -480,9 +480,9 @@ describe("Locksmith", function () {
       const { keyVault, locksmith, owner, root, second, third} = 
         await loadFixture(TrustTestFixtures.singleRoot);
 
-      await locksmith.connect(root).createKey(0, stb('one'), second.address);
-      await locksmith.connect(root).createKey(0, stb('two'), third.address);
-      await locksmith.connect(root).createKey(0, stb('three'), owner.address);
+      await locksmith.connect(root).createKey(0, stb('one'), second.address, false);
+      await locksmith.connect(root).createKey(0, stb('two'), third.address, false);
+      await locksmith.connect(root).createKey(0, stb('three'), owner.address, false);
       
       await expect(await locksmith.validateKeyRing(0, [1, 2, 3], false)).to.equal(true);
       await expect(await locksmith.validateKeyRing(0, [0, 1, 2, 3], true)).to.equal(true);
@@ -492,11 +492,11 @@ describe("Locksmith", function () {
       const { keyVault, locksmith, owner, root, second, third} =
         await loadFixture(TrustTestFixtures.singleRoot);
 
-      await locksmith.connect(root).createKey(0, stb('one'), second.address);
-      await locksmith.connect(root).createKey(0, stb('two'), third.address);
-      await locksmith.connect(root).createKey(0, stb('three'), owner.address);
+      await locksmith.connect(root).createKey(0, stb('one'), second.address, false);
+      await locksmith.connect(root).createKey(0, stb('two'), third.address, false);
+      await locksmith.connect(root).createKey(0, stb('three'), owner.address, false);
       await locksmith.connect(second).createTrustAndRootKey(stb('four'));
-      await locksmith.connect(second).createKey(4, stb('five'), owner.address);
+      await locksmith.connect(second).createKey(4, stb('five'), owner.address, false);
 
       await expect(await locksmith.validateKeyRing(1, [4], true)).to.equal(true);
       await expect(locksmith.validateKeyRing(0, [0, 4, 2, 3], true))

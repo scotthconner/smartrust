@@ -20,6 +20,9 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 // A locksmith stores all of the keys from their associated trusts into
 // a key vault.
 import "./KeyVault.sol";
+
+// some of the methods here could be subject to re-entrancy
+// so we are going to hire a guard when we access the keyVault
 ///////////////////////////////////////////////////////////
 
 /**
@@ -78,6 +81,7 @@ contract Locksmith is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     ///////////////////////////////////////////////////////
     // Storage
     ///////////////////////////////////////////////////////
+    
     // reference to the KeyVault used by this Locksmith
     KeyVault public keyVault;
 
@@ -168,6 +172,8 @@ contract Locksmith is Initializable, OwnableUpgradeable, UUPSUpgradeable {
      */
     function createTrustAndRootKey(bytes32 trustName) external {
         // build the trust with post-increment IDs
+        // the incrementing here is important to prevent
+        // re-entrancy
         Trust storage t = trustRegistry[trustCount];
         t.id = trustCount++;
         t.rootKeyId = keyCount++;
@@ -179,8 +185,9 @@ contract Locksmith is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         t.keyNames[t.rootKeyId] = 'root';
         keyTrustAssociations[t.rootKeyId] = t.id;
 
+        // re-entrant
         // mint the root key, give it to the sender.
-        mintKey(t, t.rootKeyId, msg.sender);
+        mintKey(t, t.rootKeyId, msg.sender, false);
 
         // the trust was successfully created
         emit trustCreated(msg.sender, t.id, t.name);
@@ -217,21 +224,26 @@ contract Locksmith is Initializable, OwnableUpgradeable, UUPSUpgradeable {
      * @param rootKeyId key the sender is attempting to use to create new keys.
      * @param keyName   an alias that you want to give the key
      * @param receiver  address you want to receive an NFT key for the trust.
+     * @param bind      true if you want to bind the key to the receiver
      */
-    function createKey(uint256 rootKeyId, bytes32 keyName, address receiver) external {
+    function createKey(uint256 rootKeyId, bytes32 keyName, address receiver, bool bind) external {
+        // increment the number of unique keys in the system
+        // its important to do it this way to prevent re-entrancy
+        uint256 newKeyId = keyCount++;
+
+        // after the key has been minted, then safely
+        // keep track that it happened.
         Trust storage t = trustRegistry[getTrustFromRootKey(rootKeyId)];
 
         // push the latest key ID into the trust, and
         // keep track of the association at O(1), along
-        t.keys.push(keyCount);
-        t.keyNames[keyCount] = keyName;
-        keyTrustAssociations[keyCount] = t.id; 
-       
-        // mint the key into the target wallet
-        mintKey(t, keyCount, receiver); 
+        t.keys.push(newKeyId);
+        t.keyNames[newKeyId] = keyName;
+        keyTrustAssociations[newKeyId] = t.id;
 
-        // increment the number of unique keys in the system
-        keyCount++;
+        // mint the key into the target wallet.
+        // THIS IS RE-ENTRANT!!!!
+        mintKey(t, newKeyId, receiver, bind); 
     }
 
     /**
@@ -249,8 +261,9 @@ contract Locksmith is Initializable, OwnableUpgradeable, UUPSUpgradeable {
      * @param rootKeyId root key to be used for this operation
      * @param keyId     key ID the message sender wishes to copy
      * @param receiver  addresses of the receivers for the copied key.
+     * @param bind      true if you want to bind the key to the receiver 
      */
-    function copyKey(uint256 rootKeyId, uint256 keyId, address receiver) external {
+    function copyKey(uint256 rootKeyId, uint256 keyId, address receiver, bool bind) external {
         Trust storage t = trustRegistry[getTrustFromRootKey(rootKeyId)];
 
         // we can only copy a key that already exists within the
@@ -260,7 +273,7 @@ contract Locksmith is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         // the root key is valid, the message sender holds it,
         // and the key requested to be copied has already been
         // minted into that trust at least once.
-        mintKey(t, keyId, receiver);
+        mintKey(t, keyId, receiver, bind);
     }
 
     /**
@@ -284,7 +297,9 @@ contract Locksmith is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         uint256 burnAmount = keyVault.balanceOf(holder, keyId);
         require(burnAmount > 0, 'ZERO_BURN_AMOUNT');
 
-        // burn them, and count the burn for logging
+        // burn them, and count the burn for logging.
+        // this call is re-entrant, but we do all of
+        // the state mutation afterwards.
         keyVault.burn(holder, keyId, burnAmount);
         t.keyBurnCounts[keyId] += burnAmount;
 
@@ -375,13 +390,22 @@ contract Locksmith is Initializable, OwnableUpgradeable, UUPSUpgradeable {
      * @param trust     trust we are creating a key for
      * @param keyId     resolved key Id we are minting
      * @param receiver  receiving address of the newly minted key
+     * @param bind      true if you want to bind it to the user
      */
-    function mintKey(Trust storage trust, uint256 keyId, address receiver) internal {
+    function mintKey(Trust storage trust, uint256 keyId, address receiver, bool bind) internal {
         // keep track of the number of times we minted this key.
         // this is good for reporting, and prevents key out of range
         // attacks to the first trust in the contract.
         trust.keyMintCounts[keyId]++;
-        
+      
+        // we want to soulbind here
+        if (bind) {
+            // this is considered an additive soulbinding
+            keyVault.soulbind(receiver, keyId, 
+                keyVault.soulboundKeyAmounts(receiver, keyId) + 1);
+        }
+
+        // THIS IS RE-ENTRANT
         keyVault.mint(receiver, keyId, 1, "");
         emit keyMinted(msg.sender, trust.id, keyId, trust.keyNames[keyId], receiver);
     }

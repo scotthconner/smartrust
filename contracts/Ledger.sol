@@ -184,21 +184,22 @@ contract Ledger is Initializable, OwnableUpgradeable, UUPSUpgradeable {
      * on the ledger by that key. 
      *
      * @param context LEDGER_CONTEXT_ID, TRUST_CONTEXT_ID, KEY_CONTEXT_ID 
-     ' @param identifier either 0, a trustId, or keyId depending on context.
+     * @param identifier either 0, a trustId, or keyId depending on context.
+     * @param provider optional collateral provider filter (or address(0))
      * @return the array of registered arns for the given context.
      */
-    function getContextArnRegistry(uint256 context, uint256 identifier) external view returns(bytes32[] memory) {
+    function getContextArnRegistry(uint256 context, uint256 identifier, address provider) external view returns(bytes32[] memory) {
         require(context < 3, "INVALID_CONTEXT");
        
         // check if we need to use the identifier
         if (TRUST_CONTEXT_ID == context) { 
-            return trustContext[identifier].arnRegistry;
+            return trustContext[identifier].getArnRegistry(provider);
         } else if (KEY_CONTEXT_ID == context ) {
-            return keyContext[identifier].arnRegistry;
+            return keyContext[identifier].getArnRegistry(provider);
         }
 
         // must be the ledger then
-        return ledgerContext.arnRegistry;
+        return ledgerContext.getArnRegistry(provider);
     }
 
     /**

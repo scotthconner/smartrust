@@ -70,7 +70,7 @@ describe("Notary", function () {
         await loadFixture(TrustTestFixtures.freshNotaryProxy);
 
       // create a second key
-      await locksmith.connect(root).createKey(0, stb('second'), second.address);
+      await locksmith.connect(root).createKey(0, stb('second'), second.address, false);
 
       for(var role = COLLATERAL_PROVIDER(); role <= SCRIBE(); role++) {
         await expect(notary.connect(second).setTrustedLedgerRole(1, role, owner.address, third.address, true))
@@ -230,7 +230,7 @@ describe("Notary", function () {
         await loadFixture(TrustTestFixtures.freshNotaryProxy);
 
       // mint a second key that is valid
-      await locksmith.connect(root).createKey(0, stb('beneficiary'), second.address);
+      await locksmith.connect(root).createKey(0, stb('beneficiary'), second.address, false);
 
       await expect(notary.connect(owner).notarizeDeposit(third.address, 1, stb('ether'), eth(1)))
         .to.be.revertedWith('KEY_NOT_ROOT');
@@ -427,7 +427,7 @@ describe("Notary", function () {
         .withArgs(root.address, 0, 0, owner.address, third.address, true, COLLATERAL_PROVIDER());
 
       // create another key
-      await locksmith.connect(root).createKey(0, stb('beneficiary'), second.address);
+      await locksmith.connect(root).createKey(0, stb('beneficiary'), second.address, false);
 
       // set the withdrawal allowance
       await notary.connect(root).setWithdrawalAllowance(owner.address, third.address, 0, stb('ether'), eth(1));
@@ -523,7 +523,7 @@ describe("Notary", function () {
         .withArgs(root.address, 0, 0, owner.address, second.address, true, SCRIBE());
 
       // mint a second key
-      await locksmith.connect(root).createKey(0, stb('second key'), root.address);
+      await locksmith.connect(root).createKey(0, stb('second key'), root.address, false);
 
       // call from the right ledger, the right collateral provider, and scribe
       // but an invalid key
@@ -547,7 +547,7 @@ describe("Notary", function () {
         .withArgs(root.address, 0, 0, owner.address, second.address, true, SCRIBE());
 
       // mint a second key
-      await locksmith.connect(root).createKey(0, stb('second key'), root.address);
+      await locksmith.connect(root).createKey(0, stb('second key'), root.address, false);
 
       // call from the right ledger, the right collateral provider, and scribe
       // but lengths are different 
@@ -571,7 +571,7 @@ describe("Notary", function () {
         .withArgs(root.address, 0, 0, owner.address, second.address, true, SCRIBE());
 
       // mint a second key
-      await locksmith.connect(root).createKey(0, stb('second key'), root.address);
+      await locksmith.connect(root).createKey(0, stb('second key'), root.address, false);
 
       // call from the right ledger, the right collateral provider, and scribe,
       // but with an invalid key
@@ -624,8 +624,8 @@ describe("Notary", function () {
         .withArgs(root.address, 0, 0, owner.address, second.address, true, SCRIBE());
 
       // mint a second and third key
-      await locksmith.connect(root).createKey(0, stb('second key'), root.address);
-      await locksmith.connect(root).createKey(0, stb('third key'), root.address);
+      await locksmith.connect(root).createKey(0, stb('second key'), root.address, false);
+      await locksmith.connect(root).createKey(0, stb('third key'), root.address, false);
 
       await expect(await notary.connect(owner).notarizeDistribution(second.address, third.address,
         stb('ether'), 0, [1], [eth(1)])).to.emit(notary, 'notaryDistributionApproval')

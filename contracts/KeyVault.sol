@@ -34,6 +34,14 @@ contract KeyVault is Initializable, ERC1155Upgradeable, OwnableUpgradeable, UUPS
     ///////////////////////////////////////////////////////
     address public respectedLocksmith;
 
+    // The respected locksmith can mint and burn tokens, as
+    // well as bind specific keys to wallets and prevent the
+    // vault from enabling transfers. This prpevents contracts
+    // and delinquent key holders from moving their NFT
+    // or having it stolen out of their wallet.
+    // wallet / keyId => amount
+    mapping(address => mapping(uint256 => uint256)) public soulboundKeyAmounts;
+
     ///////////////////////////////////////////////////////
     // Constructor and Upgrade Methods
     //
@@ -110,6 +118,34 @@ contract KeyVault is Initializable, ERC1155Upgradeable, OwnableUpgradeable, UUPS
     }
 
     /**
+     * soulbind
+     *
+     * The locksmith can call this method to ensure that the current
+     * key-holder of a specific address cannot exchange or move a certain
+     * amount of keys from their wallets. Essentially it will prevent
+     * transfers.
+     *
+     * In the average case, this is on behalf of the root key holder of
+     * a trust. 
+     *
+     * It is safest to soulbind in the same transaction as the minting.
+     * This function does not check if the keyholder holds the amount of
+     * tokens. And this function is SETTING the soulbound amount. It is
+     * not additive.
+     *
+     * @param keyHolder the current key-holder
+     * @param keyId     the key id to bind to the keyHolder
+     * @param amount    it could be multiple depending on the use case
+     */
+    function soulbind(address keyHolder, uint256 keyId, uint256 amount) external {
+        // respect only the locksmith in this call
+        require(respectedLocksmith == msg.sender, "NOT_LOCKSMITH");
+
+        // here ya go boss
+        soulboundKeyAmounts[keyHolder][keyId] = amount;
+    }
+
+    /**
      * burn 
      *
      * We want to provide some extra functionality to allow the Locksmith
@@ -124,5 +160,37 @@ contract KeyVault is Initializable, ERC1155Upgradeable, OwnableUpgradeable, UUPS
     function burn(address holder, uint256 keyId, uint256 burnAmount) external {
         require(respectedLocksmith == msg.sender, "NOT_LOCKSMITH");
         _burn(holder, keyId, burnAmount);
+    }
+    
+    ////////////////////////////////////////////////////////
+    // Key Methods 
+    //
+    // These are overrides of the token standard that we use
+    // to add additional functionalty to the keys themselves.
+    ////////////////////////////////////////////////////////
+
+    /**
+     * _beforeTokenTransfer 
+     *
+     * This is an override for ERC1155. We are going
+     * to ensure that the transfer is not tripping any
+     * soulbound token amounts.
+     */
+    function _beforeTokenTransfer(
+        address operator, address from, address to,
+        uint256[] memory ids,
+        uint256[] memory amounts,
+        bytes memory data
+    ) internal virtual override {
+        super._beforeTokenTransfer(operator, from, to, ids, amounts, data);
+
+        // here we check to see if any 'from' addresses
+        // would end up with too few soulbound requirements
+        // at the end of the transaction.
+        for(uint256 x = 0; x < ids.length; x++) {
+            // we need to allow address zero during minting
+            require((from == address(0)) || ((this.balanceOf(from, ids[x]) - amounts[x]) >=
+                soulboundKeyAmounts[from][ids[x]]), 'SOUL_BREACH');
+        }
     }
 }

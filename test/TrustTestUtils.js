@@ -346,9 +346,9 @@ TrustTestFixtures = (function() {
         ledger.address, trustee.address, true);
 
       // pass out a few keys
-      await locksmith.connect(root).createKey(0, stb('one'), owner.address); 
-      await locksmith.connect(root).createKey(0, stb('two'), second.address); 
-      await locksmith.connect(root).createKey(0, stb('three'), third.address); 
+      await locksmith.connect(root).createKey(0, stb('one'), owner.address, false); 
+      await locksmith.connect(root).createKey(0, stb('two'), second.address, false); 
+      await locksmith.connect(root).createKey(0, stb('three'), third.address, false); 
 
       // here's everything but a blanket dispatcher
       return {keyVault, locksmith,

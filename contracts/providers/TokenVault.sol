@@ -213,6 +213,9 @@ contract TokenVault is Initializable, OwnableUpgradeable, UUPSUpgradeable {
      * @return the token registry for that trust
      */
     function getTokenTypes(uint256 keyId) external view returns(address[] memory) {
+        // I really should be taking the arns from the ledger and recoding
+        // it to get the contract addresses, but for 20-30 arns thats going
+        // to be an expensive call.
         (,,uint256 trustId,,) = locksmith.inspectKey(keyId);
         return witnessedTokenAddresses[trustId];
     }
