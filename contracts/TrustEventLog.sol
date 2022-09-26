@@ -43,9 +43,8 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
  * element to the event hash or its hash can be predicted and registered
  * in advance of a legitimate use.
  *
- * These event hashes can then be set as event dependencies on scribe enablement.
- * With event dependencies satisfied, the scribe's permissions can
- * be enabled.
+ * These event hashes can then be set as event dependencies on scribe enablement,
+ * necromancers, or anything else.
  *
  * This further decouples distribution powers from their 
  * enabling events. The scribe that requires an event to be fired
@@ -68,10 +67,11 @@ contract TrustEventLog is Initializable, OwnableUpgradeable, UUPSUpgradeable {
      * itself as the origin for a future event.
      *
      * @param dispatcher       the event dispatcher who will log the event in the future
+     * @param trustId          the trust the event is associated with
      * @param eventHash        the event hash the dispatcher will log.
      * @param eventDescription the alias event description from the dispatcher
      */
-    event trustEventRegistered(address dispatcher, bytes32 eventHash, bytes32 eventDescription);
+    event trustEventRegistered(address dispatcher, uint256 trustId, bytes32 eventHash, bytes32 eventDescription);
 
     /**
      * trustEventLogged
@@ -92,6 +92,8 @@ contract TrustEventLog is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     mapping(bytes32 => address) public eventDispatchers;
     // holds an event description name
     mapping(bytes32 => bytes32) public eventDescriptions;
+    // holds the event hashes for each trust
+    mapping(uint256 => bytes32[]) private trustEventRegistry;
 
     // eventHash => hasFired?
     // when an event is properly fired by its dispatcher, set that
@@ -134,6 +136,23 @@ contract TrustEventLog is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     function _authorizeUpgrade(address) internal view onlyOwner override {}
     
     ////////////////////////////////////////////////////////
+    // Introspection 
+    ////////////////////////////////////////////////////////
+   
+    /**
+     * getRegisteredTrustEvents
+     *
+     * Simply returns an array of event hashes associated with the
+     * trust for introspection. You can then look up the dispatchers.
+     *
+     * @param trustId the trust you want the event hashes for
+     * @return the array of event hashes for the trust
+     */
+    function getRegisteredTrustEvents(uint256 trustId) public view returns (bytes32[] memory) {
+        return trustEventRegistry[trustId];
+    }
+
+    ////////////////////////////////////////////////////////
     // Dispatcher Methods
     //
     // The trust event log doesn't have to trust dispatchers
@@ -155,10 +174,11 @@ contract TrustEventLog is Initializable, OwnableUpgradeable, UUPSUpgradeable {
      * Key holders cannot call this method unless they will also
      * act as the event dispatcher.
      *
+     * @param trustId     the trust to associate the event with
      * @param eventHash   the event hash to register
      * @param description a small description of the event
      */
-    function registerTrustEvent(bytes32 eventHash, bytes32 description) external {
+    function registerTrustEvent(uint256 trustId, bytes32 eventHash, bytes32 description) external {
         // make sure the hash isn't already registered
         require(address(0) == eventDispatchers[eventHash], 
             "DUPLICATE_REGISTRATION");
@@ -166,10 +186,16 @@ contract TrustEventLog is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         // invariant: make sure the event hasn't fired 
         assert(!firedEvents[eventHash]);
 
-        // register the event and emit the same
+        // register the event
         eventDispatchers[eventHash] = msg.sender;
         eventDescriptions[eventHash] = description;
-        emit trustEventRegistered(msg.sender, eventHash, description);
+
+        // the event is really bound to dispatchers, but
+        // we want to keep track of a trust ID for introspection
+        trustEventRegistry[trustId].push(eventHash);
+
+        // emit the event
+        emit trustEventRegistered(msg.sender, trustId, eventHash, description);
     }
 
     /**

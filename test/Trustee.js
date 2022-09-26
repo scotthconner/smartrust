@@ -405,9 +405,9 @@ describe("Trustee", function () {
         vault.address, 1, ethArn(), eth(40));
 
       // register the event
-      await expect(await events.connect(third).registerTrustEvent(stb('death'), stb('The owner dies')))
+      await expect(await events.connect(third).registerTrustEvent(0, stb('death'), stb('The owner dies')))
         .to.emit(events, 'trustEventRegistered')
-        .withArgs(third.address, stb('death'), stb('The owner dies'));
+        .withArgs(third.address, 0, stb('death'), stb('The owner dies'));
 
       // set the policy
       await expect(await trustee.connect(root).setPolicy(0, 1, [1,2,3], [stb('death')]))
@@ -452,15 +452,15 @@ describe("Trustee", function () {
         vault.address, 1, ethArn(), eth(40));
 
       // register the event
-      await expect(await events.connect(third).registerTrustEvent(stb('death'), stb('The owner dies')))
+      await expect(await events.connect(third).registerTrustEvent(0, stb('death'), stb('The owner dies')))
         .to.emit(events, 'trustEventRegistered')
-        .withArgs(third.address, stb('death'), stb('The owner dies'));
-      await expect(await events.connect(third).registerTrustEvent(stb('10 years'), stb('2032')))
+        .withArgs(third.address, 0, stb('death'), stb('The owner dies'));
+      await expect(await events.connect(third).registerTrustEvent(0, stb('10 years'), stb('2032')))
         .to.emit(events, 'trustEventRegistered')
-        .withArgs(third.address, stb('10 years'), stb('2032'));
-      await expect(await events.connect(third).registerTrustEvent(stb('momApproves'), stb('Call Home')))
+        .withArgs(third.address, 0, stb('10 years'), stb('2032'));
+      await expect(await events.connect(third).registerTrustEvent(0, stb('momApproves'), stb('Call Home')))
         .to.emit(events, 'trustEventRegistered')
-        .withArgs(third.address, stb('momApproves'), stb('Call Home'));
+        .withArgs(third.address, 0, stb('momApproves'), stb('Call Home'));
 
       // set the policy
       await expect(await trustee.connect(root).setPolicy(0, 1, [1,2,3], [
