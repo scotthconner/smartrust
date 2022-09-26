@@ -70,6 +70,13 @@ describe("Locksmith", function () {
         .to.be.revertedWith("NOT_LOCKSMITH");
     });
 
+    it("Can't soulbind if not a locksmith", async function() {
+      const { keyVault, locksmith, owner, root, second, third} =
+        await loadFixture(TrustTestFixtures.freshLocksmithProxy);
+      await expect(keyVault.connect(root).soulbind(root.address, 0, 1))
+        .to.be.revertedWith("NOT_LOCKSMITH");
+    });
+
     it("Trust should exist with one key created", async function () {
       const { keyVault, locksmith, owner, root, second, third } 
         = await loadFixture(TrustTestFixtures.freshLocksmithProxy);
@@ -147,7 +154,7 @@ describe("Locksmith", function () {
       
       // try to create a key you dont hold 
       await expect(locksmith.connect(root)
-        .createKey(1, stb('beneficiary', false), second.address, false))
+        .createKey(1, stb('beneficiary'), second.address, false))
         .to.be.revertedWith('KEY_NOT_HELD');
 
       // couldn't mint an owner key, so its the same
@@ -246,6 +253,41 @@ describe("Locksmith", function () {
       await assertKey(locksmith, root, 4, true, stb('four'), 1, false);
       await assertKey(locksmith, root, 5, true, stb('five'), 0, false);
     });
+
+    it("Soulbound keys must stay where they are minted", async function() {
+      const { keyVault, locksmith, owner, root, second, third} =
+        await loadFixture(TrustTestFixtures.singleRoot);
+
+      // create a regular key
+      await expect(locksmith.connect(root)
+        .createKey(0, stb('two'), third.address, false))
+        .to.emit(locksmith, "keyMinted")
+
+      // create a soulbound key
+      await expect(locksmith.connect(root)
+        .createKey(0, stb('souled'), second.address, true))
+        .to.emit(locksmith, "keyMinted")
+        .withArgs(root.address, 0, 2, stb('souled'), second.address)
+        .to.emit(keyVault, "setSoulboundKeyAmount")
+        .withArgs(locksmith.address, second.address, 2, 1);
+
+      expect(await keyVault.balanceOf(third.address, 1)).to.equal(1);
+      expect(await keyVault.balanceOf(owner.address, 1)).to.equal(0);
+      
+      // move the first key
+      await expect(await keyVault.connect(third)
+        .safeTransferFrom(third.address, owner.address, 1, 1, stb("")))
+        .to.emit(keyVault, 'TransferSingle')
+        .withArgs(third.address, third.address, owner.address, 1, 1);
+
+      expect(await keyVault.balanceOf(third.address, 1)).to.equal(0);
+      expect(await keyVault.balanceOf(owner.address, 1)).to.equal(1);
+
+      // fail to move the second key
+      await expect(keyVault.connect(second)
+        .safeTransferFrom(second.address, owner.address, 2, 1, stb("")))
+        .to.be.revertedWith('SOUL_BREACH');
+    });
   });
   
   ////////////////////////////////////////////////////////////
@@ -311,8 +353,150 @@ describe("Locksmith", function () {
       expect(await keyVault.balanceOf(third.address, 1)).to.equal(1);
       expect(await keyVault.balanceOf(second.address, 1)).to.equal(1);
     });
+
+    it("Copying a key while soulbinding it prevents transfer", async function() {
+      const { keyVault, locksmith, owner, root, second, third} =
+        await loadFixture(TrustTestFixtures.singleRoot);
+
+      expect(await keyVault.balanceOf(third.address, 0)).to.equal(0);
+      expect(await keyVault.balanceOf(second.address, 0)).to.equal(0);
+
+      // mint a second key
+      await expect(await locksmith.connect(root)
+        .createKey(0, stb('second'), second.address, false))
+        .to.emit(locksmith, 'keyMinted')
+        .withArgs(root.address, 0, 1, stb('second'), second.address);
+
+      // copy the key
+      await expect(await locksmith.connect(root).copyKey(0, 1, third.address, true))
+        .to.emit(locksmith, "keyMinted")
+        .withArgs(root.address, 0, 1, stb('second'), third.address);
+
+      // copy the key again
+      await expect(await locksmith.connect(root).copyKey(0, 1, third.address, false))
+
+      expect(await keyVault.balanceOf(third.address, 1)).to.equal(2);
+
+      // they can send the first one, but not the second time
+      await expect(await keyVault.connect(third)
+        .safeTransferFrom(third.address, owner.address, 1, 1, stb("")))
+        .to.emit(keyVault, 'TransferSingle')
+        .withArgs(third.address, third.address, owner.address, 1, 1);
+
+      await expect(keyVault.connect(third)
+        .safeTransferFrom(third.address, owner.address, 1, 1, stb("")))
+        .to.be.revertedWith('SOUL_BREACH');
+      
+      expect(await keyVault.balanceOf(third.address, 1)).to.equal(1);
+    });
   });
-  
+ 
+  ////////////////////////////////////////////////////////////
+  // Basic Soul Binding 
+  //
+  // Essentially tests soulbindKey 
+  ////////////////////////////////////////////////////////////
+  describe("Post-mint Soulbinding", function() {
+    it("Only root key holders can souldbind keys", async function() {
+      const { keyVault, locksmith, owner, root, second, third} =
+        await loadFixture(TrustTestFixtures.singleRoot);
+
+      // mint a second key
+      await expect(await locksmith.connect(root)
+        .createKey(0, stb('second'), second.address, false))
+        .to.emit(locksmith, "keyMinted")
+        .withArgs(root.address, 0, 1, stb('second'), second.address);
+
+      // try to soulbind it yourself
+      await expect(locksmith.connect(second)
+        .soulbindKey(0, second.address, 1, 1))
+        .to.be.revertedWith('KEY_NOT_HELD');
+
+      // try to soulbind it yourself
+      await expect(locksmith.connect(second)
+        .soulbindKey(1, second.address, 1, 1))
+        .to.be.revertedWith('KEY_NOT_ROOT');
+    });
+
+    it("You can't soulbind keys outside of the trust", async function() {
+      const { keyVault, locksmith, owner, root, second, third} =
+        await loadFixture(TrustTestFixtures.singleRoot);
+
+      // build a second trust
+      await locksmith.connect(second).createTrustAndRootKey(stb('Second'));
+
+      // attempt to bind the second key with the root key
+      await expect(locksmith.connect(root).soulbindKey(0, second.address, 1, 1))
+        .to.be.revertedWith('TRUST_KEY_NOT_FOUND');
+    });
+
+    it("Soulbinding after mint prevents transfer", async function() {
+      const { keyVault, locksmith, owner, root, second, third} =
+        await loadFixture(TrustTestFixtures.singleRoot);
+
+      // mint a second key
+      await expect(await locksmith.connect(root)
+        .createKey(0, stb('second'), second.address, false))
+        .to.emit(locksmith, "keyMinted")
+        .withArgs(root.address, 0, 1, stb('second'), second.address);
+
+      // transfer it
+      await expect(await keyVault.connect(second)
+        .safeTransferFrom(second.address, owner.address, 1, 1, stb("")))
+        .to.emit(keyVault, 'TransferSingle')
+        .withArgs(second.address, second.address, owner.address, 1, 1);
+
+      expect(await keyVault.balanceOf(owner.address, 1)).to.equal(1);
+
+      // now the root will soulbind it
+      await expect(await locksmith.connect(root).soulbindKey(0, owner.address, 1, 1,))
+        .to.emit(keyVault, 'setSoulboundKeyAmount')
+        .withArgs(locksmith.address, owner.address, 1, 1);
+
+      // transferring will fail here
+      await expect(keyVault.connect(owner)
+        .safeTransferFrom(owner.address, second.address, 1, 1, stb("")))
+        .to.be.revertedWith('SOUL_BREACH');
+
+      expect(await keyVault.balanceOf(owner.address, 1)).to.equal(1);
+      expect(await keyVault.balanceOf(second.address, 1)).to.equal(0);
+    });
+
+    it("You can use soulbinding amount=0 to unbind", async function() {
+      const { keyVault, locksmith, owner, root, second, third} =
+        await loadFixture(TrustTestFixtures.singleRoot);
+
+      // mint a second key
+      await expect(await locksmith.connect(root)
+        .createKey(0, stb('second'), second.address, true))
+        .to.emit(locksmith, "keyMinted")
+        .withArgs(root.address, 0, 1, stb('second'), second.address)
+        .to.emit(keyVault, 'setSoulboundKeyAmount')
+        .withArgs(locksmith.address, second.address, 1, 1);
+
+      expect(await keyVault.balanceOf(second.address, 1)).to.equal(1);
+      expect(await keyVault.balanceOf(owner.address, 1)).to.equal(0);
+
+      // transferring will fail here
+      await expect(keyVault.connect(second)
+        .safeTransferFrom(second.address, owner.address, 1, 1, stb("")))
+        .to.be.revertedWith('SOUL_BREACH');
+
+      // now the root will unbind it
+      await expect(await locksmith.connect(root).soulbindKey(0, second.address, 1, 0))
+        .to.emit(keyVault, 'setSoulboundKeyAmount')
+        .withArgs(locksmith.address, second.address, 1, 0);
+
+       // transferring will succeed 
+      await expect(keyVault.connect(second)
+        .safeTransferFrom(second.address, owner.address, 1, 1, stb("")))
+        .to.emit(keyVault, 'TransferSingle');
+
+      expect(await keyVault.balanceOf(owner.address, 1)).to.equal(1);
+      expect(await keyVault.balanceOf(second.address, 1)).to.equal(0);
+    });
+  });
+
   ////////////////////////////////////////////////////////////
   // Key Burning works 
   //
@@ -433,6 +617,23 @@ describe("Locksmith", function () {
         .withArgs(root.address, 0, 0, root.address, 1);
       
       expect(await keyVault.balanceOf(root.address, 0)).to.equal(0);
+    });
+
+    it("Soulbound keys cannot be burned", async function() {
+      const { keyVault, locksmith, owner, root, second, third} =
+        await loadFixture(TrustTestFixtures.singleRoot);
+
+      // mint a second key
+      await expect(await locksmith.connect(root)
+        .createKey(0, stb('second'), second.address, true))
+        .to.emit(locksmith, "keyMinted")
+        .withArgs(root.address, 0, 1, stb('second'), second.address)
+        .to.emit(keyVault, 'setSoulboundKeyAmount')
+        .withArgs(locksmith.address, second.address, 1, 1);
+
+      // burning that soulbound key will fail
+      await expect(locksmith.connect(root)
+        .burnKey(0, 1, second.address)).to.be.revertedWith('SOUL_BREACH');
     });
   });
   

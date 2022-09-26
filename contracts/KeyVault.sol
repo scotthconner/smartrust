@@ -30,6 +30,24 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
  */
 contract KeyVault is Initializable, ERC1155Upgradeable, OwnableUpgradeable, UUPSUpgradeable {
     ///////////////////////////////////////////////////////
+    // Events
+    ///////////////////////////////////////////////////////
+    
+    /**
+     * setSoulboundKeyAmount 
+     *
+     * This event fires when the state of a soulbind key is set.
+     *
+     * @param operator  the person making the change, should be the locksmith
+     * @param keyHolder the 'soul' we are changing the binding for
+     * @param keyId     the Id we are setting the binding state for
+     * @param amount    the number of tokens this person must hold
+     */
+    event setSoulboundKeyAmount(address operator, address keyHolder, 
+        uint256 keyId, uint256 amount); 
+
+
+    ///////////////////////////////////////////////////////
     // Storage
     ///////////////////////////////////////////////////////
     address public respectedLocksmith;
@@ -143,6 +161,7 @@ contract KeyVault is Initializable, ERC1155Upgradeable, OwnableUpgradeable, UUPS
 
         // here ya go boss
         soulboundKeyAmounts[keyHolder][keyId] = amount;
+        emit setSoulboundKeyAmount(msg.sender, keyHolder, keyId, amount); 
     }
 
     /**

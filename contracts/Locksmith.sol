@@ -277,6 +277,34 @@ contract Locksmith is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     }
 
     /**
+     * soulbindKey
+     *
+     * This method can be called by a root key holder to make a key
+     * soulbound to a specific wallet. When soulbinding a key,
+     * it is not required that the current target address hold that key.
+     * The amount set ensures that when sending a key of a specific
+     * type, that they hold at least the amount that is bound to them.
+     *
+     * This code will panic if:
+     *  - the caller doesn't have the root key
+     *  - the target keyId doesn't exist in the trust
+     *
+     * @param rootKeyId the operator's root key
+     * @param keyHolder the address to bind the key to
+     * @param keyId     the keyId they want to bind
+     * @param amount    the amount of keys to bind to the holder
+     */
+    function soulbindKey(uint256 rootKeyId, address keyHolder, uint256 keyId, uint256 amount) external {
+        Trust storage t = trustRegistry[getTrustFromRootKey(rootKeyId)];
+
+        // is keyId associated with the root key's trust?
+        require(t.keyMintCounts[keyId] > 0, 'TRUST_KEY_NOT_FOUND');
+
+        // the root key holder has permission, so bind it
+        keyVault.soulbind(keyHolder, keyId, amount);
+    }
+
+    /**
      * burnKey
      *
      * The root key holder can call this method if they want to revoke
