@@ -9,6 +9,7 @@ const {
   loadFixture                          // used for fixture setup
 } = require("@nomicfoundation/hardhat-network-helpers");
 require('../test/TrustTestUtils.js');        // Fixtures 
+const fs = require('fs');
 
 async function main() {
   const {keyVault, locksmith,
@@ -17,6 +18,25 @@ async function main() {
     owner, root, second, third } = 
     await loadFixture(TrustTestFixtures.fullTrusteeHarness); 
   console.log("Full Contract Deployed");
+
+  let contracts = {
+    keyVault:   keyVault.address,
+    locksmith:  locksmith.address,
+    ledger:     ledger.address,
+    vault:      vault.address,
+    tokenVault: tokenVault.address,
+    coin:       coin.address,
+    events:     events.address,
+    trustee:    trustee.address
+  };
+
+  let data = JSON.stringify(contracts, null, 2);
+
+  fs.writeFile('hardhat-contracts.json', data, (err) => {
+    if (err) throw err;
+    console.log('Data written to file: ');
+  });
+
   console.log("keyVault: " + keyVault.address);        
   console.log("locksmith: " + locksmith.address);        
   console.log("ledger: " + ledger.address);        
