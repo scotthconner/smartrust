@@ -94,6 +94,9 @@ describe("Locksmith", function () {
         .to.emit(locksmith, "keyMinted").withArgs(root.address, 0, 0, stb('root'), root.address)
         .to.emit(locksmith, "trustCreated").withArgs(root.address, 0, stb("Conner Trust"));
 
+      // check that the key list is accurate
+      await expect(await keyVault.getKeys(root.address)).eql([bn(0)]);
+
       // will trust count be correct?
       await assertKey(locksmith, root, 0, true, stb('root'), 0, true);
       
@@ -131,6 +134,9 @@ describe("Locksmith", function () {
       expect(await keyVault.balanceOf(root.address, 1)).to.equal(0);
       expect(await keyVault.balanceOf(second.address, 0)).to.equal(0);
       expect(await keyVault.balanceOf(second.address, 1)).to.equal(1);
+
+      await expect(await keyVault.getKeys(root.address)).eql([bn(0)]);
+      await expect(await keyVault.getKeys(second.address)).eql([bn(1)]);
     });
   });
   
@@ -352,6 +358,9 @@ describe("Locksmith", function () {
 
       expect(await keyVault.balanceOf(third.address, 1)).to.equal(1);
       expect(await keyVault.balanceOf(second.address, 1)).to.equal(1);
+
+      await expect(await keyVault.getKeys(second.address)).eql([bn(1)]);
+      await expect(await keyVault.getKeys(third.address)).eql([bn(1)]);
     });
 
     it("Copying a key while soulbinding it prevents transfer", async function() {
@@ -573,13 +582,15 @@ describe("Locksmith", function () {
         .withArgs(root.address, 0, 1, stb('second'), second.address);
      
       expect(await keyVault.balanceOf(second.address, 1)).to.equal(1);
-      
+      await expect(await keyVault.getKeys(second.address)).eql([bn(1)]);
+
       // burn the key
       await expect(await locksmith.connect(root).burnKey(0, 1, second.address))
         .to.emit(locksmith, "keyBurned")
         .withArgs(root.address, 0, 1, second.address, 1);
       
       expect(await keyVault.balanceOf(second.address, 1)).to.equal(0);
+      await expect(await keyVault.getKeys(second.address)).eql([]);
     });
 
     it("Burn multiple keys at once", async function() {
@@ -599,13 +610,15 @@ describe("Locksmith", function () {
         .withArgs(root.address, 0, 1, stb('second'), second.address);
      
       expect(await keyVault.balanceOf(second.address, 1)).to.equal(2);
-      
+      await expect(await keyVault.getKeys(second.address)).eql([bn(1)]);
+
       // burn the key
       await expect(await locksmith.connect(root).burnKey(0, 1, second.address))
         .to.emit(locksmith, "keyBurned")
         .withArgs(root.address, 0, 1, second.address, 2);
       
       expect(await keyVault.balanceOf(second.address, 1)).to.equal(0);
+      await expect(await keyVault.getKeys(second.address)).eql([]);
     });
 
     it("Burn the root key (irrevocable trust)", async function() {

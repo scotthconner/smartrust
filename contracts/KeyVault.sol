@@ -16,6 +16,11 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
 // UUPS Proxy Standard
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+
+// We are going to use the Enumerable Set to keep track of where
+// the keys are going and who owns what
+import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
+using EnumerableSet for EnumerableSet.UintSet;
 ///////////////////////////////////////////////////////////
 
 /**
@@ -60,6 +65,10 @@ contract KeyVault is Initializable, ERC1155Upgradeable, OwnableUpgradeable, UUPS
     // wallet / keyId => amount
     mapping(address => mapping(uint256 => uint256)) public soulboundKeyAmounts;
 
+    // we want to keep track of each key type
+    // in each address for introspection
+    mapping(address => EnumerableSet.UintSet) private addressKeys;
+
     ///////////////////////////////////////////////////////
     // Constructor and Upgrade Methods
     //
@@ -95,6 +104,23 @@ contract KeyVault is Initializable, ERC1155Upgradeable, OwnableUpgradeable, UUPS
      * //UNUSED -param newImplementation the new address implementation to upgrade to
      */
     function _authorizeUpgrade(address) internal view onlyOwner override {}
+
+    ////////////////////////////////////////////////////////
+    // Introspection
+    ////////////////////////////////////////////////////////
+   
+    /**
+     * getKeys
+     *
+     * This method will return the IDs of the keys held
+     * by the given address.
+     *
+     * @param holder the address of the key holder you want to see
+     * @return an array of key IDs held by the user.
+     */
+    function getKeys(address holder) public view returns (uint256[] memory) {
+        return addressKeys[holder].values();
+    }
 
     ////////////////////////////////////////////////////////
     // Owner methods
@@ -210,6 +236,14 @@ contract KeyVault is Initializable, ERC1155Upgradeable, OwnableUpgradeable, UUPS
             // we need to allow address zero during minting
             require((from == address(0)) || ((this.balanceOf(from, ids[x]) - amounts[x]) >=
                 soulboundKeyAmounts[from][ids[x]]), 'SOUL_BREACH');
+
+            // lets keep track of each key that is moving
+            if(from != address(0) && ((this.balanceOf(from, ids[x]) - amounts[x]) == 0)) {
+                addressKeys[from].remove(ids[x]);            
+            }
+            if(to != address(0) && ((this.balanceOf(to, ids[x]) + amounts[x]) > 0)) {
+                addressKeys[to].add(ids[x]);
+            }
         }
     }
 }

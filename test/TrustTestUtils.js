@@ -23,6 +23,10 @@ stb = function(string) {
   return ethers.utils.formatBytes32String(string);
 };
 
+bn = function(number) {
+  return ethers.BigNumber.from(number);
+}
+
 eth = function(ethAmount) {
   return ethers.utils.parseEther("" + ethAmount);
 };
