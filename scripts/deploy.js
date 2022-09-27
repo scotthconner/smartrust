@@ -16,7 +16,7 @@ async function main() {
     notary, ledger, vault, tokenVault, coin,
     events, trustee,
     owner, root, second, third } = 
-    await loadFixture(TrustTestFixtures.fullTrusteeHarness); 
+    await loadFixture(TrustTestFixtures.deployedHardhat); 
   console.log("Full Contract Deployed");
 
   let contracts = {
@@ -34,7 +34,7 @@ async function main() {
 
   fs.writeFile('hardhat-contracts.json', data, (err) => {
     if (err) throw err;
-    console.log('Data written to file: ');
+    console.log('Data written to file: hardhat-contracts.json');
   });
 
   console.log("keyVault: " + keyVault.address);        

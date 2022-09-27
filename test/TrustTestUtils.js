@@ -359,6 +359,29 @@ TrustTestFixtures = (function() {
         notary, ledger, vault, tokenVault, coin,
         events, trustee,
         owner, root, second, third};
+    },
+    //////////////////////////////////////////////////////////
+    // Deployed Hardhat Testing
+    //
+    // This is a fixture we use to help test the frontend
+    // web application.
+    //////////////////////////////////////////////////////////
+    deployedHardhat: async function() {
+      const {keyVault, locksmith,
+        notary, ledger, vault, tokenVault, coin,
+        events, trustee,
+        owner, root, second, third} = 
+        await TrustTestFixtures.fullTrusteeHarness();
+
+      await locksmith.connect(root).createKey(0, stb('Testing One'), root.address, false);
+      await locksmith.connect(root).createKey(0, stb('Testing Two'), root.address, false);
+      await locksmith.connect(root).createKey(0, stb('Testing Three'), root.address, false);
+      await locksmith.connect(root).createKey(0, stb('Soulbound One'), root.address, true);
+
+      return {keyVault, locksmith,
+        notary, ledger, vault, tokenVault, coin,
+        events, trustee,
+        owner, root, second, third};
     }
   };
 })();
