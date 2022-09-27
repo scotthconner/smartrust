@@ -137,6 +137,9 @@ describe("Locksmith", function () {
 
       await expect(await keyVault.getKeys(root.address)).eql([bn(0)]);
       await expect(await keyVault.getKeys(second.address)).eql([bn(1)]);
+
+      await expect(await keyVault.getHolders(0)).eql([root.address]);
+      await expect(await keyVault.getHolders(1)).eql([second.address]);
     });
   });
   
@@ -358,6 +361,8 @@ describe("Locksmith", function () {
 
       expect(await keyVault.balanceOf(third.address, 1)).to.equal(1);
       expect(await keyVault.balanceOf(second.address, 1)).to.equal(1);
+      expect(await keyVault.getHolders(1)).has.length(2)
+        .contains(third.address).contains(second.address);
 
       await expect(await keyVault.getKeys(second.address)).eql([bn(1)]);
       await expect(await keyVault.getKeys(third.address)).eql([bn(1)]);
@@ -485,11 +490,14 @@ describe("Locksmith", function () {
 
       expect(await keyVault.balanceOf(second.address, 1)).to.equal(1);
       expect(await keyVault.balanceOf(owner.address, 1)).to.equal(0);
+      expect(await keyVault.getHolders(1)).eql([second.address]);
 
       // transferring will fail here
       await expect(keyVault.connect(second)
         .safeTransferFrom(second.address, owner.address, 1, 1, stb("")))
         .to.be.revertedWith('SOUL_BREACH');
+      
+      expect(await keyVault.getHolders(1)).eql([second.address]);
 
       // now the root will unbind it
       await expect(await locksmith.connect(root).soulbindKey(0, second.address, 1, 0))
@@ -501,6 +509,7 @@ describe("Locksmith", function () {
         .safeTransferFrom(second.address, owner.address, 1, 1, stb("")))
         .to.emit(keyVault, 'TransferSingle');
 
+      expect(await keyVault.getHolders(1)).eql([owner.address]);
       expect(await keyVault.balanceOf(owner.address, 1)).to.equal(1);
       expect(await keyVault.balanceOf(second.address, 1)).to.equal(0);
     });

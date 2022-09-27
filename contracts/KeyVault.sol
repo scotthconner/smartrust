@@ -21,6 +21,7 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 // the keys are going and who owns what
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 using EnumerableSet for EnumerableSet.UintSet;
+using EnumerableSet for EnumerableSet.AddressSet;
 ///////////////////////////////////////////////////////////
 
 /**
@@ -68,6 +69,9 @@ contract KeyVault is Initializable, ERC1155Upgradeable, OwnableUpgradeable, UUPS
     // we want to keep track of each key type
     // in each address for introspection
     mapping(address => EnumerableSet.UintSet) private addressKeys;
+   
+    // we want to keep track of each holder of keys
+    mapping(uint256 => EnumerableSet.AddressSet) private keyHolders;
 
     ///////////////////////////////////////////////////////
     // Constructor and Upgrade Methods
@@ -120,6 +124,19 @@ contract KeyVault is Initializable, ERC1155Upgradeable, OwnableUpgradeable, UUPS
      */
     function getKeys(address holder) public view returns (uint256[] memory) {
         return addressKeys[holder].values();
+    }
+
+    /**
+     * getHolders
+     *
+     * This method will return the addresses that hold
+     * a particular keyId
+     *
+     * @param keyId the key ID to look for
+     * @return an array of addresses that hold that key
+     */
+    function getHolders(uint256 keyId) public view returns (address[] memory) {
+        return keyHolders[keyId].values();
     }
 
     ////////////////////////////////////////////////////////
@@ -239,10 +256,12 @@ contract KeyVault is Initializable, ERC1155Upgradeable, OwnableUpgradeable, UUPS
 
             // lets keep track of each key that is moving
             if(from != address(0) && ((this.balanceOf(from, ids[x]) - amounts[x]) == 0)) {
-                addressKeys[from].remove(ids[x]);            
+                addressKeys[from].remove(ids[x]);
+                keyHolders[ids[x]].remove(from);
             }
             if(to != address(0) && ((this.balanceOf(to, ids[x]) + amounts[x]) > 0)) {
                 addressKeys[to].add(ids[x]);
+                keyHolders[ids[x]].add(to);
             }
         }
     }
