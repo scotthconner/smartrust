@@ -52,7 +52,6 @@ contract KeyVault is Initializable, ERC1155Upgradeable, OwnableUpgradeable, UUPS
     event setSoulboundKeyAmount(address operator, address keyHolder, 
         uint256 keyId, uint256 amount); 
 
-
     ///////////////////////////////////////////////////////
     // Storage
     ///////////////////////////////////////////////////////
