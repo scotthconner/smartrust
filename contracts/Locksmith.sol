@@ -98,6 +98,7 @@ contract Locksmith is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         uint256 rootKeyId;
 
         // a list of keys that are associated with this trust
+        uint256 trustKeyCount;
         uint256[] keys;
 
         // metadata about the individual keys
@@ -163,6 +164,22 @@ contract Locksmith is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     ////////////////////////////////////////////////////////
 
     /**
+     * getKeys()
+     *
+     * This evil bytecode is necessary to return a list of keys
+     * from the Trust structure.
+     *
+     * @param trustId the id you want the array of keyIds for.
+     * @return array of key Ids within the trust.
+     */
+    function getKeys(uint256 trustId) public view returns (uint256[] memory) {
+        // punish the user for requesting an invalid trust.
+        // an invalid trust's keys are always empty, RIGHT?!
+        assert(trustRegistry[trustId].keys.length != 0);
+
+        return trustRegistry[trustId].keys;
+    }
+    /**
      * createTrustAndRootKey
      *
      * Calling this function will create a trust with a name,
@@ -177,6 +194,7 @@ contract Locksmith is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         Trust storage t = trustRegistry[trustCount];
         t.id = trustCount++;
         t.rootKeyId = keyCount++;
+        t.trustKeyCount++;  
         t.name = trustName;
 
         // add the root key to the pool mapping, and associate
@@ -237,6 +255,7 @@ contract Locksmith is Initializable, OwnableUpgradeable, UUPSUpgradeable {
 
         // push the latest key ID into the trust, and
         // keep track of the association at O(1), along
+        t.trustKeyCount++;
         t.keys.push(newKeyId);
         t.keyNames[newKeyId] = keyName;
         keyTrustAssociations[newKeyId] = t.id;

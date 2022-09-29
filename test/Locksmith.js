@@ -247,6 +247,8 @@ describe("Locksmith", function () {
         .withArgs(root.address, 0, 5, stb('five'), third.address);
      
       // make sure all the keys ended up where we expected
+      expect(await locksmith.getKeys(0)).eql([bn(0),bn(2),bn(5)]);
+      expect(await locksmith.getKeys(1)).eql([bn(1),bn(3),bn(4)]);
       expect(await keyVault.balanceOf(root.address, 0)).to.equal(1);
       expect(await keyVault.balanceOf(second.address, 1)).to.equal(1);
       expect(await keyVault.balanceOf(third.address, 2)).to.equal(1);
