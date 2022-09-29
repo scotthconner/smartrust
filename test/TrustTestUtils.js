@@ -374,17 +374,17 @@ TrustTestFixtures = (function() {
         await TrustTestFixtures.fullTrusteeHarness();
 
       // give out some keys
-      await locksmith.connect(root).createKey(0, stb('Testing One'), root.address, false);
-      await locksmith.connect(root).createKey(0, stb('Testing Two'), root.address, false);
-      await locksmith.connect(root).createKey(0, stb('Testing Three'), root.address, false);
-      await locksmith.connect(root).createKey(0, stb('Soulbound One'), root.address, true);
+      await locksmith.connect(root).createKey(0, stb('Testing Four'), root.address, false);
+      await locksmith.connect(root).createKey(0, stb('Testing Five'), root.address, false);
+      await locksmith.connect(root).createKey(0, stb('Testing Six'), root.address, false);
+      await locksmith.connect(root).createKey(0, stb('Soulbound 7'), root.address, true);
 
       // also copy a key a few times.
-      await locksmith.connect(root).copyKey(0, 1, second.address, true);
-      await locksmith.connect(root).copyKey(0, 1, third.address, false);
-      await locksmith.connect(root).copyKey(0, 1, owner.address, false);
-      await locksmith.connect(root).copyKey(0, 2, second.address, false);
-      await locksmith.connect(root).copyKey(0, 2, third.address, true);
+      await locksmith.connect(root).copyKey(0, 4, second.address, true);
+      await locksmith.connect(root).copyKey(0, 4, third.address, false);
+      await locksmith.connect(root).copyKey(0, 4, owner.address, false);
+      await locksmith.connect(root).copyKey(0, 5, second.address, false);
+      await locksmith.connect(root).copyKey(0, 5, third.address, true);
 
 
       return {keyVault, locksmith,
