@@ -386,6 +386,9 @@ TrustTestFixtures = (function() {
       await locksmith.connect(root).copyKey(0, 5, second.address, false);
       await locksmith.connect(root).copyKey(0, 5, third.address, true);
 
+      // create a second trust and give root a key
+      await locksmith.connect(second).createTrustAndRootKey(stb('Second Trust'));
+      await locksmith.connect(second).createKey(8, stb('Trustee'), root.address, true);
 
       return {keyVault, locksmith,
         notary, ledger, vault, tokenVault, coin,
