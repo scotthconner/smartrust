@@ -333,24 +333,21 @@ contract Locksmith is Initializable, OwnableUpgradeable, UUPSUpgradeable {
      * @param rootKeyId root key for the associated trust
      * @param keyId     id of the key you want to burn
      * @param holder    address of the holder you want to burn from
+     * @param amount    the number of keys you want to burn
      */
-    function burnKey(uint256 rootKeyId, uint256 keyId, address holder) external {
+    function burnKey(uint256 rootKeyId, uint256 keyId, address holder, uint256 amount) external {
         Trust storage t = trustRegistry[getTrustFromRootKey(rootKeyId)];
        
         // is keyId associated with the root key's trust?
         require(t.keyMintCounts[keyId] > 0, 'TRUST_KEY_NOT_FOUND');
        
-        // make sure the target is even holding these keys
-        uint256 burnAmount = keyVault.balanceOf(holder, keyId);
-        require(burnAmount > 0, 'ZERO_BURN_AMOUNT');
-
         // burn them, and count the burn for logging.
         // this call is re-entrant, but we do all of
         // the state mutation afterwards.
-        keyVault.burn(holder, keyId, burnAmount);
-        t.keyBurnCounts[keyId] += burnAmount;
+        keyVault.burn(holder, keyId, amount);
 
-        emit keyBurned(msg.sender, t.id, keyId, holder, burnAmount);
+        t.keyBurnCounts[keyId] += amount;
+        emit keyBurned(msg.sender, t.id, keyId, holder, amount);
     }
 
     /**

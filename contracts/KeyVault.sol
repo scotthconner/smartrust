@@ -249,8 +249,12 @@ contract KeyVault is Initializable, ERC1155Upgradeable, OwnableUpgradeable, UUPS
         // would end up with too few soulbound requirements
         // at the end of the transaction.
         for(uint256 x = 0; x < ids.length; x++) {
-            // we need to allow address zero during minting
-            require((from == address(0)) || ((this.balanceOf(from, ids[x]) - amounts[x]) >=
+            // we need to allow address zero during minting,
+            // and we need to allow the locksmith to violate during burning 
+            require(
+                (from == address(0)) || 
+                (operator == respectedLocksmith) ||  
+                ((this.balanceOf(from, ids[x]) - amounts[x]) >=
                 soulboundKeyAmounts[from][ids[x]]), 'SOUL_BREACH');
 
             // lets keep track of each key that is moving

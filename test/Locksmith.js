@@ -534,7 +534,7 @@ describe("Locksmith", function () {
       const { keyVault, locksmith, owner, root, second, third} = 
         await loadFixture(TrustTestFixtures.singleRoot);
 
-      await expect(locksmith.connect(second).burnKey(0, 0, root.address))
+      await expect(locksmith.connect(second).burnKey(0, 0, root.address, 1))
         .to.be.revertedWith('KEY_NOT_HELD');
     }); 
     
@@ -548,7 +548,7 @@ describe("Locksmith", function () {
         .to.emit(locksmith, "keyMinted")
         .withArgs(root.address, 0, 1, stb('second'), second.address);
       
-      await expect(locksmith.connect(second).burnKey(1, 0, root.address))
+      await expect(locksmith.connect(second).burnKey(1, 0, root.address, 1))
         .to.be.revertedWith('KEY_NOT_ROOT');
     }); 
     
@@ -562,8 +562,9 @@ describe("Locksmith", function () {
         .to.emit(locksmith, "keyMinted")
         .withArgs(root.address, 0, 1, stb('second'), second.address);
       
-      await expect(locksmith.connect(root).burnKey(0, 1, third.address))
-        .to.be.revertedWith('ZERO_BURN_AMOUNT');
+      // the burn method should simply panic with an assertion here
+      await expect(locksmith.connect(root).burnKey(0, 1, third.address, 1))
+        .to.be.revertedWithPanic(0x11);
     });
     
     it("Can't burn key not from same trust", async function() {
@@ -576,7 +577,7 @@ describe("Locksmith", function () {
         .to.emit(locksmith, "trustCreated").withArgs(second.address, 1, stb("SmartTrust"));
 
       // try to use the first trust root key to burn the second
-      await expect(locksmith.connect(root).burnKey(0, 1, second.address))
+      await expect(locksmith.connect(root).burnKey(0, 1, second.address, 1))
         .to.be.revertedWith('TRUST_KEY_NOT_FOUND');
     });
 
@@ -596,7 +597,7 @@ describe("Locksmith", function () {
       await expect(await keyVault.getKeys(second.address)).eql([bn(1)]);
 
       // burn the key
-      await expect(await locksmith.connect(root).burnKey(0, 1, second.address))
+      await expect(await locksmith.connect(root).burnKey(0, 1, second.address, 1))
         .to.emit(locksmith, "keyBurned")
         .withArgs(root.address, 0, 1, second.address, 1);
       
@@ -624,7 +625,7 @@ describe("Locksmith", function () {
       await expect(await keyVault.getKeys(second.address)).eql([bn(1)]);
 
       // burn the key
-      await expect(await locksmith.connect(root).burnKey(0, 1, second.address))
+      await expect(await locksmith.connect(root).burnKey(0, 1, second.address, 2))
         .to.emit(locksmith, "keyBurned")
         .withArgs(root.address, 0, 1, second.address, 2);
       
@@ -636,14 +637,14 @@ describe("Locksmith", function () {
       const { keyVault, locksmith, owner, root, second, third} = 
         await loadFixture(TrustTestFixtures.singleRoot);
       
-      await expect(await locksmith.connect(root).burnKey(0, 0, root.address))
+      await expect(await locksmith.connect(root).burnKey(0, 0, root.address, 1))
         .to.emit(locksmith, "keyBurned")
         .withArgs(root.address, 0, 0, root.address, 1);
       
       expect(await keyVault.balanceOf(root.address, 0)).to.equal(0);
     });
 
-    it("Soulbound keys cannot be burned", async function() {
+    it("Soulbound keys can be burned", async function() {
       const { keyVault, locksmith, owner, root, second, third} =
         await loadFixture(TrustTestFixtures.singleRoot);
 
@@ -655,9 +656,11 @@ describe("Locksmith", function () {
         .to.emit(keyVault, 'setSoulboundKeyAmount')
         .withArgs(locksmith.address, second.address, 1, 1);
 
-      // burning that soulbound key will fail
-      await expect(locksmith.connect(root)
-        .burnKey(0, 1, second.address)).to.be.revertedWith('SOUL_BREACH');
+      // burning that soulbound key will succeed 
+      await expect(await locksmith.connect(root)
+        .burnKey(0, 1, second.address, 1))
+        .to.emit(locksmith, "keyBurned")
+        .withArgs(root.address, 0, 1, second.address, 1);
     });
   });
   
