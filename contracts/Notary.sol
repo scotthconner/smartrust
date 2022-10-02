@@ -19,6 +19,11 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
 // The Ledger respects keys minted for trusts by it's associated locksmith.
 import './Locksmith.sol';
+
+// We want to use an enumerable set to save byte-code when
+// managing roles.
+import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
+using EnumerableSet for EnumerableSet.AddressSet;
 ///////////////////////////////////////////////////////////
 
 /**
@@ -146,14 +151,8 @@ contract Notary is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         mapping(bytes32 => uint256)))) public withdrawalAllowances;
 
     // trusted ledger actors 
-    // ledger / trust / role => actorCount 
-    mapping(address => mapping(uint256 => mapping(uint8 => uint256))) public actorRegistrySize;
     // ledger / trust / role => [actors] 
-    mapping(address => mapping(uint256 => mapping(uint8 => address[]))) public actorRegistry;
-    // ledger / trust / role / actor => registered?
-    mapping(address => mapping(uint256 => mapping(uint8 => mapping(address => bool)))) private registeredActors;
-    // ledger / trust / role / actor => trusted?
-    mapping(address => mapping(uint256 => mapping(uint8 => mapping(address => bool)))) public actorTrustStatus;
+    mapping(address => mapping(uint256 => mapping(uint8 => EnumerableSet.AddressSet))) private actorRegistry;
     
     // The notary cares about a few different role types
     // that are attached to the ledger/trust pair. This
@@ -207,6 +206,20 @@ contract Notary is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     // on what the notary knows.
     ////////////////////////////////////////////////////////
 
+    /**
+     * getTrustedActors
+     *
+     * Provides the trusted actors for a given trust configuration.
+     *
+     * @param ledger  the address of the ledger
+     * @param trustId the id of the trust
+     * @param role    the role you want the list for.
+     * @return an array of addresses that are trusted
+     */
+    function getTrustedActors(address ledger, uint256 trustId, uint8 role) public view returns (address[] memory) {
+        return actorRegistry[ledger][trustId][role].values();
+    }
+
     ////////////////////////////////////////////////////////
     // Key Holder Methods 
     //
@@ -246,27 +259,21 @@ contract Notary is Initializable, OwnableUpgradeable, UUPSUpgradeable {
 
         if (trustLevel) {
             // make sure they are not already a provider on the trust
-            require(!actorTrustStatus[ledger][trustId][role][actor], 'REDUNDANT_PROVISION');
+            require(!actorRegistry[ledger][trustId][role].contains(actor), 'REDUNDANT_PROVISION');
 
             // register them with the trust if not already done so
-            if (!registeredActors[ledger][trustId][role][actor]) {
-                actorRegistry[ledger][trustId][role].push(actor);
-                actorRegistrySize[ledger][trustId][role]++;
-                registeredActors[ledger][trustId][role][actor] = true;
-            }
+            actorRegistry[ledger][trustId][role].add(actor);
 
-            // set their provider status to true for the trust
-            actorTrustStatus[ledger][trustId][role][actor] = true;
         } else {
             // we are trying to revoke status, so make sure they are one
-            require(actorTrustStatus[ledger][trustId][role][actor], 'NOT_CURRENT_ACTOR');
+            require(actorRegistry[ledger][trustId][role].contains(actor), 'NOT_CURRENT_ACTOR');
 
-            // set their provider status to false. At this point
+            // remove them from the notary. At this point in time
             // there could still be collateral in the trust from this provider.
             // the provider isn't trusted at this moment to facilitate deposits
             // or withdrawals. Adding them back would re-enable their trusted
             // status. This is useful if a collateral provider is somehow compromised.
-            actorTrustStatus[ledger][trustId][role][actor] = false;
+            actorRegistry[ledger][trustId][role].remove(actor);
         }
 
         // keep an entry for auditing purposes
@@ -405,7 +412,7 @@ contract Notary is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         uint256 trustId = requireTrustedActor(rootKeyId, scribe, SCRIBE, true);
 
         // we also want to make sure the provider is trusted
-        require(actorTrustStatus[msg.sender][trustId][COLLATERAL_PROVIDER][provider], 
+        require(actorRegistry[msg.sender][trustId][COLLATERAL_PROVIDER].contains(provider), 
             'UNTRUSTED_PROVIDER');
 
         // check to ensure the array sizes are 1:1
@@ -451,7 +458,7 @@ contract Notary is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     
         // make sure the actor is trusted
         // we assume the message sender is the ledger
-        require(actorTrustStatus[msg.sender][trustId][role][actor], 'UNTRUSTED_ACTOR');
+        require(actorRegistry[msg.sender][trustId][role].contains(actor), 'UNTRUSTED_ACTOR');
 
         return trustId;
     }

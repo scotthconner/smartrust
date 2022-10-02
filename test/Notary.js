@@ -87,7 +87,7 @@ describe("Notary", function () {
           .to.emit(notary, 'trustedRoleChange')
           .withArgs(root.address, 0, 0, owner.address, third.address, true, role);
 
-        expect(await notary.actorTrustStatus(owner.address, 0, role, third.address)).eql(true);
+        expect(await notary.getTrustedActors(owner.address, 0, role)).to.contain(third.address);
       }
     });
 
@@ -113,12 +113,12 @@ describe("Notary", function () {
         await expect(await notary.connect(root).setTrustedLedgerRole(0, role, owner.address, third.address, true))
           .to.emit(notary, 'trustedRoleChange')
           .withArgs(root.address, 0, 0, owner.address, third.address, true, role);
-        expect(await notary.actorTrustStatus(owner.address, 0, role, third.address)).eql(true);
+        expect(await notary.getTrustedActors(owner.address, 0, role)).to.contain(third.address);
 
         await expect(await notary.connect(root).setTrustedLedgerRole(0, role, owner.address, third.address, false))
           .to.emit(notary, 'trustedRoleChange')
           .withArgs(root.address, 0, 0, owner.address, third.address, false, role);
-        expect(await notary.actorTrustStatus(owner.address, 0, role, third.address)).eql(false);
+        expect(await notary.getTrustedActors(owner.address, 0, role)).eql([]);
       }
     });
 
@@ -130,26 +130,22 @@ describe("Notary", function () {
         await expect(await notary.connect(root).setTrustedLedgerRole(0, role, owner.address, third.address, true))
           .to.emit(notary, 'trustedRoleChange')
           .withArgs(root.address, 0, 0, owner.address, third.address, true, role);
-        expect(await notary.actorTrustStatus(owner.address, 0, role, third.address)).eql(true);
-        expect(await notary.actorRegistrySize(owner.address, 0, role)).to.equal(1);
+        expect(await notary.getTrustedActors(owner.address, 0, role)).eql([third.address]);
 
         await expect(await notary.connect(root).setTrustedLedgerRole(0, role, owner.address, third.address, false))
           .to.emit(notary, 'trustedRoleChange')
           .withArgs(root.address, 0, 0, owner.address, third.address, false, role);
-        expect(await notary.actorTrustStatus(owner.address, 0, role, third.address)).eql(false);
-        expect(await notary.actorRegistrySize(owner.address, 0, role)).to.equal(1);
+        expect(await notary.getTrustedActors(owner.address, 0, role)).eql([]);
         
         await expect(await notary.connect(root).setTrustedLedgerRole(0, role, owner.address, third.address, true))
           .to.emit(notary, 'trustedRoleChange')
           .withArgs(root.address, 0, 0, owner.address, third.address, true, role);
-        expect(await notary.actorTrustStatus(owner.address, 0, role, third.address)).eql(true);
-        expect(await notary.actorRegistrySize(owner.address, 0, role)).to.equal(1);
+        expect(await notary.getTrustedActors(owner.address, 0, role)).eql([third.address]);
         
         await expect(await notary.connect(root).setTrustedLedgerRole(0, role, owner.address, second.address, true))
           .to.emit(notary, 'trustedRoleChange')
           .withArgs(root.address, 0, 0, owner.address, second.address, true, role);
-        expect(await notary.actorTrustStatus(owner.address, 0, role, second.address)).eql(true);
-        expect(await notary.actorRegistrySize(owner.address, 0, role)).to.equal(2);
+        expect(await notary.getTrustedActors(owner.address, 0, role)).eql([third.address, second.address]);
       }
     });
     
