@@ -206,7 +206,7 @@ contract Notary is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     // These methods are external and called to power introspection
     // on what the notary knows.
     ////////////////////////////////////////////////////////
-    
+
     ////////////////////////////////////////////////////////
     // Key Holder Methods 
     //

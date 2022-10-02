@@ -22,6 +22,7 @@ async function main() {
   let contracts = {
     keyVault:   keyVault.address,
     locksmith:  locksmith.address,
+    notary:     notary.address,
     ledger:     ledger.address,
     vault:      vault.address,
     tokenVault: tokenVault.address,
