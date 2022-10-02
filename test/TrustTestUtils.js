@@ -390,6 +390,10 @@ TrustTestFixtures = (function() {
       await locksmith.connect(second).createTrustAndRootKey(stb('Second Trust'));
       await locksmith.connect(second).createKey(8, stb('Trustee'), root.address, true);
 
+      // test a trusted collateral provider for second trust
+      await notary.connect(second).setTrustedLedgerRole(8, 0, ledger.address, vault.address, true, stb('Ether Vault'));
+      await notary.connect(second).setTrustedLedgerRole(8, 0, ledger.address, tokenVault.address, true, stb('Ether Vault'));
+
       return {keyVault, locksmith,
         notary, ledger, vault, tokenVault, coin,
         events, trustee,
