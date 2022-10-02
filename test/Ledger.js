@@ -69,7 +69,7 @@ describe("Ledger", function () {
       await expect(peer.connect(owner).deposit()).to.be.revertedWith('UNTRUSTED_ACTOR');
 
       // now set the peer properly
-      await expect(await notary.connect(root).setTrustedLedgerRole(0, 0, ledger.address, peer.address, true))
+      await expect(await notary.connect(root).setTrustedLedgerRole(0, 0, ledger.address, peer.address, true, stb('Peer')))
         .to.emit(notary, 'trustedRoleChange')
         .withArgs(root.address, 0, 0, ledger.address, peer.address, true, 0)
       
@@ -168,7 +168,7 @@ describe("Ledger", function () {
      
       // we need to generate a second trust key
       await locksmith.connect(second).createTrustAndRootKey(stb("Second Trust"));
-      await notary.connect(second).setTrustedLedgerRole(1, 0, ledger.address, owner.address, true)
+      await notary.connect(second).setTrustedLedgerRole(1, 0, ledger.address, owner.address, true, stb('Peer'))
 
       // check preconditions
       expect(await ledger.connect(root).getContextArnRegistry(0,0,zero())).has.length(0);
@@ -204,7 +204,7 @@ describe("Ledger", function () {
       
       // we need to generate a second trust key
       await locksmith.connect(second).createTrustAndRootKey(stb("Second Trust"));
-      await notary.connect(second).setTrustedLedgerRole(1, 0, ledger.address, owner.address, true)
+      await notary.connect(second).setTrustedLedgerRole(1, 0, ledger.address, owner.address, true, stb('Peer'))
       
       // check preconditions
       expect(await ledger.connect(root).getContextArnRegistry(0,0,zero())).has.length(0);
@@ -336,9 +336,9 @@ describe("Ledger", function () {
       
       // we need to generate two more trusts 
       await locksmith.connect(second).createTrustAndRootKey(stb("Second Trust"));
-      await notary.connect(second).setTrustedLedgerRole(1, 0, ledger.address, owner.address, true)
+      await notary.connect(second).setTrustedLedgerRole(1, 0, ledger.address, owner.address, true, stb('Owner'))
       await locksmith.connect(third).createTrustAndRootKey(stb("thirdTrust"));
-      await notary.connect(third).setTrustedLedgerRole(2, 0, ledger.address, owner.address, true)
+      await notary.connect(third).setTrustedLedgerRole(2, 0, ledger.address, owner.address, true, stb('Owner'))
       
       // initial deposits
       await expect(await ledger.connect(owner).deposit(0, stb('ether'), eth(1)))

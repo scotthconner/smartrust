@@ -60,7 +60,7 @@ describe("Notary", function () {
         await loadFixture(TrustTestFixtures.freshNotaryProxy);
 
       for(var role = COLLATERAL_PROVIDER(); role <= SCRIBE(); role++) {
-        await expect(notary.connect(second).setTrustedLedgerRole(1, role, owner.address, third.address, true))
+        await expect(notary.connect(second).setTrustedLedgerRole(1, role, owner.address, third.address, true, stb('')))
           .to.be.revertedWith('KEY_NOT_HELD');
       }
     });
@@ -73,7 +73,7 @@ describe("Notary", function () {
       await locksmith.connect(root).createKey(0, stb('second'), second.address, false);
 
       for(var role = COLLATERAL_PROVIDER(); role <= SCRIBE(); role++) {
-        await expect(notary.connect(second).setTrustedLedgerRole(1, role, owner.address, third.address, true))
+        await expect(notary.connect(second).setTrustedLedgerRole(1, role, owner.address, third.address, true, stb('')))
           .to.be.revertedWith('KEY_NOT_ROOT');
       }
     });
@@ -83,7 +83,7 @@ describe("Notary", function () {
         await loadFixture(TrustTestFixtures.freshNotaryProxy);
 
       for(var role = COLLATERAL_PROVIDER(); role <= SCRIBE(); role++) {
-        await expect(await notary.connect(root).setTrustedLedgerRole(0, role, owner.address, third.address, true))
+        await expect(await notary.connect(root).setTrustedLedgerRole(0, role, owner.address, third.address, true, stb('')))
           .to.emit(notary, 'trustedRoleChange')
           .withArgs(root.address, 0, 0, owner.address, third.address, true, role);
 
@@ -96,11 +96,11 @@ describe("Notary", function () {
         await loadFixture(TrustTestFixtures.freshNotaryProxy);
 
       for(var role = COLLATERAL_PROVIDER(); role <= SCRIBE(); role++) {
-        await expect(await notary.connect(root).setTrustedLedgerRole(0, role, owner.address, third.address, true))
+        await expect(await notary.connect(root).setTrustedLedgerRole(0, role, owner.address, third.address, true, stb('')))
           .to.emit(notary, 'trustedRoleChange')
           .withArgs(root.address, 0, 0, owner.address, third.address, true, role);
 
-        await expect(notary.connect(root).setTrustedLedgerRole(0, role, owner.address, third.address, true))
+        await expect(notary.connect(root).setTrustedLedgerRole(0, role, owner.address, third.address, true, stb('')))
           .to.be.revertedWith('REDUNDANT_PROVISION');
       }
     });
@@ -110,12 +110,12 @@ describe("Notary", function () {
         await loadFixture(TrustTestFixtures.freshNotaryProxy);
 
       for(var role = COLLATERAL_PROVIDER(); role <= SCRIBE(); role++) {
-        await expect(await notary.connect(root).setTrustedLedgerRole(0, role, owner.address, third.address, true))
+        await expect(await notary.connect(root).setTrustedLedgerRole(0, role, owner.address, third.address, true, stb('')))
           .to.emit(notary, 'trustedRoleChange')
           .withArgs(root.address, 0, 0, owner.address, third.address, true, role);
         expect(await notary.getTrustedActors(owner.address, 0, role)).to.contain(third.address);
 
-        await expect(await notary.connect(root).setTrustedLedgerRole(0, role, owner.address, third.address, false))
+        await expect(await notary.connect(root).setTrustedLedgerRole(0, role, owner.address, third.address, false, stb('')))
           .to.emit(notary, 'trustedRoleChange')
           .withArgs(root.address, 0, 0, owner.address, third.address, false, role);
         expect(await notary.getTrustedActors(owner.address, 0, role)).eql([]);
@@ -127,22 +127,22 @@ describe("Notary", function () {
         await loadFixture(TrustTestFixtures.freshNotaryProxy);
 
       for(var role = COLLATERAL_PROVIDER(); role <= SCRIBE(); role++) {
-        await expect(await notary.connect(root).setTrustedLedgerRole(0, role, owner.address, third.address, true))
+        await expect(await notary.connect(root).setTrustedLedgerRole(0, role, owner.address, third.address, true, stb('')))
           .to.emit(notary, 'trustedRoleChange')
           .withArgs(root.address, 0, 0, owner.address, third.address, true, role);
         expect(await notary.getTrustedActors(owner.address, 0, role)).eql([third.address]);
 
-        await expect(await notary.connect(root).setTrustedLedgerRole(0, role, owner.address, third.address, false))
+        await expect(await notary.connect(root).setTrustedLedgerRole(0, role, owner.address, third.address, false, stb('')))
           .to.emit(notary, 'trustedRoleChange')
           .withArgs(root.address, 0, 0, owner.address, third.address, false, role);
         expect(await notary.getTrustedActors(owner.address, 0, role)).eql([]);
         
-        await expect(await notary.connect(root).setTrustedLedgerRole(0, role, owner.address, third.address, true))
+        await expect(await notary.connect(root).setTrustedLedgerRole(0, role, owner.address, third.address, true, stb('')))
           .to.emit(notary, 'trustedRoleChange')
           .withArgs(root.address, 0, 0, owner.address, third.address, true, role);
         expect(await notary.getTrustedActors(owner.address, 0, role)).eql([third.address]);
         
-        await expect(await notary.connect(root).setTrustedLedgerRole(0, role, owner.address, second.address, true))
+        await expect(await notary.connect(root).setTrustedLedgerRole(0, role, owner.address, second.address, true, stb('')))
           .to.emit(notary, 'trustedRoleChange')
           .withArgs(root.address, 0, 0, owner.address, second.address, true, role);
         expect(await notary.getTrustedActors(owner.address, 0, role)).eql([third.address, second.address]);
@@ -154,7 +154,7 @@ describe("Notary", function () {
         await loadFixture(TrustTestFixtures.freshNotaryProxy);
 
       for(var role = COLLATERAL_PROVIDER(); role <= SCRIBE(); role++) {
-        await expect(notary.connect(root).setTrustedLedgerRole(0, role, owner.address, third.address, false))
+        await expect(notary.connect(root).setTrustedLedgerRole(0, role, owner.address, third.address, false, stb('')))
           .to.be.revertedWith('NOT_CURRENT_ACTOR');
       }
     });
@@ -238,7 +238,7 @@ describe("Notary", function () {
 
       // trust 'third', but attempt to notarize against 'second'
       await expect(await notary.connect(root).setTrustedLedgerRole(0, COLLATERAL_PROVIDER(), owner.address,
-        third.address, true)).to.emit(notary, 'trustedRoleChange')
+        third.address, true, stb(''))).to.emit(notary, 'trustedRoleChange')
         .withArgs(root.address, 0, 0, owner.address, third.address, true, COLLATERAL_PROVIDER());
 
       // notarize against second isn't any good
@@ -252,7 +252,7 @@ describe("Notary", function () {
 
       // trust 'third'
       await expect(await notary.connect(root).setTrustedLedgerRole(0, COLLATERAL_PROVIDER(), owner.address,
-        third.address, true)).to.emit(notary, 'trustedRoleChange')
+        third.address, true, stb(''))).to.emit(notary, 'trustedRoleChange')
         .withArgs(root.address, 0, 0, owner.address, third.address, true, COLLATERAL_PROVIDER());
 
       // call from 'second', which is not a valid ledger based on the trust relationship 
@@ -266,7 +266,7 @@ describe("Notary", function () {
 
       // trust 'third'
       await expect(await notary.connect(root).setTrustedLedgerRole(0, COLLATERAL_PROVIDER(), owner.address,
-        third.address, true)).to.emit(notary, 'trustedRoleChange')
+        third.address, true, stb(''))).to.emit(notary, 'trustedRoleChange')
         .withArgs(root.address, 0, 0, owner.address, third.address, true, COLLATERAL_PROVIDER());
 
       // create another trust, that gives us a valid root key '1'.
@@ -285,7 +285,7 @@ describe("Notary", function () {
 
       // trust 'third' with a SCRIBE role
       await expect(await notary.connect(root).setTrustedLedgerRole(0, SCRIBE(), owner.address,
-        third.address, true)).to.emit(notary, 'trustedRoleChange')
+        third.address, true, stb(''))).to.emit(notary, 'trustedRoleChange')
         .withArgs(root.address, 0, 0, owner.address, third.address, true, SCRIBE());
 
       // everything about this seems right, but 'third' has a scribe role not
@@ -300,7 +300,7 @@ describe("Notary", function () {
 
       // trust 'third'
       await expect(await notary.connect(root).setTrustedLedgerRole(0, COLLATERAL_PROVIDER(), owner.address,
-        third.address, true)).to.emit(notary, 'trustedRoleChange')
+        third.address, true, stb(''))).to.emit(notary, 'trustedRoleChange')
         .withArgs(root.address, 0, 0, owner.address, third.address, true, COLLATERAL_PROVIDER());
 
       // this represents the only way it succeeds - the ledger, provider, and root key are
@@ -343,7 +343,7 @@ describe("Notary", function () {
 
       // trust 'third', but attempt to notarize against 'second'
       await expect(await notary.connect(root).setTrustedLedgerRole(0, COLLATERAL_PROVIDER(), owner.address,
-        third.address, true)).to.emit(notary, 'trustedRoleChange')
+        third.address, true, stb(''))).to.emit(notary, 'trustedRoleChange')
         .withArgs(root.address, 0, 0, owner.address, third.address, true, COLLATERAL_PROVIDER());
 
       // notarize against second isn't any good
@@ -357,7 +357,7 @@ describe("Notary", function () {
 
       // trust 'third'
       await expect(await notary.connect(root).setTrustedLedgerRole(0, COLLATERAL_PROVIDER(), owner.address,
-        third.address, true)).to.emit(notary, 'trustedRoleChange')
+        third.address, true, stb(''))).to.emit(notary, 'trustedRoleChange')
         .withArgs(root.address, 0, 0, owner.address, third.address, true, COLLATERAL_PROVIDER());
 
       // call from 'second', which is not a valid ledger based on the trust relationship
@@ -371,7 +371,7 @@ describe("Notary", function () {
 
       // trust 'third'
       await expect(await notary.connect(root).setTrustedLedgerRole(0, COLLATERAL_PROVIDER(), owner.address,
-        third.address, true)).to.emit(notary, 'trustedRoleChange')
+        third.address, true, stb(''))).to.emit(notary, 'trustedRoleChange')
         .withArgs(root.address, 0, 0, owner.address, third.address, true, COLLATERAL_PROVIDER());
 
       // create another trust, that gives us a valid root key '1'.
@@ -390,7 +390,7 @@ describe("Notary", function () {
 
       // trust 'third' with a SCRIBE role
       await expect(await notary.connect(root).setTrustedLedgerRole(0, SCRIBE(), owner.address,
-        third.address, true)).to.emit(notary, 'trustedRoleChange')
+        third.address, true, stb(''))).to.emit(notary, 'trustedRoleChange')
         .withArgs(root.address, 0, 0, owner.address, third.address, true, SCRIBE());
 
       // everything about this seems right, but 'third' has a scribe role not
@@ -405,7 +405,7 @@ describe("Notary", function () {
 
       // trust 'third'
       await expect(await notary.connect(root).setTrustedLedgerRole(0, COLLATERAL_PROVIDER(), owner.address,
-        third.address, true)).to.emit(notary, 'trustedRoleChange')
+        third.address, true, stb(''))).to.emit(notary, 'trustedRoleChange')
         .withArgs(root.address, 0, 0, owner.address, third.address, true, COLLATERAL_PROVIDER());
 
       // everything about this seems right, but we haven't set a withdrawal allowance
@@ -419,7 +419,7 @@ describe("Notary", function () {
 
       // trust 'third'
       await expect(await notary.connect(root).setTrustedLedgerRole(0, COLLATERAL_PROVIDER(), owner.address,
-        third.address, true)).to.emit(notary, 'trustedRoleChange')
+        third.address, true, stb(''))).to.emit(notary, 'trustedRoleChange')
         .withArgs(root.address, 0, 0, owner.address, third.address, true, COLLATERAL_PROVIDER());
 
       // create another key
@@ -459,7 +459,7 @@ describe("Notary", function () {
 
       // we have a trusted scribe, though
       await expect(await notary.connect(root).setTrustedLedgerRole(0, SCRIBE(), owner.address,
-        second.address, true)).to.emit(notary, 'trustedRoleChange')
+        second.address, true, stb(''))).to.emit(notary, 'trustedRoleChange')
         .withArgs(root.address, 0, 0, owner.address, second.address, true, SCRIBE());
 
       await expect(notary.connect(owner).notarizeDistribution(second.address, third.address,
@@ -473,7 +473,7 @@ describe("Notary", function () {
 
       // trust 'third'
       await expect(await notary.connect(root).setTrustedLedgerRole(0, COLLATERAL_PROVIDER(), owner.address,
-        third.address, true)).to.emit(notary, 'trustedRoleChange')
+        third.address, true, stb(''))).to.emit(notary, 'trustedRoleChange')
         .withArgs(root.address, 0, 0, owner.address, third.address, true, COLLATERAL_PROVIDER());
 
       // call from the right ledger, the right collateral provide, AND a root key, just not
@@ -489,12 +489,12 @@ describe("Notary", function () {
 
       // trust 'third' as collateral provider
       await expect(await notary.connect(root).setTrustedLedgerRole(0, COLLATERAL_PROVIDER(), owner.address,
-        third.address, true)).to.emit(notary, 'trustedRoleChange')
+        third.address, true, stb(''))).to.emit(notary, 'trustedRoleChange')
         .withArgs(root.address, 0, 0, owner.address, third.address, true, COLLATERAL_PROVIDER());
 
       // trust 'second' as a scribe
       await expect(await notary.connect(root).setTrustedLedgerRole(0, SCRIBE(), owner.address,
-        second.address, true)).to.emit(notary, 'trustedRoleChange')
+        second.address, true, stb(''))).to.emit(notary, 'trustedRoleChange')
         .withArgs(root.address, 0, 0, owner.address, second.address, true, SCRIBE());
 
       // call from the right ledger, the right collateral provider, and scribe
@@ -510,12 +510,12 @@ describe("Notary", function () {
 
       // trust 'third' as collateral provider
       await expect(await notary.connect(root).setTrustedLedgerRole(0, COLLATERAL_PROVIDER(), owner.address,
-        third.address, true)).to.emit(notary, 'trustedRoleChange')
+        third.address, true, stb(''))).to.emit(notary, 'trustedRoleChange')
         .withArgs(root.address, 0, 0, owner.address, third.address, true, COLLATERAL_PROVIDER());
 
       // trust 'second' as a scribe
       await expect(await notary.connect(root).setTrustedLedgerRole(0, SCRIBE(), owner.address,
-        second.address, true)).to.emit(notary, 'trustedRoleChange')
+        second.address, true, stb(''))).to.emit(notary, 'trustedRoleChange')
         .withArgs(root.address, 0, 0, owner.address, second.address, true, SCRIBE());
 
       // mint a second key
@@ -534,12 +534,12 @@ describe("Notary", function () {
 
       // trust 'third' as collateral provider
       await expect(await notary.connect(root).setTrustedLedgerRole(0, COLLATERAL_PROVIDER(), owner.address,
-        third.address, true)).to.emit(notary, 'trustedRoleChange')
+        third.address, true, stb(''))).to.emit(notary, 'trustedRoleChange')
         .withArgs(root.address, 0, 0, owner.address, third.address, true, COLLATERAL_PROVIDER());
 
       // trust 'second' as a scribe
       await expect(await notary.connect(root).setTrustedLedgerRole(0, SCRIBE(), owner.address,
-        second.address, true)).to.emit(notary, 'trustedRoleChange')
+        second.address, true, stb(''))).to.emit(notary, 'trustedRoleChange')
         .withArgs(root.address, 0, 0, owner.address, second.address, true, SCRIBE());
 
       // mint a second key
@@ -558,12 +558,12 @@ describe("Notary", function () {
 
       // trust 'third' as collateral provider
       await expect(await notary.connect(root).setTrustedLedgerRole(0, COLLATERAL_PROVIDER(), owner.address,
-        third.address, true)).to.emit(notary, 'trustedRoleChange')
+        third.address, true, stb(''))).to.emit(notary, 'trustedRoleChange')
         .withArgs(root.address, 0, 0, owner.address, third.address, true, COLLATERAL_PROVIDER());
 
       // trust 'second' as a scribe
       await expect(await notary.connect(root).setTrustedLedgerRole(0, SCRIBE(), owner.address,
-        second.address, true)).to.emit(notary, 'trustedRoleChange')
+        second.address, true, stb(''))).to.emit(notary, 'trustedRoleChange')
         .withArgs(root.address, 0, 0, owner.address, second.address, true, SCRIBE());
 
       // mint a second key
@@ -587,12 +587,12 @@ describe("Notary", function () {
 
       // trust 'third' as collateral provider
       await expect(await notary.connect(root).setTrustedLedgerRole(0, COLLATERAL_PROVIDER(), owner.address,
-        third.address, true)).to.emit(notary, 'trustedRoleChange')
+        third.address, true, stb(''))).to.emit(notary, 'trustedRoleChange')
         .withArgs(root.address, 0, 0, owner.address, third.address, true, COLLATERAL_PROVIDER());
 
       // trust 'second' as a scribe
       await expect(await notary.connect(root).setTrustedLedgerRole(0, SCRIBE(), owner.address,
-        second.address, true)).to.emit(notary, 'trustedRoleChange')
+        second.address, true, stb(''))).to.emit(notary, 'trustedRoleChange')
         .withArgs(root.address, 0, 0, owner.address, second.address, true, SCRIBE());
 
       // mint a second key outside of the trust
@@ -611,12 +611,12 @@ describe("Notary", function () {
 
       // trust 'third' as collateral provider
       await expect(await notary.connect(root).setTrustedLedgerRole(0, COLLATERAL_PROVIDER(), owner.address,
-        third.address, true)).to.emit(notary, 'trustedRoleChange')
+        third.address, true, stb(''))).to.emit(notary, 'trustedRoleChange')
         .withArgs(root.address, 0, 0, owner.address, third.address, true, COLLATERAL_PROVIDER());
 
       // trust 'second' as a scribe
       await expect(await notary.connect(root).setTrustedLedgerRole(0, SCRIBE(), owner.address,
-        second.address, true)).to.emit(notary, 'trustedRoleChange')
+        second.address, true, stb(''))).to.emit(notary, 'trustedRoleChange')
         .withArgs(root.address, 0, 0, owner.address, second.address, true, SCRIBE());
 
       // mint a second and third key

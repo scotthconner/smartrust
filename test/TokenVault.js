@@ -79,7 +79,7 @@ describe("TokenVault", function () {
       await expect(tokenVault.connect(second)
         .deposit(1, coin.address, eth(3))) 
         .to.be.revertedWith('UNTRUSTED_ACTOR');
-      await notary.connect(second).setTrustedLedgerRole(1, 0, ledger.address, tokenVault.address, true);
+      await notary.connect(second).setTrustedLedgerRole(1, 0, ledger.address, tokenVault.address, true, stb('Token Vault'));
 
       await expect(await tokenVault.connect(second).deposit(1, coin.address, eth(3)) )
         .to.emit(ledger, "depositOccurred")

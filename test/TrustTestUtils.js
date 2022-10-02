@@ -172,7 +172,7 @@ TrustTestFixtures = (function() {
 
       // let's give the owner collateral trust for the sake of
       // testing simplicity
-      await notary.connect(root).setTrustedLedgerRole(0, 0, ledger.address, owner.address, true);
+      await notary.connect(root).setTrustedLedgerRole(0, 0, ledger.address, owner.address, true, stb('Owner'));
 
       return {keyVault, locksmith, notary, ledger, owner, root, second, third};
     },
@@ -186,7 +186,7 @@ TrustTestFixtures = (function() {
         await TrustTestFixtures.freshLedgerProxy();
 
       // set up a trusted scribe 
-      await notary.connect(root).setTrustedLedgerRole(0, SCRIBE(), ledger.address, third.address, true);
+      await notary.connect(root).setTrustedLedgerRole(0, SCRIBE(), ledger.address, third.address, true, stb('Third'));
 
       // deposit the bat guano
       await ledger.connect(owner).deposit(0, stb('ether'), eth(10));
@@ -216,7 +216,7 @@ TrustTestFixtures = (function() {
       // set the vault as a trusted collteral provider to the
       // notary for the first trust. This makes it easy to test
       // balances without more set up.
-      await notary.connect(root).setTrustedLedgerRole(0, 0, ledger.address, vault.address, true);
+      await notary.connect(root).setTrustedLedgerRole(0, 0, ledger.address, vault.address, true, stb('Ether Vault'));
 
       return { owner, keyVault, locksmith, 
         notary, ledger, vault, 
@@ -278,7 +278,7 @@ TrustTestFixtures = (function() {
       await coin.connect(third).approve(tokenVault.address, ethers.constants.MaxUint256);
 
       await notary.connect(root).setTrustedLedgerRole(
-        0, 0, ledger.address, tokenVault.address, true);
+        0, 0, ledger.address, tokenVault.address, true, stb('Token Vault'));
 
       return {keyVault, locksmith, 
         notary, ledger, vault, tokenVault, coin, 
@@ -347,7 +347,7 @@ TrustTestFixtures = (function() {
 
       // register the trustee with the notary
       await notary.connect(root).setTrustedLedgerRole(0, SCRIBE(), 
-        ledger.address, trustee.address, true);
+        ledger.address, trustee.address, true, stb('Trustees'));
 
       // pass out a few keys
       await locksmith.connect(root).createKey(0, stb('one'), owner.address, false); 

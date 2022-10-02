@@ -153,7 +153,11 @@ contract Notary is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     // trusted ledger actors 
     // ledger / trust / role => [actors] 
     mapping(address => mapping(uint256 => mapping(uint8 => EnumerableSet.AddressSet))) private actorRegistry;
-    
+
+    // actor aliases
+    // ledger / trust / role / actor => alias
+    mapping(address => mapping(uint256 => mapping(uint8 => mapping(address => bytes32)))) public actorAliases;
+
     // The notary cares about a few different role types
     // that are attached to the ledger/trust pair. This
     // enum differentiates the storage while still making
@@ -245,9 +249,12 @@ contract Notary is Initializable, OwnableUpgradeable, UUPSUpgradeable {
      * @param role       the role the actor will play (provider or scribe)
      * @param ledger     the contract of the ledger used by the actor
      * @param actor      the contract of the ledger actor 
-     * @param trustLevel the flag to set the trusted status of this actor 
+     * @param trustLevel the flag to set the trusted status of this actor
+     * @param actorAlias the alias of the actor, set if the trustLevel is true
      */
-    function setTrustedLedgerRole(uint256 rootKeyId, uint8 role, address ledger, address actor, bool trustLevel) external {
+    function setTrustedLedgerRole(uint256 rootKeyId, uint8 role, address ledger, address actor, 
+        bool trustLevel, bytes32 actorAlias) external {
+
         // make sure that the caller is holding the key they are trying to use
         require(locksmith.keyVault().balanceOf(msg.sender, rootKeyId) > 0, "KEY_NOT_HELD");
         
@@ -264,6 +271,8 @@ contract Notary is Initializable, OwnableUpgradeable, UUPSUpgradeable {
             // register them with the trust if not already done so
             actorRegistry[ledger][trustId][role].add(actor);
 
+            // set the alias
+            actorAliases[ledger][trustId][role][actor] = actorAlias;
         } else {
             // we are trying to revoke status, so make sure they are one
             require(actorRegistry[ledger][trustId][role].contains(actor), 'NOT_CURRENT_ACTOR');
