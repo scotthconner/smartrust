@@ -72,6 +72,9 @@ contract KeyVault is Initializable, ERC1155Upgradeable, OwnableUpgradeable, UUPS
     // we want to keep track of each holder of keys
     mapping(uint256 => EnumerableSet.AddressSet) private keyHolders;
 
+    // we want to keep track of the total supply of each key
+    mapping(uint256 => uint256) public keySupply;
+
     ///////////////////////////////////////////////////////
     // Constructor and Upgrade Methods
     //
@@ -174,6 +177,7 @@ contract KeyVault is Initializable, ERC1155Upgradeable, OwnableUpgradeable, UUPS
      */
     function mint(address receiver, uint256 keyId, uint256 amount, bytes calldata data) external {
         require(respectedLocksmith == msg.sender, "NOT_LOCKSMITH");
+        keySupply[keyId] += amount;
         _mint(receiver, keyId, amount, data);
     }
 
@@ -220,6 +224,7 @@ contract KeyVault is Initializable, ERC1155Upgradeable, OwnableUpgradeable, UUPS
      */
     function burn(address holder, uint256 keyId, uint256 burnAmount) external {
         require(respectedLocksmith == msg.sender, "NOT_LOCKSMITH");
+        keySupply[keyId] -= burnAmount;
         _burn(holder, keyId, burnAmount);
     }
     
