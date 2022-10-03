@@ -1,6 +1,10 @@
 //SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.16;
 
+import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
+using EnumerableSet for EnumerableSet.AddressSet;
+using EnumerableSet for EnumerableSet.Bytes32Set;
+
 library CollateralProviderLedger {
     /**
      * CollateralProviderContext
@@ -12,16 +16,13 @@ library CollateralProviderLedger {
     struct CollateralProviderContext {
         // the active arns in this context, across
         // all collateral providers
-        bytes32[] arnRegistry;
-        mapping(bytes32 => bool) registeredArns;
+        EnumerableSet.Bytes32Set arnRegistry;
 
         // the active collateral providers in this context
-        address[] collateralProviderRegistry;
-        mapping(address => bool) registeredCollateralProviders;
+        EnumerableSet.AddressSet collateralProviderRegistry;
 
         // the arns registered to each collateral provider in this context
-        mapping(address => bytes32[]) providerArnRegistry;
-        mapping(address => mapping(bytes32 => bool)) registeredProviderArns;
+        mapping(address => EnumerableSet.Bytes32Set) providerArnRegistry;
 
         // the asset balances for this context, both for the
         // entire context as well as per-provider
@@ -50,18 +51,9 @@ library CollateralProviderLedger {
      */
     function deposit(CollateralProviderContext storage c, address provider, bytes32 arn, uint256 amount) internal returns (uint256) {
         // register the provider and the arn
-        if(!c.registeredCollateralProviders[provider]) {
-            c.collateralProviderRegistry.push(provider);
-            c.registeredCollateralProviders[provider] = true;    
-        }
-        if(!c.registeredArns[arn]) {
-            c.arnRegistry.push(arn);
-            c.registeredArns[arn] = true;    
-        }
-        if(!c.registeredProviderArns[provider][arn]) {
-            c.providerArnRegistry[provider].push(arn);
-            c.registeredProviderArns[provider][arn] = true;
-        }
+        c.collateralProviderRegistry.add(provider);
+        c.arnRegistry.add(arn);
+        c.providerArnRegistry[provider].add(arn);
 
         // add the amount to the context and provider totals
         c.contextArnBalances[arn] += amount;
@@ -88,7 +80,7 @@ library CollateralProviderLedger {
      */
     function withdrawal(CollateralProviderContext storage c, address provider, bytes32 arn, uint256 amount) internal returns (uint256) {
         // make sure we are not overdrafting
-        require(c.registeredArns[arn] && c.contextProviderArnBalances[provider][arn] >= amount, "OVERDRAFT");
+        require(c.arnRegistry.contains(arn) && c.contextProviderArnBalances[provider][arn] >= amount, "OVERDRAFT");
 
         // remove the amount from the context and provider totals
         c.contextArnBalances[arn] -= amount;
@@ -112,12 +104,12 @@ library CollateralProviderLedger {
      * @param provider what provider balance you want, or 0 for all
      * @return the arns for that provider (or not) within this context
      */
-    function getArnRegistry(CollateralProviderContext storage c, address provider) internal view returns (bytes32[] storage) {
+    function getArnRegistry(CollateralProviderContext storage c, address provider) internal view returns (bytes32[] memory) {
         if (address(0) == provider) {
-            return c.arnRegistry;
+            return c.arnRegistry.values();
         }
 
-        return c.providerArnRegistry[provider];
+        return c.providerArnRegistry[provider].values();
     }
 
     /**
