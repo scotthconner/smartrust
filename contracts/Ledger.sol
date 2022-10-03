@@ -180,7 +180,7 @@ contract Ledger is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     /**
      * getContextArnRegistry 
      *
-     * Returns a full list of assets that have ever been held
+     * Returns a full list of assets that are being held
      * on the ledger by that key. 
      *
      * @param context LEDGER_CONTEXT_ID, TRUST_CONTEXT_ID, KEY_CONTEXT_ID 
@@ -202,6 +202,33 @@ contract Ledger is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         return ledgerContext.getArnRegistry(provider);
     }
 
+    /**
+     * getContextProviderRegistry
+     *
+     * Returns a list of current collateral providers for the given context,
+     * and optionally a specific asset only. This does not take into consideration
+     * which providers are currently trusted by the Notary. It's entirely possible
+     * to have providers with assets on balance that are not currently trusted.
+     *
+     * @param context    LEDGER_CONTEXT_ID, TRUST_CONTEXT_ID, KEY_CONTEXT_ID
+     * @param identifier either 0, a trustId, or keyId depending on context.
+     * @param arn        the asset resource name to consider, or 0.
+     * @return the list of provider addresses for the given context and arn.
+     */
+    function getContextProviderRegistry(uint256 context, uint256 identifier, bytes32 arn) external view returns(address[] memory) {
+        require(context < 3, "INVALID_CONTEXT");
+
+        // check if we need to use the identifier
+        if (TRUST_CONTEXT_ID == context) {
+            return trustContext[identifier].getProviderRegistry(arn);
+        } else if (KEY_CONTEXT_ID == context ) {
+            return keyContext[identifier].getProviderRegistry(arn);
+        }
+
+        // must be the ledger then
+        return ledgerContext.getProviderRegistry(arn);
+    }
+        
     /**
      * getContextArnBalances
      *

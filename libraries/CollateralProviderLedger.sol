@@ -18,11 +18,12 @@ library CollateralProviderLedger {
         // all collateral providers
         EnumerableSet.Bytes32Set arnRegistry;
 
-        // the active collateral providers in this context
+        // the append only collateral providers in this context
         EnumerableSet.AddressSet collateralProviderRegistry;
 
         // the arns registered to each collateral provider in this context
         mapping(address => EnumerableSet.Bytes32Set) providerArnRegistry;
+        mapping(bytes32 => EnumerableSet.AddressSet) arnProviderRegistry;
 
         // the asset balances for this context, both for the
         // entire context as well as per-provider
@@ -54,11 +55,12 @@ library CollateralProviderLedger {
         c.collateralProviderRegistry.add(provider);
         c.arnRegistry.add(arn);
         c.providerArnRegistry[provider].add(arn);
+        c.arnProviderRegistry[arn].add(provider);
 
         // add the amount to the context and provider totals
         c.contextArnBalances[arn] += amount;
         c.contextProviderArnBalances[provider][arn] += amount;
-            
+    
         // invariant protection: the context balance should be equal or
         // bigger than the provider's balance.
         assert(c.contextArnBalances[arn] >= c.contextProviderArnBalances[provider][arn]);
@@ -86,6 +88,16 @@ library CollateralProviderLedger {
         c.contextArnBalances[arn] -= amount;
         c.contextProviderArnBalances[provider][arn] -= amount;
 
+        // remove the arn from the provider arn registry if the amount is zero
+        if(c.contextProviderArnBalances[provider][arn] == 0) {
+            c.providerArnRegistry[provider].remove(arn);
+            c.arnProviderRegistry[arn].remove(provider);
+        }
+        // remove the arn from the registry if the amount is zero
+        if(c.contextArnBalances[arn] == 0) {
+            c.arnRegistry.remove(arn);
+        }
+
         // invariant protection: the context balance should be equal or
         // bigger than the provider's balance.
         assert(c.contextArnBalances[arn] >= c.contextProviderArnBalances[provider][arn]);
@@ -93,7 +105,7 @@ library CollateralProviderLedger {
         return c.contextProviderArnBalances[provider][arn];
     }
 
-     /**
+    /**
      * getArnRegistry
      *
      * For the context, get the arns for a specific collateral
@@ -110,6 +122,24 @@ library CollateralProviderLedger {
         }
 
         return c.providerArnRegistry[provider].values();
+    }
+
+    /**
+     * getProviderRegistry
+     *
+     * For the context, get the providers for a specific arn.
+     * For an arn-agnostic registry, the arn can be 0x0.
+     *
+     * @param c   the context
+     * @param arn the arn, should you want one.
+     * @return the registry of providers for that context/arn pair.
+     */
+    function getProviderRegistry(CollateralProviderContext storage c, bytes32 arn) internal view returns (address[] memory) {
+        if(bytes32(0) == arn) {  
+            return c.collateralProviderRegistry.values();
+        }
+
+        return c.arnProviderRegistry[arn].values();
     }
 
     /**
