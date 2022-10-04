@@ -399,17 +399,28 @@ TrustTestFixtures = (function() {
       
       const matic =  await ShadowCoin.deploy("Polygon", "MATIC");
       await matic.connect(root).spawn(eth(356));
+      await matic.connect(root).approve(tokenVault.address, ethers.constants.MaxUint256);
+      await tokenVault.connect(root).deposit(0, matic.address, eth(305));
+      
       const avax = await ShadowCoin.deploy("Avalanche", "AVAX");
       await avax.connect(root).spawn(eth(1354));
+      await avax.connect(root).approve(tokenVault.address, ethers.constants.MaxUint256);
+      await tokenVault.connect(root).deposit(0, avax.address, eth(106));
+      
       const grt = await ShadowCoin.deploy("The Graph", "GRT");
       await grt.connect(root).spawn(eth(801));
+      await grt.connect(root).approve(tokenVault.address, ethers.constants.MaxUint256);
+      await tokenVault.connect(root).deposit(0, grt.address, eth(750));
+      
       const dai = await ShadowCoin.deploy("Dai", "DAI");
       await dai.connect(root).spawn(eth(583));
+      await dai.connect(root).approve(tokenVault.address, ethers.constants.MaxUint256);
+      await tokenVault.connect(root).deposit(0, dai.address, eth(260));
+      
       const usdc = await ShadowCoin.deploy("USDC", "USDC");
       await usdc.connect(root).spawn(eth(583));
-
-      // spawn some tokens into each account
-      await coin.connect(root).spawn(eth(10));
+      await usdc.connect(root).approve(tokenVault.address, ethers.constants.MaxUint256);
+      await tokenVault.connect(root).deposit(0, usdc.address, eth(167));
 
       return {keyVault, locksmith,
         notary, ledger, vault, tokenVault, 
