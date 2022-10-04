@@ -422,6 +422,13 @@ TrustTestFixtures = (function() {
       await usdc.connect(root).approve(tokenVault.address, ethers.constants.MaxUint256);
       await tokenVault.connect(root).deposit(0, usdc.address, eth(167));
 
+      // we need ether from multiple providers
+      await ledger.connect(owner).deposit(0, 
+        ethers.utils.keccak256(ethers.utils.defaultAbiCoder.encode(
+          ['address','uint256','uint256'],
+          [ethers.constants.AddressZero, 0, 0]
+        )), eth(17));
+
       return {keyVault, locksmith,
         notary, ledger, vault, tokenVault, 
         coin, matic, avax, grt, dai, usdc,
