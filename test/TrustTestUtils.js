@@ -392,10 +392,28 @@ TrustTestFixtures = (function() {
 
       // test a trusted collateral provider for second trust
       await notary.connect(second).setTrustedLedgerRole(8, 0, ledger.address, vault.address, true, stb('Ether Vault'));
-      await notary.connect(second).setTrustedLedgerRole(8, 0, ledger.address, tokenVault.address, true, stb('Ether Vault'));
+      await notary.connect(second).setTrustedLedgerRole(8, 0, ledger.address, tokenVault.address, true, stb('Token Vault'));
+
+      // create a few more mock ERC20s
+      const ShadowCoin = await ethers.getContractFactory("ShadowERC");
+      
+      const matic =  await ShadowCoin.deploy("Polygon", "MATIC");
+      await matic.connect(root).spawn(eth(356));
+      const avax = await ShadowCoin.deploy("Avalanche", "AVAX");
+      await avax.connect(root).spawn(eth(1354));
+      const grt = await ShadowCoin.deploy("The Graph", "GRT");
+      await grt.connect(root).spawn(eth(801));
+      const dai = await ShadowCoin.deploy("Dai", "DAI");
+      await dai.connect(root).spawn(eth(583));
+      const usdc = await ShadowCoin.deploy("USDC", "USDC");
+      await usdc.connect(root).spawn(eth(583));
+
+      // spawn some tokens into each account
+      await coin.connect(root).spawn(eth(10));
 
       return {keyVault, locksmith,
-        notary, ledger, vault, tokenVault, coin,
+        notary, ledger, vault, tokenVault, 
+        coin, matic, avax, grt, dai, usdc,
         events, trustee,
         owner, root, second, third};
     }

@@ -13,7 +13,8 @@ const fs = require('fs');
 
 async function main() {
   const {keyVault, locksmith,
-    notary, ledger, vault, tokenVault, coin,
+    notary, ledger, vault, tokenVault, 
+    coin, matic, avax, grt, usdc, dai,
     events, trustee,
     owner, root, second, third } = 
     await loadFixture(TrustTestFixtures.deployedHardhat); 
@@ -27,6 +28,11 @@ async function main() {
     vault:      vault.address,
     tokenVault: tokenVault.address,
     coin:       coin.address,
+    matic:      matic.address,
+    avax:       avax.address,
+    grt:        grt.address,
+    dai:        dai.address,
+    usdc:       usdc.address,
     events:     events.address,
     trustee:    trustee.address
   };
@@ -44,6 +50,11 @@ async function main() {
   console.log("vault: " + vault.address);        
   console.log("tokenVault: " + tokenVault.address);        
   console.log("coin: " + coin.address);        
+  console.log("matic: " + matic.address);        
+  console.log("avax: " + avax.address);        
+  console.log("grt: " + grt.address);        
+  console.log("dai: " + dai.address);        
+  console.log("usdc: " + usdc.address);        
   console.log("events: " + events.address);        
   console.log("trustee: " + trustee.address);        
   console.log("owner: " + owner.address);        
