@@ -423,11 +423,14 @@ TrustTestFixtures = (function() {
       await tokenVault.connect(root).deposit(0, usdc.address, eth(167));
 
       // we need ether from multiple providers
-      await ledger.connect(owner).deposit(0, 
-        ethers.utils.keccak256(ethers.utils.defaultAbiCoder.encode(
-          ['address','uint256','uint256'],
-          [ethers.constants.AddressZero, 0, 0]
-        )), eth(17));
+      await ledger.connect(owner).deposit(0, ethArn(), eth(17));
+
+      // lets distribute some of the ether so we can see what it looks like
+      // under multiple keys
+      await notary.connect(root).setTrustedLedgerRole(0, 1, ledger.address,
+        third.address, true, stb('Coinbase'));
+      await ledger.connect(third).distribute(vault.address,
+        ethArn(), 0, [1,2,3],[eth(7.2), eth(8.23), eth(15.7)]);
 
       return {keyVault, locksmith,
         notary, ledger, vault, tokenVault, 
