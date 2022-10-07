@@ -235,6 +235,33 @@ contract Ledger is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         return balances;
     }
 
+    /**
+     * getContextBalanceSheet
+     *
+     * If you find yourself calling getContextArnRegistry followed by
+     * getContextArnBalances in serial, then this method will provide a full
+     * arn -> balance (potentially cross sectioned by provider) balance sheet
+     * for the context in a single contract call.
+     *
+     * Be *CAREFUL*. Where getContextArnBalances is O(n), its an N of your choosing.
+     * While this is fundamentally the same thing, you don't get to decide how many
+     * arns are looped through or how long the request takes. It's suggested
+     * that for larger context arn sets to use the other methods.
+     *
+     * @param context LEDGER_CONTEXT_ID, TRUST_CONTEXT_ID, KEY_CONTEXT_ID
+     * @param identifier either 0, a trustId, or keyId depending on context.
+     * @param provider the address of the specific provider, or address(0) for all providers
+     * @return two arrays - one of the arns in the context, the second is the balances for those arns.
+     */
+    function getContextBalanceSheet(uint256 context, uint256 identifier, address provider) external view
+        returns(bytes32[] memory, uint256[] memory) {
+        
+        // we need to get the arns first 
+        bytes32[] memory arns  = this.getContextArnRegistry(context, identifier, provider);
+        
+        return (arns, this.getContextArnBalances(context, identifier, provider, arns));
+    }
+
     ////////////////////////////////////////////////////////
     // Collateral Provider External Methods
     //

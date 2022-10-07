@@ -624,6 +624,18 @@ describe("Ledger", function () {
       await expect(await ledger.getContextArnBalances(KEY(), 0, owner.address, [stb('ether'), stb('link')])).eql([eth(5), eth(0)]);
       await expect(await ledger.getContextArnBalances(KEY(), 1, owner.address, [stb('ether'), stb('link')])).eql([eth(2), eth(1)]);
       await expect(await ledger.getContextArnBalances(KEY(), 2, owner.address, [stb('ether'), stb('link')])).eql([eth(3), eth(1)]);
+    
+      // check the balance sheet
+      await expect(await ledger.getContextBalanceSheet(TRUST(), 0, owner.address)).eql(
+        [[stb('ether'), stb('link')], [eth(10), eth(2)]]);
+      await expect(await ledger.getContextBalanceSheet(LEDGER(), 0, owner.address)).eql(
+        [[stb('ether'), stb('link')], [eth(10), eth(2)]]);
+      await expect(await ledger.getContextBalanceSheet(KEY(), 0, owner.address)).eql(
+        [[stb('ether')], [eth(5)]]);
+      await expect(await ledger.getContextBalanceSheet(KEY(), 1, owner.address)).eql(
+        [[stb('link'), stb('ether')], [eth(1), eth(2)]]);
+      await expect(await ledger.getContextBalanceSheet(KEY(), 2, owner.address)).eql(
+        [[stb('link'), stb('ether')], [eth(1), eth(3)]]);
     });
   });
 });
