@@ -189,17 +189,7 @@ contract Ledger is Initializable, OwnableUpgradeable, UUPSUpgradeable {
      * @return the array of registered arns for the given context.
      */
     function getContextArnRegistry(uint256 context, uint256 identifier, address provider) external view returns(bytes32[] memory) {
-        require(context < 3, "INVALID_CONTEXT");
-       
-        // check if we need to use the identifier
-        if (TRUST_CONTEXT_ID == context) { 
-            return trustContext[identifier].getArnRegistry(provider);
-        } else if (KEY_CONTEXT_ID == context ) {
-            return keyContext[identifier].getArnRegistry(provider);
-        }
-
-        // must be the ledger then
-        return ledgerContext.getArnRegistry(provider);
+        return getContextLedger(context, identifier).getArnRegistry(provider);
     }
 
     /**
@@ -216,17 +206,7 @@ contract Ledger is Initializable, OwnableUpgradeable, UUPSUpgradeable {
      * @return the list of provider addresses for the given context and arn.
      */
     function getContextProviderRegistry(uint256 context, uint256 identifier, bytes32 arn) external view returns(address[] memory) {
-        require(context < 3, "INVALID_CONTEXT");
-
-        // check if we need to use the identifier
-        if (TRUST_CONTEXT_ID == context) {
-            return trustContext[identifier].getProviderRegistry(arn);
-        } else if (KEY_CONTEXT_ID == context ) {
-            return keyContext[identifier].getProviderRegistry(arn);
-        }
-
-        // must be the ledger then
-        return ledgerContext.getProviderRegistry(arn);
+        return getContextLedger(context, identifier).getProviderRegistry(arn);
     }
         
     /**
@@ -242,20 +222,10 @@ contract Ledger is Initializable, OwnableUpgradeable, UUPSUpgradeable {
      */
     function getContextArnBalances(uint256 context, uint256 identifier, 
         address provider, bytes32[] calldata arns) external view returns(uint256[] memory) {
-        require(context < 3, "INVALID_CONTEXT");
+        CollateralProviderLedger.CollateralProviderContext storage balanceContext =
+            getContextLedger(context, identifier);
         
         uint256[] memory balances = new uint256[](arns.length);
-        CollateralProviderLedger.CollateralProviderContext storage balanceContext;
-
-        // check if we need to use the identifier
-        if (TRUST_CONTEXT_ID == context) { 
-            balanceContext = trustContext[identifier];
-        } else if (KEY_CONTEXT_ID == context ) {
-            balanceContext = keyContext[identifier];
-        } else {
-            // assume the ledger
-            balanceContext = ledgerContext;
-        }
 
         // gather the request arn balances for that context
         for(uint256 x = 0; x < arns.length; x++) {
@@ -391,5 +361,31 @@ contract Ledger is Initializable, OwnableUpgradeable, UUPSUpgradeable {
             rootKeyId, keys, amounts, finalRootBalance);
 
         return finalRootBalance;
+    }
+    
+    ////////////////////////////////////////////////////////
+    // Internal Methods 
+    ////////////////////////////////////////////////////////
+    
+    /**
+     * getContextLedger
+     *
+     * This method is used for all introspection cases, where we need
+     * to determine which ledger context we are using.
+     *
+     * @param context LEDGER_CONTEXT_ID, TRUST_CONTEXT_ID, KEY_CONTEXT_ID
+     * @param identifier either 0, a trustId, or keyId depending on context.
+     * @return the context ledger for the given id and identifier.
+     */
+    function getContextLedger(uint256 context, uint256 identifier) internal view returns 
+        (CollateralProviderLedger.CollateralProviderContext storage) {
+        require(context < 3, "INVALID_CONTEXT");        
+        
+        if (TRUST_CONTEXT_ID == context) {
+            return trustContext[identifier];
+        } else if (KEY_CONTEXT_ID == context ) {
+            return keyContext[identifier];
+        } 
+        return ledgerContext;
     }
 }
