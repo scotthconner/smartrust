@@ -254,6 +254,8 @@ describe("Ledger", function () {
       expect(await ledger.connect(root).getContextArnRegistry(2,1,zero())).has.length(2); 
       expect(await ledger.connect(root).getContextArnBalances(2,0,zero(), [stb('ether'),stb('link')])).eql([eth(2), eth(2)]);
       expect(await ledger.connect(root).getContextArnBalances(2,1,zero(),  [stb('ether'),stb('link')])).eql([eth(1), eth(7)]);
+      expect(await ledger.getContextArnAllocations(2, 1, stb('ether'))).eql([
+        [owner.address],[eth(1)]]);
     });
   });
 

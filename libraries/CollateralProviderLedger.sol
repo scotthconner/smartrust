@@ -161,4 +161,37 @@ library CollateralProviderLedger {
         
         return c.contextProviderArnBalances[provider][arn];
     }
+
+    /**
+     * getProvidersAndArnBalances
+     *
+     * Geenerates a traversal of the context's provider arn
+     * registry and extracts both the provider, and their
+     * balance for the required arn.
+     *
+     * This is merely a comvienence factor provided to frontents
+     * and not necessarily a critical piece of byte-code.
+     *
+     * @param c   the context
+     * @param arn the asset you want to inspect
+     * @return an array of providers
+     * @return an array of their balances for the given arn.
+     */
+    function getProvidersAndArnBalances(CollateralProviderContext storage c, bytes32 arn) internal view 
+        returns(address[] memory, uint256[] memory) {
+        
+        // grab the list of providers for the given arn. we will return this.
+        address[] memory providers = c.arnProviderRegistry[arn].values();
+
+        // allocate out the respective balance slots
+        uint256[] memory balances = new uint256[](providers.length); 
+
+        // for provider, grab the balance for the given arn from the ledger
+        for(uint8 p = 0; p < providers.length; p++) {
+            balances[p] = c.contextProviderArnBalances[providers[p]][arn];
+        }
+
+        // that wasn't so bad was it?
+        return (providers, balances);
+    }
 }

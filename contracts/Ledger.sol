@@ -262,6 +262,34 @@ contract Ledger is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         return (arns, this.getContextArnBalances(context, identifier, provider, arns));
     }
 
+    /**
+     * getContextArnAllocations
+     *
+     * After looking at the aggregate arn balance sheet for say, a trust or
+     * key context, you'll want to see an allocation across both providers
+     * and their collateral balances for a given asset. 'OK I see Chainlink,
+     * what is that composed of?' 'Who can withdrawal it?'.
+     *
+     * When done at the ledger level, is essentially a "TVL" measurement
+     * of a given ARN for the entire ledger. At the trust level, it shows
+     * a provider-based porfolio allocation for a given asset. 
+     * At the key level, it represents withdrawal rights.
+     *
+     * @param context LEDGER_CONTEXT_ID, TRUST_CONTEXT_ID, KEY_CONTEXT_ID
+     * @param identifier either 0, a trustId, or keyId depending on context.
+     * @param arn the asset you want to inspect.i
+     * @return an array of providers for the given asset
+     * @return an array of their respective balances for the asset.
+     */
+     function getContextArnAllocations(uint256 context, uint256 identifier, bytes32 arn) external view
+        returns(address[] memory, uint256[] memory) {
+        
+        CollateralProviderLedger.CollateralProviderContext storage cxt =
+            getContextLedger(context, identifier);
+
+        return cxt.getProvidersAndArnBalances(arn);
+    }
+
     ////////////////////////////////////////////////////////
     // Collateral Provider External Methods
     //
