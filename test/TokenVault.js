@@ -187,6 +187,21 @@ describe("TokenVault", function () {
 
       // and the contract should have one
       expect(await coin.balanceOf(tokenVault.address)).to.equal(eth(1));
+
+      // attempt to withdrawal on the arn, and make sure it works.
+      await expect(await tokenVault.connect(root).arnWithdrawal(0, tokenArn(coin.address), eth(1)))
+        .to.emit(ledger, "withdrawalOccurred")
+        .withArgs(tokenVault.address, 0, 0, tokenArn(coin.address), eth(1), eth(0), eth(0), eth(0));
+      
+      // the other account should now have 1 more
+      expect(await coin.balanceOf(root.address)).to.equal(eth(10));
+
+      // the trust should have 1
+      expect(await ledger.getContextArnBalances(TRUST(), 0, tokenVault.address, [tokenArn(coin.address)]))
+        .eql([eth(0)]);
+
+      // and the contract should have one
+      expect(await coin.balanceOf(tokenVault.address)).to.equal(eth(0));
     });
 
     it("Can't withdrawal ERC20 without owning the key", async function() {

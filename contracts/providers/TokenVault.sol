@@ -66,6 +66,7 @@ contract TokenVault is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     // witnessed token addresses
     // trust => [registered addresses] 
     mapping(uint256 => EnumerableSet.AddressSet) private witnessedTokenAddresses;
+    mapping(bytes32 => address) private arnContracts;
 
     ///////////////////////////////////////////////////////
     // Constructor and Upgrade Methods
@@ -140,6 +141,9 @@ contract TokenVault is Initializable, OwnableUpgradeable, UUPSUpgradeable {
             id: 0 
         }).arn();
 
+        // store the contract address to enable withdrawals
+        arnContracts[tokenArn] = token;
+
         // make sure the caller has a sufficient token balance.
         require(IERC20(token).balanceOf(msg.sender) >= amount,
             "INSUFFICIENT_TOKENS");
@@ -174,33 +178,34 @@ contract TokenVault is Initializable, OwnableUpgradeable, UUPSUpgradeable {
      * and there is sufficient balance. If any of those fail, the entire
      * transaction will revert and fail.
      *
-     * @param keyId  the keyId that identifies both the permissioned 'actor'
-     *               and implicitly the associated trust
+     * @param keyId  the key you want to use to withdrawal with/from
      * @param token  the token contract representing the ERC20
      * @param amount the amount of ether, in gwei, to withdrawal from the balance.
      */
     function withdrawal(uint256 keyId, address token, uint256 amount) external {
-        // stop right now if the message sender doesn't hold the key
-        require(locksmith.keyVault().balanceOf(msg.sender, keyId) > 0, 'KEY_NOT_HELD');
-
-        // generate the token arn
-        bytes32 tokenArn = AssetResourceName.AssetType({
+        // generate the ARN, and then withdrawal
+        _withdrawal(keyId, AssetResourceName.AssetType({
             contractAddress: token, 
             tokenStandard: 20, 
             id: 0 
-        }).arn();
-
-        // withdrawal from the ledger *first*. if there is an overdraft,
-        // the entire transaction will revert.
-        (,, uint256 finalLedgerBalance) = ledger.withdrawal(keyId, tokenArn, amount);
-
-        // jam the vault if the ledger's balance doesn't
-        // match the vault balance after withdrawal
-        assert((IERC20(token).balanceOf(address(this))-amount) == finalLedgerBalance);
-
-        // We trust that the ledger didn't overdraft so 
-        // send at the end to prevent re-entrancy.
-        IERC20(token).transfer(msg.sender, amount);
+        }).arn(), token, amount);
+    }
+    
+    /**
+     * arnWithdrawal
+     *
+     * Functions exactly like #withdrawal, but takes an ARN and does
+     * the internal conversion to contract address. This vault will fail
+     * the withdrawal if it was never deposited as it wont recognize the arn.
+     *
+     * @param keyId  the key you want to use to withdrawal with/from
+     * @param arn    the asset resource name to withdrawal 
+     * @param amount the amount of ether, in gwei, to withdrawal from the balance.
+     */
+    function arnWithdrawal(uint256 keyId, bytes32 arn, uint256 amount) external {
+        // grab the address for the contract. If this ends up being address(0), the
+        // ledger should fail to withdrawal, so there is no need to check it here
+        _withdrawal(keyId, arn, arnContracts[arn], amount); 
     }
 
     /**
@@ -218,5 +223,38 @@ contract TokenVault is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         // to be an expensive call.
         (,,uint256 trustId,,) = locksmith.inspectKey(keyId);
         return witnessedTokenAddresses[trustId].values();
+    }
+
+    ////////////////////////////////////////////////////////
+    // Internal Methods
+    ////////////////////////////////////////////////////////
+
+    /**
+     * _withdrawal
+     *
+     * Internal method that takes both the arn and the token address to
+     * perform the common actions that are required for each withdrawal
+     * scenario.
+     *
+     * @param keyId  the key to withdrawal from the ledger
+     * @param arn    the asset idenitifier to withdrawal from the ledger
+     * @param token  the token address to use to move assets.
+     * @param amount the amount of assets to remove from the ledger, and send.
+     */
+    function _withdrawal(uint256 keyId, bytes32 arn, address token, uint256 amount) internal {
+        // stop right now if the message sender doesn't hold the key
+        require(locksmith.keyVault().balanceOf(msg.sender, keyId) > 0, 'KEY_NOT_HELD');
+
+        // withdrawal from the ledger *first*. if there is an overdraft,
+        // the entire transaction will revert.
+        (,, uint256 finalLedgerBalance) = ledger.withdrawal(keyId, arn, amount);
+
+        // jam the vault if the ledger's balance doesn't
+        // match the vault balance after withdrawal
+        assert((IERC20(token).balanceOf(address(this))-amount) == finalLedgerBalance);
+
+        // We trust that the ledger didn't overdraft so
+        // send at the end to prevent re-entrancy.
+        IERC20(token).transfer(msg.sender, amount);
     }
 }
