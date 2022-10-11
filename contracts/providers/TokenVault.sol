@@ -21,6 +21,10 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "../../libraries/AssetResourceName.sol";
 using AssetResourceName for AssetResourceName.AssetType;
 
+// We want to track contract addresses
+import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
+using EnumerableSet for EnumerableSet.AddressSet;
+
 // We want to use the ERC20 interface so each trust can hold any arbitrary
 // ERC20. This enables the trusts to hold all sorts of assets, not just ethereum.
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -60,9 +64,8 @@ contract TokenVault is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     Ledger public ledger;
 
     // witnessed token addresses
-    // trust / address / (registered?)
-    mapping(uint256 => address[]) public witnessedTokenAddresses;
-    mapping(uint256 => mapping(address => bool)) public witnessedTokenRegistry;
+    // trust => [registered addresses] 
+    mapping(uint256 => EnumerableSet.AddressSet) private witnessedTokenAddresses;
 
     ///////////////////////////////////////////////////////
     // Constructor and Upgrade Methods
@@ -159,10 +162,7 @@ contract TokenVault is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         // update the witnessed token addresses, so we can easily describe
         // the trust-level tokens in this vault.
         (,,uint256 trustId,,) = locksmith.inspectKey(keyId);
-        if(!witnessedTokenRegistry[trustId][token]) {
-            witnessedTokenAddresses[trustId].push(token);
-            witnessedTokenRegistry[trustId][token] = true;
-        }
+        witnessedTokenAddresses[trustId].add(token);
     }
 
     /**
@@ -217,6 +217,6 @@ contract TokenVault is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         // it to get the contract addresses, but for 20-30 arns thats going
         // to be an expensive call.
         (,,uint256 trustId,,) = locksmith.inspectKey(keyId);
-        return witnessedTokenAddresses[trustId];
+        return witnessedTokenAddresses[trustId].values();
     }
 }
