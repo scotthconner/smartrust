@@ -130,7 +130,7 @@ contract TokenVault is Initializable, OwnableUpgradeable, UUPSUpgradeable {
      * @param token the address of the ERC20 token contract.
      * @param amount the amount to deposit
      */
-    function deposit(uint256 keyId, address token, uint256 amount) payable external {
+    function deposit(uint256 keyId, address token, uint256 amount) external {
         // stop right now if the message sender doesn't hold the key
         require(locksmith.keyVault().balanceOf(msg.sender, keyId) > 0, 'KEY_NOT_HELD');
 
