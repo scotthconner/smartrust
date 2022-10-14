@@ -361,6 +361,30 @@ TrustTestFixtures = (function() {
         owner, root, second, third};
     },
     //////////////////////////////////////////////////////////
+    // Added Key Oracle
+    // 
+    // This takes a trustee harness, and adds the key oracle
+    // dispatcher.
+    //////////////////////////////////////////////////////////
+    addedKeyOracle: async function() {
+      const {keyVault, locksmith,
+        notary, ledger, vault, tokenVault, coin,
+        events, trustee,
+        owner, root, second, third} =
+        await TrustTestFixtures.fullTrusteeHarness();
+
+      // deploy the key oracle contract
+      const KeyOracle = await ethers.getContractFactory("KeyOracle");
+      const keyOracle = await upgrades.deployProxy(KeyOracle, [
+        locksmith.address, events.address]);
+      await keyOracle.deployed();
+      
+      return {keyVault, locksmith,
+        notary, ledger, vault, tokenVault, coin,
+        events, trustee, keyOracle,
+        owner, root, second, third};
+    },
+    //////////////////////////////////////////////////////////
     // Deployed Hardhat Testing
     //
     // This is a fixture we use to help test the frontend
