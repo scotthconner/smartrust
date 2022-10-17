@@ -393,9 +393,9 @@ TrustTestFixtures = (function() {
     deployedHardhat: async function() {
       const {keyVault, locksmith,
         notary, ledger, vault, tokenVault, coin,
-        events, trustee,
+        events, trustee, keyOracle,
         owner, root, second, third} = 
-        await TrustTestFixtures.fullTrusteeHarness();
+        await TrustTestFixtures.addedKeyOracle();
 
       // give out some keys
       await locksmith.connect(root).createKey(0, stb('Testing Four'), root.address, false);
@@ -456,10 +456,15 @@ TrustTestFixtures = (function() {
       await ledger.connect(third).distribute(vault.address,
         ethArn(), 0, [1,2,3],[eth(7.2), eth(8.23), eth(15.7)]);
 
+      // create a few just random key oracles
+      await keyOracle.connect(root).createKeyOracle(0, 0, stb("Terminator lands on earth."));
+      await keyOracle.connect(root).createKeyOracle(0, 1, stb("Scott's cat dies."));
+      await keyOracle.connect(root).createKeyOracle(0, 2, stb("Camden gets married."));
+
       return {keyVault, locksmith,
         notary, ledger, vault, tokenVault, 
         coin, matic, avax, grt, dai, usdc,
-        events, trustee,
+        events, trustee, keyOracle,
         owner, root, second, third};
     }
   };
