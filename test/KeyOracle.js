@@ -115,7 +115,8 @@ describe("KeyOracle", function () {
         .withArgs(keyOracle.address, 0, hash, stb('dead'));
 
       // check the state
-      expect(await keyOracle.getOracleKeyEvents(1)).eql([hash ]);
+      expect(await keyOracle.getOracleKeyEvents(1)).eql([hash]);
+      expect(await keyOracle.eventKeys(hash)).eql(bn(1));
       expect(await events.eventDispatchers(hash))
         .eql(keyOracle.address);
       expect(await events.eventDescriptions(hash)).eql(stb('dead'));

@@ -77,6 +77,9 @@ contract KeyOracle is Initializable, OwnableUpgradeable, UUPSUpgradeable {
 
     // keyId => [eventHashes] 
     mapping(uint256 => EnumerableSet.Bytes32Set) private oracleKeyEvents;
+    
+    // eventHash => keyId
+    mapping(bytes32 => uint256) public eventKeys;
 
     ///////////////////////////////////////////////////////
     // Constructor and Upgrade Methods
@@ -179,8 +182,9 @@ contract KeyOracle is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         eventLog.registerTrustEvent(rootTrustId, eventHash, description);
 
         // if we get this far, we know its not a duplicate. Store it
-        // here for key-level introspection.
+        // here for introspection.
         oracleKeyEvents[keyId].add(eventHash);
+        eventKeys[eventHash] = keyId;
 
         // emit the oracle creation event
         emit keyOracleRegistered(msg.sender, rootTrustId, rootKeyId, keyId, eventHash);
