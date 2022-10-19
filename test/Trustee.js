@@ -111,6 +111,8 @@ describe("Trustee", function () {
         .to.emit(trustee, 'trusteePolicySet')
         .withArgs(root.address, 0, 1, [1,2,3], []);
 
+      expect(await trustee.getTrustPolicyKeys(0)).eql([bn(1)]);
+
       // check the state
       response = await trustee.getPolicy(1);
       expect(response[0] == true);
@@ -127,10 +129,12 @@ describe("Trustee", function () {
       await expect(await trustee.connect(root).setPolicy(0, 1, [1,2,3], []))
         .to.emit(trustee, 'trusteePolicySet')
         .withArgs(root.address, 0, 1, [1,2,3], []);
+      expect(await trustee.getTrustPolicyKeys(0)).eql([bn(1)]);
       
       // even if its different, it can't have the same trustee key
       await expect(trustee.connect(root).setPolicy(0, 1, [1,2], [stb('stab-brother')]))
         .to.be.revertedWith('KEY_POLICY_EXISTS');
+      expect(await trustee.getTrustPolicyKeys(0)).eql([bn(1)]);
     });
 
     it("The key ring must pass the locksmith's no-root validation", async function () {
@@ -153,6 +157,8 @@ describe("Trustee", function () {
       await expect(await trustee.connect(second).setPolicy(4, 5, [5], []))
         .to.emit(trustee, 'trusteePolicySet')
         .withArgs(second.address, 4, 5, [5], []);
+      expect(await trustee.getTrustPolicyKeys(0)).eql([]);
+      expect(await trustee.getTrustPolicyKeys(1)).eql([bn(5)]);
 
       // check the first state
       response = await trustee.getPolicy(5);
@@ -226,6 +232,7 @@ describe("Trustee", function () {
       await expect(await trustee.connect(root).setPolicy(0, 1, [1,2,3], []))
         .to.emit(trustee, 'trusteePolicySet')
         .withArgs(root.address, 0, 1, [1,2,3], []);
+      expect(await trustee.getTrustPolicyKeys(0)).eql([bn(1)]);
 
        // check the state
       response = await trustee.getPolicy(1);
@@ -244,6 +251,7 @@ describe("Trustee", function () {
       expect(response[0] == false);
       expect(response[1]).has.length(0);
       expect(response[2]).to.eql([]);
+      expect(await trustee.getTrustPolicyKeys(0)).eql([]);
     });
   });
   

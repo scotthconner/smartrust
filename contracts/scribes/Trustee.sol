@@ -28,6 +28,9 @@ import '../Ledger.sol';
 // of the trust event log. Events are logged by dispatchers.
 import '../TrustEventLog.sol';
 
+// We want to keep track of the policies for a given trust easily
+import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
+using EnumerableSet for EnumerableSet.UintSet;
 ///////////////////////////////////////////////////////////
 
 /**
@@ -42,7 +45,7 @@ import '../TrustEventLog.sol';
  * trusted to the notary before distributions will be respected.
  *
  * The trustee role does *not* by nature have permission to
-  manage, deposit, or withdrawal funds from the trust. They simply
+ * manage, deposit, or withdrawal funds from the trust. They simply
  * gain permission to distribute funds from the root key (trust) to
  * pre-configured keys on the ring based on an optional list
  * of triggering events from a dispatcher.
@@ -95,7 +98,7 @@ contract Trustee is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     struct Policy {
         bool enabled;             // is this policy enabled 
         bytes32[] requiredEvents;   // the events needed to enable 
-       
+    
         uint256 rootKeyId;          // where the funds can be moved from
         uint256[] beneficiaries;    // used for reflection 
         mapping(uint256 => bool) isBeneficiary; // used for validation
@@ -103,6 +106,9 @@ contract Trustee is Initializable, OwnableUpgradeable, UUPSUpgradeable {
   
     // maps trustee Keys, to the metadata
     mapping(uint256 => Policy) private trustees;
+    
+    // maps trusts to keys with policies on them
+    mapping(uint256 => EnumerableSet.UintSet) private trustPolicyKeys;
 
     ///////////////////////////////////////////////////////
     // Constructor and Upgrade Methods
@@ -172,6 +178,20 @@ contract Trustee is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         return (t.enabled, t.beneficiaries, t.requiredEvents);
     }
 
+    /**
+     * getTrustPolicyKeys
+     *
+     * Returns the set of keys for a given trust that have a trustee policy on them.
+     * Each key can have only one policy attached. The key ID will be returned even if
+     * the policy isn't 'active.' An invalid trustId will return an empty key set.
+     * 
+     * @param trustId the id of the trust you want the policy keys for
+     * @return an array of key Ids that can be used to inspect policies with #getPolicy
+     */
+    function getTrustPolicyKeys(uint256 trustId) external view returns (uint256[] memory) {
+        return trustPolicyKeys[trustId].values();     
+    }
+
     ////////////////////////////////////////////////////////
     // Root Key Holder Methods 
     //
@@ -233,6 +253,9 @@ contract Trustee is Initializable, OwnableUpgradeable, UUPSUpgradeable {
             t.isBeneficiary[beneficiaries[x]] = true;
         }
 
+        // keep track of the policy key at the trust level
+        trustPolicyKeys[trustId].add(trusteeKeyId);
+
         // if the events requirement is empty, immediately activate
         t.requiredEvents = events;
         t.enabled = (0 == events.length);
@@ -252,7 +275,7 @@ contract Trustee is Initializable, OwnableUpgradeable, UUPSUpgradeable {
      */
     function removePolicy(uint256 rootKeyId, uint256 trusteeKeyId) external {
         // ensure that the caller holds the key, and get the trust ID
-        requireRootHolder(rootKeyId);
+        uint256 trustId = requireRootHolder(rootKeyId);
     
         // make sure that the trustee entry exists in the first place.
         // we can know this, even on the zero trust, by ensuring
@@ -272,6 +295,9 @@ contract Trustee is Initializable, OwnableUpgradeable, UUPSUpgradeable {
 
         // at this point, we can delete the entry
         delete trustees[trusteeKeyId];
+
+        // remove the policy key at the trust level
+        trustPolicyKeys[trustId].remove(trusteeKeyId);
 
         emit trusteePolicyRemoved(msg.sender, rootKeyId, trusteeKeyId);
     }
