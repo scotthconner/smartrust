@@ -460,11 +460,14 @@ TrustTestFixtures = (function() {
       await keyOracle.connect(root).createKeyOracle(0, 0, stb("Terminator lands on earth."));
       await keyOracle.connect(root).createKeyOracle(0, 1, stb("Scott's cat dies."));
       await keyOracle.connect(root).createKeyOracle(0, 2, stb("Camden gets married."));
-
+      
       // set up a few trustees
       await trustee.connect(root).setPolicy(0, 1, [1,2,3], []);
-      await trustee.connect(root).setPolicy(0, 2, [1,3], (
-        await keyOracle.connect(root).getOracleKeyEvents(0)));
+      await trustee.connect(root).setPolicy(0, 2, [1,3], [
+        (await keyOracle.connect(root).getOracleKeyEvents(0))[0],
+        (await keyOracle.connect(root).getOracleKeyEvents(1))[0],
+        (await keyOracle.connect(root).getOracleKeyEvents(2))[0],
+      ]);
 
       return {keyVault, locksmith,
         notary, ledger, vault, tokenVault, 
