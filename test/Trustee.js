@@ -116,10 +116,11 @@ describe("Trustee", function () {
       // check the state
       response = await trustee.getPolicy(1);
       expect(response[0] == true);
-      expect(response[1][0]).to.equal(1);
-      expect(response[1][1]).to.equal(2);
-      expect(response[1][2]).to.equal(3);
-      expect(response[2]).to.eql([]);
+      expect(response[1] == bn(0));
+      expect(response[2][0]).to.equal(1);
+      expect(response[2][1]).to.equal(2);
+      expect(response[2][2]).to.equal(3);
+      expect(response[3]).to.eql([]);
     });
     
     it("Each keyholder can have only one trustee policy", async function() {
@@ -163,8 +164,8 @@ describe("Trustee", function () {
       // check the first state
       response = await trustee.getPolicy(5);
       expect(response[0] == true);
-      expect(response[1][0]).to.equal(5);
-      expect(response[2]).to.eql([]);
+      expect(response[2][0]).to.equal(5);
+      expect(response[3]).to.eql([]);
 
       // let's put some other keys in there
       await expect(trustee.connect(root).setPolicy(0, 1, [5], []))
@@ -173,8 +174,9 @@ describe("Trustee", function () {
       // call get policy on something that doesn't exit
       response = await trustee.getPolicy(1);
       expect(response[0] == true);
-      expect(response[1]).has.length(0);
-      expect(response[2]).to.eql([]);
+      expect(response[1] == bn(0));
+      expect(response[2]).has.length(0);
+      expect(response[3]).to.eql([]);
     });
   });
 
@@ -237,10 +239,10 @@ describe("Trustee", function () {
        // check the state
       response = await trustee.getPolicy(1);
       expect(response[0] == true);
-      expect(response[1][0]).to.equal(1);
-      expect(response[1][1]).to.equal(2);
-      expect(response[1][2]).to.equal(3);
-      expect(response[2]).to.eql([]);
+      expect(response[2][0]).to.equal(1);
+      expect(response[2][1]).to.equal(2);
+      expect(response[2][2]).to.equal(3);
+      expect(response[3]).to.eql([]);
 
       await expect(await trustee.connect(root).removePolicy(0, 1))
         .to.emit(trustee, 'trusteePolicyRemoved')
@@ -249,8 +251,8 @@ describe("Trustee", function () {
       // make sure the records are gone
       response = await trustee.getPolicy(1);
       expect(response[0] == false);
-      expect(response[1]).has.length(0);
-      expect(response[2]).to.eql([]);
+      expect(response[2]).has.length(0);
+      expect(response[3]).to.eql([]);
       expect(await trustee.getTrustPolicyKeys(0)).eql([]);
     });
   });

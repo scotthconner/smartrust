@@ -96,7 +96,7 @@ contract Trustee is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     // A trust Policy enables a keyholder 
     // to distribute root key trust funds.
     struct Policy {
-        bool enabled;             // is this policy enabled 
+        bool enabled;               // is this policy enabled 
         bytes32[] requiredEvents;   // the events needed to enable 
     
         uint256 rootKeyId;          // where the funds can be moved from
@@ -170,12 +170,13 @@ contract Trustee is Initializable, OwnableUpgradeable, UUPSUpgradeable {
      *
      * @param keyId the key ID you want to get the policy for
      * @return if the policy is enabled
+     * @return the root key ID source of funds to distibute from
      * @return the beneficiaries
      * @return the requried events
      */
-    function getPolicy(uint256 keyId) external view returns (bool, uint256[] memory, bytes32[] memory) {
+    function getPolicy(uint256 keyId) external view returns (bool, uint256, uint256[] memory, bytes32[] memory) {
         Policy storage t = trustees[keyId];
-        return (t.enabled, t.beneficiaries, t.requiredEvents);
+        return (t.enabled, t.rootKeyId, t.beneficiaries, t.requiredEvents);
     }
 
     /**
