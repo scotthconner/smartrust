@@ -428,11 +428,18 @@ describe("Trustee", function () {
       await expect(trustee.connect(owner).distribute(1, vault.address, ethArn(),
         [1,2,3], [eth(1), eth(1), eth(1)])).to.be.revertedWith('MISSING_EVENT');
 
+      var response = await trustee.getPolicy(1);
+      expect(response[0]).to.equal(false);
+      
       // now fire the event
       await expect(await events.connect(third).logTrustEvent(stb('death')))
         .to.emit(events, 'trustEventLogged')
         .withArgs(third.address, stb('death'));
-      
+     
+      // before we attempt to distribute, the policy should come back as enabled
+      var response = await trustee.getPolicy(1);
+      expect(response[0]).to.equal(true);
+
       await expect(await trustee.connect(owner).distribute(1, vault.address, ethArn(),
         [1,2,3], [eth(38), eth(1), eth(1)])).to.emit(ledger, 'ledgerTransferOccurred')
         .withArgs(trustee.address, vault.address, ethArn(), 0, 0, [1,2,3], 

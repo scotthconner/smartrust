@@ -176,7 +176,17 @@ contract Trustee is Initializable, OwnableUpgradeable, UUPSUpgradeable {
      */
     function getPolicy(uint256 keyId) external view returns (bool, uint256, uint256[] memory, bytes32[] memory) {
         Policy storage t = trustees[keyId];
-        return (t.enabled, t.rootKeyId, t.beneficiaries, t.requiredEvents);
+        
+        // check to see if the events have fired async and havent been written yet 
+        uint256 enabledCount;
+        if(!t.enabled) {
+            for(uint256 x = 0; x < t.requiredEvents.length; x++) {
+                enabledCount += eventLog.firedEvents(t.requiredEvents[x]) ? 1 : 0;
+            }
+        }
+
+        return (t.enabled || (enabledCount == t.requiredEvents.length), 
+            t.rootKeyId, t.beneficiaries, t.requiredEvents);
     }
 
     /**
