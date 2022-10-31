@@ -17,8 +17,7 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 // pattern because its more gas efficient and comes with some better trade-offs.
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
-// The trustee contract can enable scribe roles based on events inside
-// of the trust event log. Events are logged by dispatchers.
+// This dispatcher will register and fire events into the event log. 
 import '../TrustEventLog.sol';
 
 // To oracle-ize a key's actions, we need to be able to verify the

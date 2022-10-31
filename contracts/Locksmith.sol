@@ -354,7 +354,6 @@ contract Locksmith is Initializable, OwnableUpgradeable, UUPSUpgradeable {
      * inspectKey 
      * 
      * Takes a key id and inspects it.
-     * TODO: Add Key inventory, or use an indexer here.
      * 
      * @return true if the key is a valid key
      * @return alias of the key 
