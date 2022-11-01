@@ -184,7 +184,7 @@ contract AlarmClock is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     ////////////////////////////////////////////////////////
     
     /**
-     * createAlarmClock
+     * createAlarm
      *
      * A root key holder can call this method to create an alarm clock.
      *
@@ -204,7 +204,7 @@ contract AlarmClock is Initializable, OwnableUpgradeable, UUPSUpgradeable {
      * @param snoozeInterval the internval to increment the alarm time by when snoozed.
      * @param snoozeKeyId    the key ID from the trust to use to snooze the alarm
      */
-    function createAlarmClock(uint256 rootKeyId, bytes32 description, uint256 alarmTime, 
+    function createAlarm(uint256 rootKeyId, bytes32 description, uint256 alarmTime, 
         uint256 snoozeInterval, uint256 snoozeKeyId) external {
         
         // ensure the caller is holding the rootKey
@@ -293,10 +293,11 @@ contract AlarmClock is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         require(locksmith.keyVault().balanceOf(msg.sender, snoozeKeyId) > 0, 'KEY_NOT_HELD');
 
         // ensure the event isn't already fired
-        require(!eventLog.firedEvents(eventHash), 'LATE_SNOOZE');
+        require(!eventLog.firedEvents(eventHash), 'OVERSNOOZE');
 
         // ensure that the snooze attempt isn't *too* early, defined by:
-        // being late, or within an interval of the alarm time.
+        // being late, or within an interval of the alarm time. this prevents
+        // a keyholder from snooze-spamming the goal-post into obvilion
         require((block.timestamp >= alarm.alarmTime) || 
             (block.timestamp + alarm.snoozeInterval) >= alarm.alarmTime, 'TOO_EARLY'); 
 
@@ -336,10 +337,13 @@ contract AlarmClock is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         require(alarm.eventHash == eventHash, 'INVALID_ALARM_EVENT');
 
         // ensure that the alarm has expired
-        require(alarm.alarmTime >= block.timestamp, 'CHALLENGE_FAILED');
+        require(alarm.alarmTime <= block.timestamp, 'CHALLENGE_FAILED');
         
         // fire the event to the trust event log. this will fail
         // if the event has already been fired with 'DUPLICATE_EVENT'
         eventLog.logTrustEvent(eventHash);
+
+        emit alarmClockChallenged(msg.sender, eventHash, alarm.alarmTime,
+            block.timestamp);
     }
 }

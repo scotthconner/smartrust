@@ -53,6 +53,12 @@ tokenArn = function(contract) {
   );
 }
 
+now = async function() {
+  return (await ethers.provider.getBlock(
+    await ethers.provider.getBlockNumber())
+  ).timestamp;
+}
+
 doTransaction = async function(promise) {
   const _tx = (await promise); 
       
@@ -382,6 +388,30 @@ TrustTestFixtures = (function() {
       return {keyVault, locksmith,
         notary, ledger, vault, tokenVault, coin,
         events, trustee, keyOracle,
+        owner, root, second, third};
+    },
+    //////////////////////////////////////////////////////////
+    // Added Alarm Clock
+    //
+    // This takes a keyOracle harness, and adds the alarm
+    // clock dispatcher.
+    //////////////////////////////////////////////////////////
+    addedAlarmClock: async function() {
+      const {keyVault, locksmith,
+        notary, ledger, vault, tokenVault, coin,
+        events, trustee, keyOracle,
+        owner, root, second, third} =
+        await TrustTestFixtures.addedKeyOracle();
+
+      // deploy the alarm clock 
+      const AlarmClock = await ethers.getContractFactory("AlarmClock");
+      const alarmClock = await upgrades.deployProxy(AlarmClock, [
+        locksmith.address, events.address]);
+      await alarmClock.deployed();
+
+      return {keyVault, locksmith,
+        notary, ledger, vault, tokenVault, coin,
+        events, trustee, keyOracle, alarmClock,
         owner, root, second, third};
     },
     //////////////////////////////////////////////////////////
