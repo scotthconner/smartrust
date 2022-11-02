@@ -15,7 +15,7 @@ async function main() {
   const {keyVault, locksmith,
     notary, ledger, vault, tokenVault, 
     coin, matic, avax, grt, usdc, dai,
-    events, trustee, keyOracle,
+    events, trustee, keyOracle, alarmClock,
     owner, root, second, third } = 
     await loadFixture(TrustTestFixtures.deployedHardhat); 
   console.log("Full Contract Deployed");
@@ -36,6 +36,7 @@ async function main() {
     events:     events.address,
     trustee:    trustee.address,
     keyOracle:  keyOracle.address,
+    alarmClock: alarmClock.address,
   };
 
   let data = JSON.stringify(contracts, null, 2);
@@ -58,6 +59,7 @@ async function main() {
   console.log("usdc: " + usdc.address);        
   console.log("events: " + events.address);        
   console.log("keyOracle: " + keyOracle.address);        
+  console.log("alarmClock: " + alarmClock.address);        
   console.log("trustee: " + trustee.address);        
   console.log("owner: " + owner.address);        
   console.log("root: " + root.address);        

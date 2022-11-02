@@ -423,9 +423,9 @@ TrustTestFixtures = (function() {
     deployedHardhat: async function() {
       const {keyVault, locksmith,
         notary, ledger, vault, tokenVault, coin,
-        events, trustee, keyOracle,
+        events, trustee, keyOracle, alarmClock,
         owner, root, second, third} = 
-        await TrustTestFixtures.addedKeyOracle();
+        await TrustTestFixtures.addedAlarmClock();
 
       // give out some keys
       await locksmith.connect(root).createKey(0, stb('Testing Four'), root.address, false);
@@ -502,7 +502,7 @@ TrustTestFixtures = (function() {
       return {keyVault, locksmith,
         notary, ledger, vault, tokenVault, 
         coin, matic, avax, grt, dai, usdc,
-        events, trustee, keyOracle,
+        events, trustee, keyOracle, alarmClock,
         owner, root, second, third};
     }
   };
