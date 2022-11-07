@@ -120,7 +120,8 @@ describe("KeyOracle", function () {
       expect(await events.eventDispatchers(hash))
         .eql(keyOracle.address);
       expect(await events.eventDescriptions(hash)).eql(stb('dead'));
-      expect(await events.getRegisteredTrustEvents(0)).eql([hash ]);
+      expect(await events.getRegisteredTrustEvents(0, zero())).eql([hash]);
+      expect(await events.getRegisteredTrustEvents(0, keyOracle.address)).eql([hash]);
       expect(await events.firedEvents(hash)).eql(false);
     });
 

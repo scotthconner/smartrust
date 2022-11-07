@@ -57,13 +57,16 @@ describe("TrustEventLog", function () {
       const {events, owner, root, second, third} = 
         await loadFixture(TrustTestFixtures.freshTrustEventLog);
 
+      await expect(await events.getRegisteredTrustEvents(0, owner.address)).eql([]);
+      
       // register the event
       await expect(await events.connect(owner).registerTrustEvent(0, stb('death'), stb('Kenny dies')))
         .to.emit(events, 'trustEventRegistered')
         .withArgs(owner.address, 0, stb('death'), stb('Kenny dies'));
 
       // check the state
-      await expect(await events.getRegisteredTrustEvents(0)).eql([stb('death')]);
+      await expect(await events.getRegisteredTrustEvents(0, zero())).eql([stb('death')]);
+      await expect(await events.getRegisteredTrustEvents(0, owner.address)).eql([stb('death')]);
       await expect(await events.eventDispatchers(stb('death'))).eql(owner.address);
       await expect(await events.eventDescriptions(stb('death'))).eql(stb('Kenny dies'));
       await expect(await events.firedEvents(stb('death'))).to.equal(false);
@@ -118,7 +121,7 @@ describe("TrustEventLog", function () {
       await expect(await events.connect(owner).registerTrustEvent(0, stb('death'), stb('Kenny dies')))
         .to.emit(events, 'trustEventRegistered')
         .withArgs(owner.address, 0, stb('death'), stb('Kenny dies'));
-
+ 
       // the owner signer can act as an anonymous dispatcher
       await expect(await events.connect(owner).logTrustEvent(stb('death')))
         .to.emit(events, 'trustEventLogged')
@@ -156,7 +159,9 @@ describe("TrustEventLog", function () {
         .withArgs(third.address, 0, stb('lottery'), stb('Quit job'));
 
       // check to ensure the events are registered
-      await expect(await events.getRegisteredTrustEvents(0)).eql([stb('death'), stb('birth'), stb('lottery')]);
+      await expect(await events.getRegisteredTrustEvents(0, zero())).eql([stb('death'), stb('birth'), stb('lottery')]);
+      await expect(await events.getRegisteredTrustEvents(0, owner.address)).eql([stb('death'), stb('birth')]);
+      await expect(await events.getRegisteredTrustEvents(0, third.address)).eql([stb('lottery')]);
       await expect(await events.eventDispatchers(stb('death'))).eql(owner.address);
       await expect(await events.eventDispatchers(stb('birth'))).eql(owner.address);
       await expect(await events.eventDispatchers(stb('lottery'))).eql(third.address);

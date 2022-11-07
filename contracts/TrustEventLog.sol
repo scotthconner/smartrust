@@ -94,6 +94,9 @@ contract TrustEventLog is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     mapping(bytes32 => bytes32) public eventDescriptions;
     // holds the event hashes for each trust
     mapping(uint256 => bytes32[]) private trustEventRegistry;
+    // a nifty but expensive way of supporting dispatcher based queries
+    // trust => dispatcher => [events]
+    mapping(uint256 => mapping(address => bytes32[])) private trustDispatcherEvents;
 
     // eventHash => hasFired?
     // when an event is properly fired by its dispatcher, set that
@@ -145,11 +148,15 @@ contract TrustEventLog is Initializable, OwnableUpgradeable, UUPSUpgradeable {
      * Simply returns an array of event hashes associated with the
      * trust for introspection. You can then look up the dispatchers.
      *
+     * Alternatively, you can pass in a non-zero byte hash to filter
+     * by dispatcher directly.
+     *
      * @param trustId the trust you want the event hashes for
+     * @param dispatcher the address of the dispatcher you want events for, or zero for all 
      * @return the array of event hashes for the trust
      */
-    function getRegisteredTrustEvents(uint256 trustId) public view returns (bytes32[] memory) {
-        return trustEventRegistry[trustId];
+    function getRegisteredTrustEvents(uint256 trustId, address dispatcher) public view returns (bytes32[] memory) {
+        return dispatcher == address(0) ? trustEventRegistry[trustId] : trustDispatcherEvents[trustId][dispatcher];
     }
 
     ////////////////////////////////////////////////////////
@@ -193,6 +200,7 @@ contract TrustEventLog is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         // the event is really bound to dispatchers, but
         // we want to keep track of a trust ID for introspection
         trustEventRegistry[trustId].push(eventHash);
+        trustDispatcherEvents[trustId][msg.sender].push(eventHash);
 
         // emit the event
         emit trustEventRegistered(msg.sender, trustId, eventHash, description);
