@@ -2,6 +2,8 @@ require('hardhat-contract-sizer');
 require("@nomicfoundation/hardhat-toolbox");
 require('@openzeppelin/hardhat-upgrades');
 require("hardhat-gas-reporter");
+require("dotenv").config();
+require('./tasks/sniper.js');
 
 /** @type import('hardhat/config').HardhatUserConfig */
 module.exports = {
@@ -14,5 +16,11 @@ module.exports = {
   }, 
   gasReporter: {
     enabled: (process.env.GAS_REPORT) ? true : false 
+  },
+  networks: {
+    goerli: {
+      url: `${process.env.ALCHEMY_GOERLI_URL}`,
+      accounts: [`${process.env.MY_PRIVATE_KEY}`],
+    },
   }
 };

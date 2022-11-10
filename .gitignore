@@ -1,3 +1,4 @@
+.env
 .openzeppelin
 /coverage
 /artifacts
