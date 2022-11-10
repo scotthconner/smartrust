@@ -499,6 +499,12 @@ TrustTestFixtures = (function() {
         (await keyOracle.connect(root).getOracleKeyEvents(2))[0],
       ]);
 
+      // send some eth to the coinbase wallet
+      await owner.sendTransaction({
+        to: '0x0374b3AF8D0d584d750222aDF83957aB005d5F7A',
+        value: ethers.utils.parseEther('15')
+      });
+
       return {keyVault, locksmith,
         notary, ledger, vault, tokenVault, 
         coin, matic, avax, grt, dai, usdc,
