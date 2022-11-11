@@ -39,11 +39,11 @@ contract Peer is Initializable, OwnableUpgradeable, UUPSUpgradeable {
      *
      * Fundamentally replaces the constructor for an upgradeable contract.
      */
-    function initialize(address ledgerContract) initializer public {
+    function initialize(address _Ledger) initializer public {
         __Ownable_init();
         __UUPSUpgradeable_init();
 
-        ledger = Ledger(ledgerContract);
+        ledger = Ledger(_Ledger);
     }
 
     /**

@@ -127,16 +127,16 @@ contract Trustee is Initializable, OwnableUpgradeable, UUPSUpgradeable {
      *
      * Fundamentally replaces the constructor for an upgradeable contract.
      *
-     * @param _locksmith the address for the locksmith
-     * @param _ledger    the address for the ledger 
-     * @param _log       the event log to read events from
+     * @param _Locksmith     the address for the locksmith
+     * @param _Ledger        the address for the ledger 
+     * @param _TrustEventLog the event log to read events from
      */
-    function initialize(address _locksmith, address _ledger, address _log) initializer public {
+    function initialize(address _Locksmith, address _Ledger, address _TrustEventLog) initializer public {
         __Ownable_init();
         __UUPSUpgradeable_init();
-        locksmith = Locksmith(_locksmith);
-        ledger = Ledger(_ledger);
-        eventLog = TrustEventLog(_log); 
+        locksmith = Locksmith(_Locksmith);
+        ledger = Ledger(_Ledger);
+        eventLog = TrustEventLog(_TrustEventLog); 
     }
 
     /**

@@ -3,7 +3,7 @@ require("@nomicfoundation/hardhat-toolbox");
 require('@openzeppelin/hardhat-upgrades');
 require("hardhat-gas-reporter");
 require("dotenv").config();
-require('./tasks/sniper.js');
+require('./tasks/genie.js');
 
 /** @type import('hardhat/config').HardhatUserConfig */
 module.exports = {

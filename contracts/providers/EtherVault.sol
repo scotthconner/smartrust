@@ -76,17 +76,17 @@ contract EtherVault is Initializable, OwnableUpgradeable, UUPSUpgradeable {
      * Fundamentally replaces the constructor for an upgradeable contract.
      * This contract relies on the ERC1155 contract for the Trust Key manager.
      * 
-     * @param _locksmith the address of the proxy for the locksmith
-     * @param _ledger    the address of the proxy for the ledger
+     * @param _Locksmith the address of the proxy for the locksmith
+     * @param _Ledger    the address of the proxy for the ledger
      */
-    function initialize(address _locksmith, address _ledger) initializer public {
+    function initialize(address _Locksmith, address _Ledger) initializer public {
         __Ownable_init();
         __UUPSUpgradeable_init();
 
         // this implies a specific deployment order that trust key
         // must be mined first.
-        locksmith = Locksmith(_locksmith);
-        ledger = Ledger(_ledger);
+        locksmith = Locksmith(_Locksmith);
+        ledger = Ledger(_Ledger);
 
         // This is a more transparent way of holding the bytes32,
         // it could have been an immutable as well but its good

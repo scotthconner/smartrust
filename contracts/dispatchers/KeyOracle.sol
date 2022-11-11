@@ -97,14 +97,14 @@ contract KeyOracle is Initializable, OwnableUpgradeable, UUPSUpgradeable {
      *
      * Fundamentally replaces the constructor for an upgradeable contract.
      *
-     * @param _locksmith the address of the locksmith who mints keys 
-     * @param _eventLog  the address of the TrustEventLog this dispatcher should be using.
+     * @param _Locksmith the address of the locksmith who mints keys 
+     * @param _TrustEventLog  the address of the TrustEventLog this dispatcher should be using.
      */
-    function initialize(address _locksmith, address _eventLog) initializer public {
+    function initialize(address _Locksmith, address _TrustEventLog) initializer public {
         __Ownable_init();
         __UUPSUpgradeable_init();
-        eventLog = TrustEventLog(_eventLog);
-        locksmith = Locksmith(_locksmith);
+        eventLog = TrustEventLog(_TrustEventLog);
+        locksmith = Locksmith(_Locksmith);
     }
 
     /**

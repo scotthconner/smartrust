@@ -148,12 +148,12 @@ contract Ledger is Initializable, OwnableUpgradeable, UUPSUpgradeable {
      *
      * Fundamentally replaces the constructor for an upgradeable contract.
      *
-     * @param _notary the address for the notary 
+     * @param _Notary the address for the notary 
      */
-    function initialize(address _notary) initializer public {
+    function initialize(address _Notary) initializer public {
         __Ownable_init();
         __UUPSUpgradeable_init();
-        notary = Notary(_notary);
+        notary = Notary(_Notary);
     }
 
     /**

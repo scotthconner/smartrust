@@ -183,12 +183,12 @@ contract Notary is Initializable, OwnableUpgradeable, UUPSUpgradeable {
      *
      * Fundamentally replaces the constructor for an upgradeable contract.
      *
-     * @param _locksmith the address for the locksmith
+     * @param _Locksmith the address for the locksmith
      */
-    function initialize(address _locksmith) initializer public {
+    function initialize(address _Locksmith) initializer public {
         __Ownable_init();
         __UUPSUpgradeable_init();
-        locksmith = Locksmith(_locksmith);
+        locksmith = Locksmith(_Locksmith);
     }
 
     /**

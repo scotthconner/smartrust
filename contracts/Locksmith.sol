@@ -134,13 +134,13 @@ contract Locksmith is Initializable, OwnableUpgradeable, UUPSUpgradeable {
      *
      * Fundamentally replaces the constructor for an upgradeable contract.
      *
-     * @param keyVaultContract the ERC1155 key vault contract the locksmith will use
+     * @param _KeyVault the ERC1155 key vault contract the locksmith will use
      */
-    function initialize(address keyVaultContract) initializer public {
+    function initialize(address _KeyVault) initializer public {
         __Ownable_init();
         __UUPSUpgradeable_init();
 
-        keyVault = KeyVault(keyVaultContract);
+        keyVault = KeyVault(_KeyVault);
     }
 
     /**
