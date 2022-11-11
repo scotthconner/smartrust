@@ -14,16 +14,8 @@
 // depedencies of other Locksmith contracts. If this assumption breaks,
 // we need to consider a different deploy mechanism.
 ///////////////////////////////////////////
-const prompt = require('prompt');
 require('./registry.js');
 
-// This is a prompt used to verify input and configuration
-// before doing a deployment for each task.
-const continuePromptProperty = {
- name: 'continue',
- validator: /^Y|n$/,
- warning: "Only 'Y' or 'n' is allowed."
-};
 const redText = '\x1b[31m%s\x1b[0m';
 const greenText  = '\x1b[32m%s\x1b[0m';
 const yellowText = '\x1b[33m%s\x1b[0m';
@@ -54,10 +46,79 @@ const getContractInitializationDependencies = async function(contract) {
     })
 }
 
+///////////////////////////////////////////
+// sortDependencies
+//
+// Given contract, get the initialization dependencies
+// and find the missing ones.
+///////////////////////////////////////////
+const sortDependencies = async function(contract) {
+  const dependencies = await getContractInitializationDependencies(contract);
+  const missing      = dependencies.filter(d => !d.address );
+  return { dependencies, missing } 
+}
+
+task("show", "Show the state of the current genie deployment")
+  .setAction(async (taskArgs) => {
+    const [owner] = await ethers.getSigners();
+    const chainId = await owner.getChainId();
+
+    console.log(greenText, '\n==== GENIE, SHOW! ====\n');
+    console.log(JSON.stringify(taskArgs, null, 2));
+    console.log(greenText, "\n=== SIGNER INFO ===\n");
+    console.log(" Signer Network Chain ID: " + chainId);
+    console.log(" Signer Wallet Address: " + owner.address);
+
+    var deployed = 0;
+    var availableDeployments = [];
+    var totalNeeded = 0;
+    
+    console.log(greenText, "\n=== CURRENT ===\n");
+    for(const c of LocksmithRegistry.getContractList() ) {
+      const currentAddress = LocksmithRegistry.getContractAddress(chainId, c);
+
+      // build the contract and get the dependencies
+      const contract = await ethers.getContractFactory(c);
+
+      const { dependencies, missing } = await sortDependencies(contract);
+
+      console.log("----------------------");
+      console.log(currentAddress != null ? greenText : (missing.length === 0 ? yellowText : redText), c + ": " + currentAddress);
+      console.log(" - Dependencies: " + dependencies.map((d) => {
+        return d.address !== null ? '\x1b[32m' + d.alias + '\x1b[0m' :
+          '\x1b[31m' + d.alias + '\x1b[0m';  
+      }).join(', '));
+
+      deployed += currentAddress != null ? 1 : 0;
+      totalNeeded += 1;
+      if (missing.length === 0 && currentAddress === null) {
+        availableDeployments.push(c)
+      }
+    };
+
+    console.log("\n\nInitialization List: ");
+  
+    var keyVaultAddress = LocksmithRegistry.getContractAddress(chainId, 'KeyVault');
+    var locksmithAddress = LocksmithRegistry.getContractAddress(chainId, 'Locksmith');
+    var keyVaultContract = await ethers.getContractFactory('KeyVault');
+
+    if (keyVaultAddress !== null&& locksmithAddress !== null && 
+        ((await keyVaultContract.attach(keyVaultAddress).respectedLocksmith()) === locksmithAddress)) {
+      console.log(greenText, "[✓] KeyVault trusts *the* Locksmith");
+    } else {
+      console.log(redText, "[ ] KeyVault trusts *the* Locksmith");
+    }
+
+    console.log("\n\nTotal Deployment Progress: " + deployed + " of " + totalNeeded);
+    console.log("Available deployments: " + availableDeployments.join(', '));
+  });
+
+
 task("deploy", "Deploy a specific contract generating a new address for it.")
   .addParam('contract', 'The name of the contract you want to deploy.')
   .addOptionalParam('force', 'Flag to force deploy even if there\'s and existing address.', false, types.boolean)
   .setAction(async (taskArgs) => {
+    
     // this assumes that the signer has been loaded, either through
     // hardhat local defaults, or using alchemy and testnet or production
     // credentials via dotenv (.env) and hardhat.config.js
@@ -75,8 +136,7 @@ task("deploy", "Deploy a specific contract generating a new address for it.")
     console.log(" Factory Signer Chain ID: " + await contract.signer.getChainId());
     console.log(" Factory Signer Address:" + await contract.signer.getAddress());
    
-    const dependencies = await getContractInitializationDependencies(contract);
-    const missing = dependencies.filter(d => !d.address );
+    const { dependencies, missing }  = await sortDependencies(contract); 
     const color = missing.length === 0 ? greenText : (
       missing.length === dependencies.length ? redText : yellowText );
     console.log(color, "\n=== Contract Dependencies ===\n")
@@ -127,3 +187,45 @@ task("deploy", "Deploy a specific contract generating a new address for it.")
     LocksmithRegistry.saveContractAddress(chainId, taskArgs['contract'], deployment.address);
     console.log(greenText, "Address has been successfully saved in the registry!");
   });
+
+task("respect", "Make the current registry's key vault respect the current locksmith.")
+  .setAction(async (taskArgs) => {
+    const [owner] = await ethers.getSigners();
+    const chainId = await owner.getChainId();
+    console.log(greenText, '\n==== GENIE, RESPECT! ====\n');
+    console.log(JSON.stringify(taskArgs, null, 2));
+    console.log(greenText, "\n=== SIGNER INFO ===\n");
+    console.log(" Signer Network Chain ID: " + chainId);
+    console.log(" Signer Wallet Address: " + owner.address);
+    
+    console.log(greenText, "\n=== CONTRACT INFO ===\n");
+    var keyVaultAddress = LocksmithRegistry.getContractAddress(chainId, 'KeyVault');
+    var locksmithAddress = LocksmithRegistry.getContractAddress(chainId, 'Locksmith');
+    console.log(keyVaultAddress ? greenText : redText, " KeyVault: " + keyVaultAddress); 
+    console.log(locksmithAddress ? greenText : redText, " Locksmith: " + locksmithAddress); 
+
+    if (keyVaultAddress === null || locksmithAddress === null) {
+      console.log(yellowText, "\n\nYou are missing dependencies for this action!");
+      return 1;
+    }
+
+    console.log(greenText, "\n=== Calling setRespectedLocksmith... ===\n");
+    var keyVaultContract = await ethers.getContractFactory('KeyVault');
+    
+    var respectAddress = await keyVaultContract.attach(keyVaultAddress).respectedLocksmith(); 
+    console.log(" The current respect address is: " + respectAddress);
+
+    if(respectAddress === locksmithAddress) {
+      console.log(yellowText, " The current locksmith is already respected!");
+      return 1;
+    }
+
+    var response = await keyVaultContract
+      .attach(keyVaultAddress)
+      .connect(owner)
+      .setRespectedLocksmith(locksmithAddress);
+
+    console.log("\nIt seems it was successful!");
+    console.log("New respect address is: " + await keyVaultContract.attach(keyVaultAddress).respectedLocksmith());
+  });
+

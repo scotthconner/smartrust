@@ -1,6 +1,19 @@
 const fs = require('fs');
 
 LocksmithRegistry = (function() {
+  const CONTRACTS = [
+    'KeyVault',      // Key Management 
+    'Locksmith',
+    'Notary',        // Ledger Management
+    'Ledger',
+    'EtherVault',    // Default Providers
+    'TokenVault',
+    'TrustEventLog', // Event Log and Dispatchers
+    'KeyOracle',
+    'AlarmClock',
+    'Trustee',       // Scribes
+  ];
+
   /////////////////////////////////////////////
   // getNetworkRegistryFileName
   //
@@ -39,6 +52,15 @@ LocksmithRegistry = (function() {
   }
 
   return {
+    /////////////////////////////////////////////
+    // getContractList
+    //
+    // Produce an array of aliases you can use to
+    // introspect the registry.
+    /////////////////////////////////////////////
+    getContractList: function() {
+      return CONTRACTS;
+    },
     /////////////////////////////////////////////
     // getContractAddress
     //

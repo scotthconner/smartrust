@@ -66,6 +66,11 @@ describe("Locksmith", function () {
     it("Can't mint key if not a locksmith", async function() {
       const { keyVault, locksmith, owner, root, second, third} =
         await loadFixture(TrustTestFixtures.freshLocksmithProxy);
+      
+      // double check the harness respected the locksmith
+      await expect(await keyVault.respectedLocksmith()).eql(locksmith.address);
+
+      // enforce the locksmith
       await expect(keyVault.connect(root).mint(root.address, 0, 1, stb("")))
         .to.be.revertedWith("NOT_LOCKSMITH");
     });
