@@ -121,14 +121,53 @@ task("show", "Show the state of the current genie deployment")
     var keyVaultContract = await ethers.getContractFactory('KeyVault');
     var locksmithContract = await ethers.getContractFactory('Locksmith');
 
-    if (keyVaultAddress !== null && locksmithAddress !== null &&
-        ((await keyVaultContract.attach(keyVaultAddress).locksmith()) === locksmithAddress)) {
-      console.log(greenText, "[✓] KeyVault respects *the* Locksmith");
-    } else {
-      console.log(redText, "[ ] KeyVault respects *the* Locksmith");
+    try {
+      if (keyVaultAddress !== null && locksmithAddress !== null &&
+          ((await keyVaultContract.attach(keyVaultAddress).locksmith()) === locksmithAddress)) {
+        console.log(greenText, "[✓] KeyVault respects *the* Locksmith");
+      } else {
+        console.log(redText, "[ ] KeyVault respects *the* Locksmith");
+      }
+    } catch (err) {
+        console.log(redText, "[ ] KeyVault respects *the* Locksmith");
     }
   });
 
+task("shadow", "Deploy a shadow ERC20 and fund the signer, mainly for localhost.")
+  .addParam('alias', 'The alias you want to give this coin')
+  .addParam('ticker', 'The alias you want to give this coin')
+  .addOptionalParam('amount', 'The amount you want to fund into the wallet', 1000, types.int)
+  .setAction(async (taskArgs) => {
+      const [owner] = await ethers.getSigners();
+      const chainId = await owner.getChainId()
+
+      const ShadowCoin = await ethers.getContractFactory("ShadowERC");
+
+      console.log(greenText, '\n==== GENIE, SHADOW! ====\n');
+      console.log(JSON.stringify(taskArgs, null, 2));
+      console.log(greenText, "\n=== SIGNER INFO ===\n");
+      console.log(" Signer Network Chain ID: " + chainId);
+      console.log(" Signer Wallet Address: " + owner.address);    
+    
+      console.log(greenText, "\n=== Creating Shadow... ===\n");
+      console.log(" Shadow Alias: " + taskArgs.alias);
+      console.log(" Shadow ticker: " + taskArgs.ticker);
+      console.log(" Amount: " + ethers.utils.parseEther('' + taskArgs.amount));
+
+      const tokenVaultAddress = LocksmithRegistry.getContractAddress(chainId, 'TokenVault');
+
+      if(!tokenVaultAddress) {
+        console.log(yellowText, "\nYou are required to have a token vault deployed!");
+        return 1;
+      }
+
+      const contract = await ShadowCoin.deploy(taskArgs.alias, taskArgs.ticker);
+      await contract.connect(owner).spawn(ethers.utils.parseEther('' + taskArgs.amount));
+      await contract.connect(owner).approve(tokenVaultAddress, ethers.constants.MaxUint256);
+      
+      LocksmithRegistry.saveContractAddress(chainId, taskArgs.alias, contract.address, 'assets');
+      console.log(greenText, 'Successful! The asset address has been saved as ' + contract.address);
+  });
 
 task("deploy", "Deploy a specific contract generating a new address for it.")
   .addParam('contract', 'The name of the contract you want to deploy.')

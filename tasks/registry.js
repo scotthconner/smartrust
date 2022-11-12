@@ -20,9 +20,10 @@ LocksmithRegistry = (function() {
   // Will take a chain ID and produce the filename
   // for the registry.
   /////////////////////////////////////////////
-  var getNetworkRegistryFileName = function(chainId) {
-    return __dirname + '/../registries/network-contracts-' + chainId + '.json';
-  }
+  var getNetworkRegistryFileName = function(chainId, registryType){
+    return __dirname + '/../registries/network-' + registryType + '-' + chainId + '.json';
+  };
+  
   /////////////////////////////////////////////
   // getNetworkRegistry
   //
@@ -31,11 +32,12 @@ LocksmithRegistry = (function() {
   // contract addresses via their aliases, as well
   // as any known set dependencies.
   /////////////////////////////////////////////
-  var getNetworkRegistry = function(chainId) {
+  var getNetworkRegistry = function(chainId, registryType = 'contracts') {
     return {
       chainId: chainId,
+      type: registryType,
       contracts: JSON.parse(
-        fs.readFileSync(getNetworkRegistryFileName(chainId)))
+        fs.readFileSync(getNetworkRegistryFileName(chainId, registryType)))
     }; 
   };
 
@@ -48,8 +50,8 @@ LocksmithRegistry = (function() {
   /////////////////////////////////////////////
   var commitNetworkRegistry = function(registry) {
     let data = JSON.stringify(registry.contracts, null, 2);
-    fs.writeFileSync(getNetworkRegistryFileName(registry.chainId), data); 
-  }
+    fs.writeFileSync(getNetworkRegistryFileName(registry.chainId, registry.type), data); 
+  };
 
   return {
     /////////////////////////////////////////////
@@ -75,7 +77,11 @@ LocksmithRegistry = (function() {
       // there is a public member that is lower-camelized for
       // the contract dependency.
       var method = dependency.charAt(0).toLowerCase() + dependency.slice(1);
-      return address !== null ? await contract.attach(address)[method]() : null;
+      try { 
+        return address !== null ? await contract.attach(address)[method]() : null;
+      } catch (err) {
+        return null;
+      }
     },
     /////////////////////////////////////////////
     // getContractAddress
@@ -83,8 +89,8 @@ LocksmithRegistry = (function() {
     // Opens the registry, and gets a specific
     // contract address given the chain Id.
     /////////////////////////////////////////////
-    getContractAddress: function(chainId, alias) {
-      return getNetworkRegistry(chainId).contracts[alias] || null; 
+    getContractAddress: function(chainId, alias, registryType = 'contracts') {
+      return getNetworkRegistry(chainId, registryType).contracts[alias] || null; 
     },
     /////////////////////////////////////////////
     // saveContractAddress
@@ -93,11 +99,11 @@ LocksmithRegistry = (function() {
     // it in the registry. However, it will overwrite
     // anything that is there!
     /////////////////////////////////////////////
-    saveContractAddress: function(chainId, alias, address) {
+    saveContractAddress: function(chainId, alias, address, registryType = 'contracts') {
       // this will error if the registry doesn't exist, this
       // is on purpose to ensure that typos don't create new
       // registries
-      var registry = getNetworkRegistry(chainId);
+      var registry = getNetworkRegistry(chainId, registryType);
 
       // save the registry into the map
       registry.contracts[alias] = address;
