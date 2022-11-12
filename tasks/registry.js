@@ -1,44 +1,18 @@
 const fs = require('fs');
 
 LocksmithRegistry = (function() {
-  const CONTRACTS = { 
-    'KeyVault': { 
-    },      
-    'Locksmith': {
-      'KeyVault': async function(chainId) {
-        var locksmithAddress = LocksmithRegistry.getContractAddress(chainId, 'Locksmith');
-        var locksmithContract = await ethers.getContractFactory('Locksmith');
-        return locksmithAddress ? await locksmithContract.attach(locksmithAddress).keyVault() : 
-          ethers.constants.AddressZero;
-      }
-    }, 
-    'Notary': {
-      'Locksmith': async function(chainId) {
-        var address = LocksmithRegistry.getContractAddress(chainId, 'Notary');
-        var contract = await ethers.getContractFactory('Notary');
-        return await address ? contract.attach(address).locksmith() : ethers.constants.AddressZero;
-      }
-    },
-    'Ledger': {
-      'Notary': async function(chainId) {
-        var address = LocksmithRegistry.getContractAddress(chainId, 'Ledger');
-        var contract = await ethers.getContractFactory('Ledger');
-        return await address ? contract.attach(address).notary() : ethers.constants.AddressZero;
-      }
-    },
-    'EtherVault': async function() { },           
-    'TokenVault': async function() { },               
-    'TrustEventLog': async function() { }, 
-    'KeyOracle': async function() { 
-
-    },
-    'AlarmClock': async function() {
-
-    },
-    'Trustee': async function() {
-
-    }
-  };
+  const CONTRACTS = [ 
+    'KeyVault',
+    'Locksmith',
+    'Notary',
+    'Ledger',
+    'EtherVault',
+    'TokenVault',
+    'TrustEventLog',
+    'KeyOracle',
+    'AlarmClock',
+    'Trustee'
+  ];
 
   /////////////////////////////////////////////
   // getNetworkRegistryFileName
@@ -47,7 +21,7 @@ LocksmithRegistry = (function() {
   // for the registry.
   /////////////////////////////////////////////
   var getNetworkRegistryFileName = function(chainId) {
-    return __dirname + '/../network-contracts-' + chainId + '.json';
+    return __dirname + '/../registries/network-contracts-' + chainId + '.json';
   }
   /////////////////////////////////////////////
   // getNetworkRegistry
@@ -85,7 +59,7 @@ LocksmithRegistry = (function() {
     // introspect the registry.
     /////////////////////////////////////////////
     getContractList: function() {
-      return Object.keys(CONTRACTS);
+      return CONTRACTS;
     },
     /////////////////////////////////////////////
     // getDeployedDependencyAddress 
