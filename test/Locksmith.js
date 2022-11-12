@@ -68,7 +68,7 @@ describe("Locksmith", function () {
         await loadFixture(TrustTestFixtures.freshLocksmithProxy);
       
       // double check the harness respected the locksmith
-      await expect(await keyVault.respectedLocksmith()).eql(locksmith.address);
+      await expect(await keyVault.locksmith()).eql(locksmith.address);
 
       // enforce the locksmith
       await expect(keyVault.connect(root).mint(root.address, 0, 1, stb("")))

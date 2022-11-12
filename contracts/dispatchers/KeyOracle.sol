@@ -72,7 +72,7 @@ contract KeyOracle is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     // Storage
     ///////////////////////////////////////////////////////
     Locksmith public locksmith;
-    TrustEventLog public eventLog;
+    TrustEventLog public trustEventLog;
 
     // keyId => [eventHashes] 
     mapping(uint256 => EnumerableSet.Bytes32Set) private oracleKeyEvents;
@@ -103,7 +103,7 @@ contract KeyOracle is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     function initialize(address _Locksmith, address _TrustEventLog) initializer public {
         __Ownable_init();
         __UUPSUpgradeable_init();
-        eventLog = TrustEventLog(_TrustEventLog);
+        trustEventLog = TrustEventLog(_TrustEventLog);
         locksmith = Locksmith(_Locksmith);
     }
 
@@ -178,7 +178,7 @@ contract KeyOracle is Initializable, OwnableUpgradeable, UUPSUpgradeable {
 
         // register it in the event log first. If the event hash is a duplicate,
         // it will fail here and the entire transaction will revert.
-        eventLog.registerTrustEvent(rootTrustId, eventHash, description);
+        trustEventLog.registerTrustEvent(rootTrustId, eventHash, description);
 
         // if we get this far, we know its not a duplicate. Store it
         // here for introspection.
@@ -214,6 +214,6 @@ contract KeyOracle is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         require(oracleKeyEvents[keyId].contains(eventHash), 'MISSING_KEY_EVENT');
 
         // fire the event to the trust event log
-        eventLog.logTrustEvent(eventHash);
+        trustEventLog.logTrustEvent(eventHash);
     }
 }

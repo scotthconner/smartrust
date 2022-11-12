@@ -93,8 +93,15 @@ LocksmithRegistry = (function() {
     // Given a context of ethers, get the integrity
     // of the given contract alias.
     /////////////////////////////////////////////
-    getDeployedDependencyAddress: function(alias, dependency) {
-      return CONTRACTS[alias][dependency];
+    getDeployedDependencyAddress: async function(chainId, alias, dependency) {
+      var address = LocksmithRegistry.getContractAddress(chainId, alias);
+      var contract = await ethers.getContractFactory(alias);
+
+      // this is a very naughty piece of code, that assumes
+      // there is a public member that is lower-camelized for
+      // the contract dependency.
+      var method = dependency.charAt(0).toLowerCase() + dependency.slice(1);
+      return address !== null ? await contract.attach(address)[method]() : null;
     },
     /////////////////////////////////////////////
     // getContractAddress

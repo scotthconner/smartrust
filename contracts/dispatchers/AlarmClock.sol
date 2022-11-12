@@ -117,7 +117,7 @@ contract AlarmClock is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     // Storage
     ///////////////////////////////////////////////////////
     Locksmith public locksmith;
-    TrustEventLog public eventLog;
+    TrustEventLog public trustEventLog;
 
     struct Alarm {
         bytes32 eventHash;      // the event to fire upon challenge
@@ -152,7 +152,7 @@ contract AlarmClock is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     function initialize(address _Locksmith, address _TrustEventLog) initializer public {
         __Ownable_init();
         __UUPSUpgradeable_init();
-        eventLog = TrustEventLog(_TrustEventLog);
+        trustEventLog = TrustEventLog(_TrustEventLog);
         locksmith = Locksmith(_Locksmith);
     }
 
@@ -233,7 +233,7 @@ contract AlarmClock is Initializable, OwnableUpgradeable, UUPSUpgradeable {
 
         // register it in the event log first. If the event hash is a duplicate,
         // it will fail here and the entire transaction will revert.
-        eventLog.registerTrustEvent(rootTrustId, eventHash, description);
+        trustEventLog.registerTrustEvent(rootTrustId, eventHash, description);
 
         // if we get this far, we know its not a duplicate. Store it
         // here for introspection.
@@ -293,7 +293,7 @@ contract AlarmClock is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         require(locksmith.keyVault().balanceOf(msg.sender, snoozeKeyId) > 0, 'KEY_NOT_HELD');
 
         // ensure the event isn't already fired
-        require(!eventLog.firedEvents(eventHash), 'OVERSNOOZE');
+        require(!trustEventLog.firedEvents(eventHash), 'OVERSNOOZE');
 
         // ensure that the snooze attempt isn't *too* early, defined by:
         // being late, or within an interval of the alarm time. this prevents
@@ -341,7 +341,7 @@ contract AlarmClock is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         
         // fire the event to the trust event log. this will fail
         // if the event has already been fired with 'DUPLICATE_EVENT'
-        eventLog.logTrustEvent(eventHash);
+        trustEventLog.logTrustEvent(eventHash);
 
         emit alarmClockChallenged(msg.sender, eventHash, alarm.alarmTime,
             block.timestamp);

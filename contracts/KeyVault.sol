@@ -55,7 +55,7 @@ contract KeyVault is Initializable, ERC1155Upgradeable, OwnableUpgradeable, UUPS
     ///////////////////////////////////////////////////////
     // Storage
     ///////////////////////////////////////////////////////
-    address public respectedLocksmith;
+    address public locksmith;
 
     // The respected locksmith can mint and burn tokens, as
     // well as bind specific keys to wallets and prevent the
@@ -153,10 +153,10 @@ contract KeyVault is Initializable, ERC1155Upgradeable, OwnableUpgradeable, UUPS
      * Only the owner can call this method, to set
      * the key vault owner to a specific locksmith.
      *
-     * @param locksmith the address of the locksmith to respect
+     * @param _Locksmith the address of the locksmith to respect
      */
-    function setRespectedLocksmith(address locksmith) onlyOwner external {
-        respectedLocksmith = locksmith;
+    function setRespectedLocksmith(address _Locksmith) onlyOwner external {
+        locksmith = _Locksmith;
     }
 
     ////////////////////////////////////////////////////////
@@ -176,7 +176,7 @@ contract KeyVault is Initializable, ERC1155Upgradeable, OwnableUpgradeable, UUPS
      * @param data       the data field for the key 
      */
     function mint(address receiver, uint256 keyId, uint256 amount, bytes calldata data) external {
-        require(respectedLocksmith == msg.sender, "NOT_LOCKSMITH");
+        require(locksmith == msg.sender, "NOT_LOCKSMITH");
         keySupply[keyId] += amount;
         _mint(receiver, keyId, amount, data);
     }
@@ -203,7 +203,7 @@ contract KeyVault is Initializable, ERC1155Upgradeable, OwnableUpgradeable, UUPS
      */
     function soulbind(address keyHolder, uint256 keyId, uint256 amount) external {
         // respect only the locksmith in this call
-        require(respectedLocksmith == msg.sender, "NOT_LOCKSMITH");
+        require(locksmith == msg.sender, "NOT_LOCKSMITH");
 
         // here ya go boss
         soulboundKeyAmounts[keyHolder][keyId] = amount;
@@ -223,7 +223,7 @@ contract KeyVault is Initializable, ERC1155Upgradeable, OwnableUpgradeable, UUPS
      * @param burnAmount the number of said keys you want to burn from the holder's possession.
      */
     function burn(address holder, uint256 keyId, uint256 burnAmount) external {
-        require(respectedLocksmith == msg.sender, "NOT_LOCKSMITH");
+        require(locksmith == msg.sender, "NOT_LOCKSMITH");
         keySupply[keyId] -= burnAmount;
         _burn(holder, keyId, burnAmount);
     }
@@ -258,7 +258,7 @@ contract KeyVault is Initializable, ERC1155Upgradeable, OwnableUpgradeable, UUPS
             // and we need to allow the locksmith to violate during burning 
             require(
                 (from == address(0)) || 
-                (operator == respectedLocksmith) ||  
+                (operator == locksmith) ||  
                 ((this.balanceOf(from, ids[x]) - amounts[x]) >=
                 soulboundKeyAmounts[from][ids[x]]), 'SOUL_BREACH');
 

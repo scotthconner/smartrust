@@ -21,6 +21,11 @@ const greenText  = '\x1b[32m%s\x1b[0m';
 const yellowText = '\x1b[33m%s\x1b[0m';
 const cyanText = '\x1b[36m%s\x1b[0m';
 
+const red    = (s) => '\x1b[31m' + s + '\x1b[0m';
+const green  = (s) => '\x1b[32m' + s + '\x1b[0m';
+const yellow = (s) => '\x1b[33m' + s + '\x1b[0m';
+const blue   = (s) => '\x1b[34m' + s + '\x1b[0m';
+
 ///////////////////////////////////////////
 // getContractInitializationDependencies
 //
@@ -44,8 +49,7 @@ const getContractInitializationDependencies = async function(alias) {
     dependencies.push({ 
       alias: contractDependency,
       address: contractAddress, 
-      integrity: (await (LocksmithRegistry.getDeployedDependencyAddress(alias, contractDependency) ||
-        async function(c) { return ethers.constants.AddressZero; })(chainId))
+      integrity: await LocksmithRegistry.getDeployedDependencyAddress(chainId, alias, contractDependency)
     });
   }
   return dependencies;
@@ -88,8 +92,15 @@ task("show", "Show the state of the current genie deployment")
       console.log("----------------------");
       console.log(currentAddress != null ? greenText : (missing.length === 0 ? yellowText : redText), c + ": " + currentAddress);
       console.log(" - Dependencies: " + dependencies.map((d) => {
-        return d.address !== null ? (d.integrity === d.address ? '\x1b[32m' + d.alias + '\x1b[0m' : '\x1b[31m' + d.alias + '\x1b[0m') :
-          '\x1b[33m' + d.alias + '\x1b[0m';  
+        if (d.address === null) {
+          return blue(d.alias);
+        } else if (currentAddress === null) {
+          return yellow(d.alias);
+        } else if (d.address === d.integrity) {
+          return green(d.alias);
+        }
+
+        return red(d.alias + " (" + d.integrity + ")");
       }).join(', '));
 
       deployed += currentAddress != null ? 1 : 0;
@@ -106,23 +117,15 @@ task("show", "Show the state of the current genie deployment")
 
     var keyVaultAddress = LocksmithRegistry.getContractAddress(chainId, 'KeyVault');
     var locksmithAddress = LocksmithRegistry.getContractAddress(chainId, 'Locksmith');
-    var notaryAddress = LocksmithRegistry.getContractAddress(chainId, 'Notary');
 
     var keyVaultContract = await ethers.getContractFactory('KeyVault');
     var locksmithContract = await ethers.getContractFactory('Locksmith');
 
-    if (keyVaultAddress && locksmithAddress &&
-      ((await locksmithContract.attach(locksmithAddress).keyVault()) === keyVaultAddress)) {
-      console.log(greenText, "[✓] Locksmith initialized with registered KeyVault");
-    } else {
-      console.log(redText, "[ ] Locksmith initialized with registered KeyVault");
-    }
-    
     if (keyVaultAddress !== null && locksmithAddress !== null &&
-        ((await keyVaultContract.attach(keyVaultAddress).respectedLocksmith()) === locksmithAddress)) {
-      console.log(greenText, "[✓] KeyVault trusts *the* Locksmith");
+        ((await keyVaultContract.attach(keyVaultAddress).locksmith()) === locksmithAddress)) {
+      console.log(greenText, "[✓] KeyVault respects *the* Locksmith");
     } else {
-      console.log(redText, "[ ] KeyVault trusts *the* Locksmith");
+      console.log(redText, "[ ] KeyVault respects *the* Locksmith");
     }
   });
 
@@ -225,7 +228,7 @@ task("respect", "Make the current registry's key vault respect the current locks
     console.log(greenText, "\n=== Calling setRespectedLocksmith... ===\n");
     var keyVaultContract = await ethers.getContractFactory('KeyVault');
     
-    var respectAddress = await keyVaultContract.attach(keyVaultAddress).respectedLocksmith(); 
+    var respectAddress = await keyVaultContract.attach(keyVaultAddress).locksmith(); 
     console.log(" The current respect address is: " + respectAddress);
 
     if(respectAddress === locksmithAddress) {
@@ -239,6 +242,6 @@ task("respect", "Make the current registry's key vault respect the current locks
       .setRespectedLocksmith(locksmithAddress);
 
     console.log("\nIt seems it was successful!");
-    console.log("New respect address is: " + await keyVaultContract.attach(keyVaultAddress).respectedLocksmith());
+    console.log("New respect address is: " + await keyVaultContract.attach(keyVaultAddress).locksmith());
   });
 

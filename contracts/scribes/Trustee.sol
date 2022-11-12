@@ -89,9 +89,9 @@ contract Trustee is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     ///////////////////////////////////////////////////////
     // Storage
     ///////////////////////////////////////////////////////
-    Locksmith public locksmith;    // key validation
-    TrustEventLog public eventLog; // event detection
-    Ledger public ledger;          // ledger manipulation
+    Locksmith public locksmith;         // key validation
+    TrustEventLog public trustEventLog; // event detection
+    Ledger public ledger;               // ledger manipulation
 
     // A trust Policy enables a keyholder 
     // to distribute root key trust funds.
@@ -136,7 +136,7 @@ contract Trustee is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         __UUPSUpgradeable_init();
         locksmith = Locksmith(_Locksmith);
         ledger = Ledger(_Ledger);
-        eventLog = TrustEventLog(_TrustEventLog); 
+        trustEventLog = TrustEventLog(_TrustEventLog); 
     }
 
     /**
@@ -181,7 +181,7 @@ contract Trustee is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         uint256 enabledCount;
         if(!t.enabled) {
             for(uint256 x = 0; x < t.requiredEvents.length; x++) {
-                enabledCount += eventLog.firedEvents(t.requiredEvents[x]) ? 1 : 0;
+                enabledCount += trustEventLog.firedEvents(t.requiredEvents[x]) ? 1 : 0;
             }
         }
 
@@ -409,7 +409,7 @@ contract Trustee is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         // go through each required event and check the event log
         // to ensure each one of them have fired.
         for(uint256 x = 0; x < t.requiredEvents.length; x++) {
-            require(eventLog.firedEvents(t.requiredEvents[x]), 'MISSING_EVENT'); 
+            require(trustEventLog.firedEvents(t.requiredEvents[x]), 'MISSING_EVENT'); 
         }
         
         // if we passed all the panics, let's ensure we wont
