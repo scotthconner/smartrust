@@ -33,17 +33,22 @@ const cyanText = '\x1b[36m%s\x1b[0m';
 // method makes a lot of assumptions about how initialization
 // parameters are defined in the contracts.
 ///////////////////////////////////////////
-const getContractInitializationDependencies = async function(contract) {
+const getContractInitializationDependencies = async function(alias) {
+  const contract = await ethers.getContractFactory(alias);
   const chainId = await contract.signer.getChainId();
-  return contract.interface.fragments
-    .filter(f => f.type === 'function' && f.name === 'initialize')[0].inputs
-    .map(pt => {
-      var contractDependency = pt.name.replace(/_/g,'');
-      return { 
-        alias: contractDependency,
-        address: LocksmithRegistry.getContractAddress(chainId, contractDependency)
-      };
-    })
+  var dependencies = [];
+  for (pt of contract.interface.fragments.filter(f => f.type === 'function' && f.name === 'initialize')[0].inputs) {
+    var contractDependency = pt.name.replace(/_/g,'');
+    var contractAddress = LocksmithRegistry.getContractAddress(chainId, contractDependency);
+
+    dependencies.push({ 
+      alias: contractDependency,
+      address: contractAddress, 
+      integrity: (await (LocksmithRegistry.getDeployedDependencyAddress(alias, contractDependency) ||
+        async function(c) { return ethers.constants.AddressZero; })(chainId))
+    });
+  }
+  return dependencies;
 }
 
 ///////////////////////////////////////////
@@ -52,8 +57,8 @@ const getContractInitializationDependencies = async function(contract) {
 // Given contract, get the initialization dependencies
 // and find the missing ones.
 ///////////////////////////////////////////
-const sortDependencies = async function(contract) {
-  const dependencies = await getContractInitializationDependencies(contract);
+const sortDependencies = async function(alias) {
+  const dependencies = await getContractInitializationDependencies(alias);
   const missing      = dependencies.filter(d => !d.address );
   return { dependencies, missing } 
 }
@@ -78,15 +83,13 @@ task("show", "Show the state of the current genie deployment")
       const currentAddress = LocksmithRegistry.getContractAddress(chainId, c);
 
       // build the contract and get the dependencies
-      const contract = await ethers.getContractFactory(c);
-
-      const { dependencies, missing } = await sortDependencies(contract);
+      const { dependencies, missing } = await sortDependencies(c);
 
       console.log("----------------------");
       console.log(currentAddress != null ? greenText : (missing.length === 0 ? yellowText : redText), c + ": " + currentAddress);
       console.log(" - Dependencies: " + dependencies.map((d) => {
-        return d.address !== null ? '\x1b[32m' + d.alias + '\x1b[0m' :
-          '\x1b[31m' + d.alias + '\x1b[0m';  
+        return d.address !== null ? (d.integrity === d.address ? '\x1b[32m' + d.alias + '\x1b[0m' : '\x1b[31m' + d.alias + '\x1b[0m') :
+          '\x1b[33m' + d.alias + '\x1b[0m';  
       }).join(', '));
 
       deployed += currentAddress != null ? 1 : 0;
@@ -96,21 +99,31 @@ task("show", "Show the state of the current genie deployment")
       }
     };
 
-    console.log("\n\nInitialization List: ");
-  
+    console.log("\n\nTotal Deployment Progress: " + deployed + " of " + totalNeeded);
+    console.log("Available deployments: " + availableDeployments.join(', '));
+
+    console.log("\n\nIntegrity Checks: ");
+
     var keyVaultAddress = LocksmithRegistry.getContractAddress(chainId, 'KeyVault');
     var locksmithAddress = LocksmithRegistry.getContractAddress(chainId, 'Locksmith');
-    var keyVaultContract = await ethers.getContractFactory('KeyVault');
+    var notaryAddress = LocksmithRegistry.getContractAddress(chainId, 'Notary');
 
-    if (keyVaultAddress !== null&& locksmithAddress !== null && 
+    var keyVaultContract = await ethers.getContractFactory('KeyVault');
+    var locksmithContract = await ethers.getContractFactory('Locksmith');
+
+    if (keyVaultAddress && locksmithAddress &&
+      ((await locksmithContract.attach(locksmithAddress).keyVault()) === keyVaultAddress)) {
+      console.log(greenText, "[✓] Locksmith initialized with registered KeyVault");
+    } else {
+      console.log(redText, "[ ] Locksmith initialized with registered KeyVault");
+    }
+    
+    if (keyVaultAddress !== null && locksmithAddress !== null &&
         ((await keyVaultContract.attach(keyVaultAddress).respectedLocksmith()) === locksmithAddress)) {
       console.log(greenText, "[✓] KeyVault trusts *the* Locksmith");
     } else {
       console.log(redText, "[ ] KeyVault trusts *the* Locksmith");
     }
-
-    console.log("\n\nTotal Deployment Progress: " + deployed + " of " + totalNeeded);
-    console.log("Available deployments: " + availableDeployments.join(', '));
   });
 
 
@@ -136,7 +149,7 @@ task("deploy", "Deploy a specific contract generating a new address for it.")
     console.log(" Factory Signer Chain ID: " + await contract.signer.getChainId());
     console.log(" Factory Signer Address:" + await contract.signer.getAddress());
    
-    const { dependencies, missing }  = await sortDependencies(contract); 
+    const { dependencies, missing } = await sortDependencies(taskArgs['contract']); 
     const color = missing.length === 0 ? greenText : (
       missing.length === dependencies.length ? redText : yellowText );
     console.log(color, "\n=== Contract Dependencies ===\n")
@@ -165,7 +178,7 @@ task("deploy", "Deploy a specific contract generating a new address for it.")
     console.log(greenText, "\n=== Deploying ... ===\n");
     
     if (hasAddress) {
-      console.log(yellowText, "\nHm, it looks like a registry entry already exists.");
+      console.log(yellowText, "Hm, it looks like a registry entry already exists.");
 
       if (!taskArgs['force']) {
         console.log(yellowText, "If you want to over-write the current entry, try again with --force true");

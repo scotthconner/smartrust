@@ -1,18 +1,44 @@
 const fs = require('fs');
 
 LocksmithRegistry = (function() {
-  const CONTRACTS = [
-    'KeyVault',      // Key Management 
-    'Locksmith',
-    'Notary',        // Ledger Management
-    'Ledger',
-    'EtherVault',    // Default Providers
-    'TokenVault',
-    'TrustEventLog', // Event Log and Dispatchers
-    'KeyOracle',
-    'AlarmClock',
-    'Trustee',       // Scribes
-  ];
+  const CONTRACTS = { 
+    'KeyVault': { 
+    },      
+    'Locksmith': {
+      'KeyVault': async function(chainId) {
+        var locksmithAddress = LocksmithRegistry.getContractAddress(chainId, 'Locksmith');
+        var locksmithContract = await ethers.getContractFactory('Locksmith');
+        return locksmithAddress ? await locksmithContract.attach(locksmithAddress).keyVault() : 
+          ethers.constants.AddressZero;
+      }
+    }, 
+    'Notary': {
+      'Locksmith': async function(chainId) {
+        var address = LocksmithRegistry.getContractAddress(chainId, 'Notary');
+        var contract = await ethers.getContractFactory('Notary');
+        return await address ? contract.attach(address).locksmith() : ethers.constants.AddressZero;
+      }
+    },
+    'Ledger': {
+      'Notary': async function(chainId) {
+        var address = LocksmithRegistry.getContractAddress(chainId, 'Ledger');
+        var contract = await ethers.getContractFactory('Ledger');
+        return await address ? contract.attach(address).notary() : ethers.constants.AddressZero;
+      }
+    },
+    'EtherVault': async function() { },           
+    'TokenVault': async function() { },               
+    'TrustEventLog': async function() { }, 
+    'KeyOracle': async function() { 
+
+    },
+    'AlarmClock': async function() {
+
+    },
+    'Trustee': async function() {
+
+    }
+  };
 
   /////////////////////////////////////////////
   // getNetworkRegistryFileName
@@ -59,7 +85,16 @@ LocksmithRegistry = (function() {
     // introspect the registry.
     /////////////////////////////////////////////
     getContractList: function() {
-      return CONTRACTS;
+      return Object.keys(CONTRACTS);
+    },
+    /////////////////////////////////////////////
+    // getDeployedDependencyAddress 
+    //
+    // Given a context of ethers, get the integrity
+    // of the given contract alias.
+    /////////////////////////////////////////////
+    getDeployedDependencyAddress: function(alias, dependency) {
+      return CONTRACTS[alias][dependency];
     },
     /////////////////////////////////////////////
     // getContractAddress
