@@ -15,6 +15,7 @@
 // we need to consider a different deploy mechanism.
 ///////////////////////////////////////////
 require('./registry.js');
+const { BigNumber } = require('ethers');
 
 const redText = '\x1b[31m%s\x1b[0m';
 const greenText  = '\x1b[32m%s\x1b[0m';
@@ -163,7 +164,7 @@ task("shadow", "Deploy a shadow ERC20 and fund the signer, mainly for localhost.
 
       const contract = await ShadowCoin.deploy(taskArgs.alias, taskArgs.ticker);
       await contract.connect(owner).spawn(ethers.utils.parseEther('' + taskArgs.amount));
-      await contract.connect(owner).approve(tokenVaultAddress, ethers.constants.MaxUint256);
+      await contract.connect(owner).approve(tokenVaultAddress, ethers.utils.parseEther("100"));
       
       LocksmithRegistry.saveContractAddress(chainId, taskArgs.alias, contract.address, 'assets');
       console.log(greenText, 'Successful! The asset address has been saved as ' + contract.address);
