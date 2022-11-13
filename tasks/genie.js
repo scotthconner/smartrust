@@ -72,12 +72,14 @@ task("show", "Show the state of the current genie deployment")
   .setAction(async (taskArgs) => {
     const [owner] = await ethers.getSigners();
     const chainId = await owner.getChainId();
+    const balance = await owner.provider.getBalance(owner.address);
 
     console.log(greenText, '\n==== GENIE, SHOW! ====\n');
     console.log(JSON.stringify(taskArgs, null, 2));
     console.log(greenText, "\n=== SIGNER INFO ===\n");
     console.log(" Signer Network Chain ID: " + chainId);
     console.log(" Signer Wallet Address: " + owner.address);
+    console.log(" Signer Balance: " + ethers.utils.formatEther(balance));
 
     var deployed = 0;
     var availableDeployments = [];
@@ -180,11 +182,14 @@ task("deploy", "Deploy a specific contract generating a new address for it.")
     // credentials via dotenv (.env) and hardhat.config.js
     const [owner] = await ethers.getSigners();
     const chainId = await owner.getChainId();
+    const balance = await owner.provider.getBalance(owner.address);
+
     console.log(greenText, '\n==== GENIE, DEPLOY! ====\n');
     console.log(JSON.stringify(taskArgs, null, 2));
     console.log(greenText, "\n=== SIGNER INFO ===\n"); 
     console.log(" Signer Network Chain ID: " + chainId); 
     console.log(" Signer Wallet Address: " + owner.address);
+    console.log(" Signer Balance: " + ethers.utils.formatEther(balance));
 
     const contract = await ethers.getContractFactory(taskArgs['contract']);
     console.log(greenText, "\n=== CONTRACT INFO ===\n");

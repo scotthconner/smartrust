@@ -15,7 +15,11 @@ module.exports = {
     }
   }, 
   gasReporter: {
-    enabled: (process.env.GAS_REPORT) ? true : false 
+    enabled: (process.env.GAS_REPORT) ? true : false,
+    currency: 'USD',
+    coinmarketcap: '2abbcc5f-bb5e-4750-864f-4a2ec67bb742',
+    token: 'ETH',
+    gasPriceApi: 'https://api.etherscan.io/api?module=proxy&action=eth_gasPrice',
   },
   networks: {
     goerli: {
