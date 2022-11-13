@@ -26,5 +26,9 @@ module.exports = {
       url: `${process.env.ALCHEMY_GOERLI_URL}`,
       accounts: [`${process.env.MY_PRIVATE_KEY}`],
     },
+    mainnet: {
+      url: `${process.env.ALCHEMY_MAINNET_URL}`,
+      accounts: [`${process.env.MY_PRIVATE_KEY}`],
+    },
   }
 };

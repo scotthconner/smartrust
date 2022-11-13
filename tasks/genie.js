@@ -73,6 +73,7 @@ task("show", "Show the state of the current genie deployment")
     const [owner] = await ethers.getSigners();
     const chainId = await owner.getChainId();
     const balance = await owner.provider.getBalance(owner.address);
+    const gasPrice = await owner.provider.getGasPrice();
 
     console.log(greenText, '\n==== GENIE, SHOW! ====\n');
     console.log(JSON.stringify(taskArgs, null, 2));
@@ -80,6 +81,8 @@ task("show", "Show the state of the current genie deployment")
     console.log(" Signer Network Chain ID: " + chainId);
     console.log(" Signer Wallet Address: " + owner.address);
     console.log(" Signer Balance: " + ethers.utils.formatEther(balance));
+    console.log(greenText, "\n=== NETWORK CONDITIONS ===\n");
+    console.log( " Gas Price: " + ethers.utils.formatUnits(gasPrice, "gwei"));
 
     var deployed = 0;
     var availableDeployments = [];
