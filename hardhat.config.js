@@ -3,6 +3,7 @@ require("@nomicfoundation/hardhat-toolbox");
 require('@openzeppelin/hardhat-upgrades');
 require("hardhat-gas-reporter");
 require("dotenv").config();
+require("@nomiclabs/hardhat-etherscan");
 require('./tasks/genie.js');
 
 /** @type import('hardhat/config').HardhatUserConfig */
@@ -17,9 +18,12 @@ module.exports = {
   gasReporter: {
     enabled: (process.env.GAS_REPORT) ? true : false,
     currency: 'USD',
-    coinmarketcap: '2abbcc5f-bb5e-4750-864f-4a2ec67bb742',
+    coinmarketcap: `${process.env.CMC_API_KEY}`,
     token: 'ETH',
     gasPriceApi: 'https://api.etherscan.io/api?module=proxy&action=eth_gasPrice',
+  },
+  etherscan: {
+    apiKey: `${process.env.ETHERSCAN_API_KEY}`
   },
   networks: {
     goerli: {
