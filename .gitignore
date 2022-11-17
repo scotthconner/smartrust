@@ -1,6 +1,6 @@
 network-contracts-31337.json
 .env
-.openzeppelin
+/.openzeppelin/*31337*
 /coverage
 /artifacts
 /cache

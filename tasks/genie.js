@@ -178,14 +178,20 @@ task("shadow", "Deploy a shadow ERC20 and fund the signer, mainly for localhost.
 task("deploy", "Deploy a specific contract generating a new address for it.")
   .addParam('contract', 'The name of the contract you want to deploy.')
   .addOptionalParam('force', 'Flag to force deploy even if there\'s and existing address.', false, types.boolean)
+  .addOptionalParam('upgrade', 'Flag to do an upgrade deployment even if there\'s and existing address.', false, types.boolean)
   .setAction(async (taskArgs) => {
-    
     // this assumes that the signer has been loaded, either through
     // hardhat local defaults, or using alchemy and testnet or production
     // credentials via dotenv (.env) and hardhat.config.js
     const [owner] = await ethers.getSigners();
     const chainId = await owner.getChainId();
     const balance = await owner.provider.getBalance(owner.address);
+
+    // do a sanity check.
+    if (taskArgs.force && taskArgs.upgrade) {
+      console.log(yellowText, "You can not use --force and --upgrade together.");
+      return 1;
+    }
 
     console.log(greenText, '\n==== GENIE, DEPLOY! ====\n');
     console.log(JSON.stringify(taskArgs, null, 2));
@@ -213,11 +219,16 @@ task("deploy", "Deploy a specific contract generating a new address for it.")
     const currentAddress = LocksmithRegistry.getContractAddress(chainId, taskArgs['contract']);
     const hasAddress = currentAddress != null;
 
+    // check to make sure we are doing a sane upgrade
+    if(taskArgs['upgrade'] && !hasAddress) {
+      console.log("Yikes! You can't upgrade a contract that isn't in the registry.");
+      return 1;
+    }
+
     // if we are missing dependencies, we need to stop
     if (missing.length != 0) {
       console.log(yellowText, "\nDependencies are not satisfied.");
 
-      // warn the user if t
       if (hasAddress) {
         console.log(redText, "\nWARNING: SOMETHING SEEMS WRONG!!!");
         console.log(redText, "It looks like this contract is already deployed, but its dependencies aren't satisfied! ");
@@ -231,25 +242,37 @@ task("deploy", "Deploy a specific contract generating a new address for it.")
     if (hasAddress) {
       console.log(yellowText, "Hm, it looks like a registry entry already exists.");
 
-      if (!taskArgs['force']) {
+      if (!taskArgs['force'] && !taskArgs['upgrade']) {
         console.log(yellowText, "If you want to over-write the current entry, try again with --force true");
+        console.log(yellowText, "If you want to upgrade the current entry, try again with --upgrade true");
         console.log("Current entry: " + currentAddress); 
         return 1;
-      } else {
-        console.log(cyanText, "But you've used --force true, so we're just gunna do it anyway.");
-      }
+      } 
+    }
+  
+    if (taskArgs['force']) {
+      console.log(yellowText, "WARNING: May the --force be with you.");
     }
 
+    console.log("Preparing dependency arguments...");
     const preparedArguments = dependencies.map((d) => d.address);
-    console.log("\nCalling upgrades.deployProxy with #initialize([" + preparedArguments + "])"); 
-
-    const deployment = await upgrades.deployProxy(contract, preparedArguments); 
-    await deployment.deployed();
-
-    console.log(greenText, "Deployment complete! Address: " + deployment.address);
     
-    LocksmithRegistry.saveContractAddress(chainId, taskArgs['contract'], deployment.address);
-    console.log(greenText, "Address has been successfully saved in the registry!");
+    // upgrade?
+    if (taskArgs['upgrade']) {
+      console.log("Calling upgrades.upgradeProxy(" + currentAddress + 
+        ", [contract:" + taskArgs['contract'] + "])"); 
+      const deployment = await upgrades.upgradeProxy(currentAddress, contract);
+      console.log("Upgrade complete! No saving to the registry required! Yay.");
+    } else {
+      // nah, just a standard deloyment. forced or otherwise.
+      console.log("Calling upgrades.deployProxy with #initialize([" + preparedArguments + "])"); 
+      const deployment = await upgrades.deployProxy(contract, preparedArguments); 
+      await deployment.deployed();
+      
+      console.log(greenText, "Deployment complete! Address: " + deployment.address);
+      LocksmithRegistry.saveContractAddress(chainId, taskArgs['contract'], deployment.address);
+      console.log(greenText, "Address has been successfully saved in the registry!");
+    }
   });
 
 task("respect", "Make the current registry's key vault respect the current locksmith.")
