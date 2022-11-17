@@ -1,9 +1,23 @@
 {
-  "matic": "0xf17366f9bF80C032bFcB46E4b1f4F06a1D847A52",
-  "avax": "0x374E3B0B4B8014Ec6e2D8B6709600117224fE4B7",
-  "grt": "0x2DeA68eB5cA2A0F80eC4E75A7b91E6d824888d74",
-  "dai": "0x5Ecb4F2B39806079b1C9e8DB91c76169A6cEAed2",
-  "usdc": "0x07865c6e87b9f70255377e024ace6630c1eaa37f",
-  "link": "0x326C977E6efc84E512bB9C30f76E30c160eD06FB",
-  "ShadowERC": "0xBD501846c94A577F73789fcE40B164de7Db202E8"
+  "matic": {
+    "address": "0xf17366f9bF80C032bFcB46E4b1f4F06a1D847A52"
+  },
+  "avax": {
+    "address": "0x374E3B0B4B8014Ec6e2D8B6709600117224fE4B7"
+  },
+  "grt": {
+    "address": "0x2DeA68eB5cA2A0F80eC4E75A7b91E6d824888d74"
+  },
+  "dai": {
+    "address": "0x5Ecb4F2B39806079b1C9e8DB91c76169A6cEAed2"
+  },
+  "usdc": {
+    "address": "0x07865c6e87b9f70255377e024ace6630c1eaa37f"
+  },
+  "link": {
+    "address": "0x326C977E6efc84E512bB9C30f76E30c160eD06FB"
+  },
+  "ShadowERC": {
+    "address": "0xBD501846c94A577F73789fcE40B164de7Db202E8"
+  }
 }
