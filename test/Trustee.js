@@ -89,7 +89,7 @@ describe("Trustee", function () {
       const {locksmith, trustee, root, second} = await loadFixture(TrustTestFixtures.fullTrusteeHarness);
 
       // generate a second trust
-      await locksmith.connect(second).createTrustAndRootKey(stb('mine'));
+      await locksmith.connect(second).createTrustAndRootKey(stb('mine'), second.address);
 
       // try to set the key to the 4th key which is valid but outside
       await expect(trustee.connect(root).setPolicy(0, 4, [1,2,3], []))
@@ -152,7 +152,7 @@ describe("Trustee", function () {
         await loadFixture(TrustTestFixtures.fullTrusteeHarness);
 
       // create a second trust
-      await locksmith.connect(second).createTrustAndRootKey(stb('second trust'));
+      await locksmith.connect(second).createTrustAndRootKey(stb('second trust'), second.address);
       await locksmith.connect(second).createKey(4, stb('five'), third.address, false);
 
       await expect(await trustee.connect(second).setPolicy(4, 5, [5], []))
@@ -215,7 +215,7 @@ describe("Trustee", function () {
       // create a second trust, call removePolicy as a root key holder
       // against a valid policy, but fail because the root doesnt own
       // the policy
-      await locksmith.connect(second).createTrustAndRootKey(stb('second trust'));
+      await locksmith.connect(second).createTrustAndRootKey(stb('second trust'), second.address);
       await locksmith.connect(second).createKey(4, stb('five'), third.address, false);
 
       await expect(await trustee.connect(root).setPolicy(0, 1, [1,2,3], []))

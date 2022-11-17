@@ -88,7 +88,7 @@ describe("KeyOracle", function () {
         await loadFixture(TrustTestFixtures.addedKeyOracle);
 
       // this is key ID 4
-      await locksmith.connect(second).createTrustAndRootKey(stb("Second Trust"));
+      await locksmith.connect(second).createTrustAndRootKey(stb("Second Trust"), second.address);
 
       // key id 4 is on a different key ring, so this sould fail  
       await expect(keyOracle.connect(root).createKeyOracle(0, 4, stb("dead")))

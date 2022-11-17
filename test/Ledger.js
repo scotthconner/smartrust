@@ -178,7 +178,7 @@ describe("Ledger", function () {
         = await loadFixture(TrustTestFixtures.freshLedgerProxy);
      
       // we need to generate a second trust key
-      await locksmith.connect(second).createTrustAndRootKey(stb("Second Trust"));
+      await locksmith.connect(second).createTrustAndRootKey(stb("Second Trust"), second.address);
       await notary.connect(second).setTrustedLedgerRole(1, 0, ledger.address, owner.address, true, stb('Peer'))
 
       // check preconditions
@@ -214,7 +214,7 @@ describe("Ledger", function () {
         await loadFixture(TrustTestFixtures.freshLedgerProxy);
       
       // we need to generate a second trust key
-      await locksmith.connect(second).createTrustAndRootKey(stb("Second Trust"));
+      await locksmith.connect(second).createTrustAndRootKey(stb("Second Trust"), second.address);
       await notary.connect(second).setTrustedLedgerRole(1, 0, ledger.address, owner.address, true, stb('Peer'))
       
       // check preconditions
@@ -360,9 +360,9 @@ describe("Ledger", function () {
       const { keyVault, locksmith, notary, ledger, owner, root, second, third } = await loadFixture(TrustTestFixtures.freshLedgerProxy);
       
       // we need to generate two more trusts 
-      await locksmith.connect(second).createTrustAndRootKey(stb("Second Trust"));
+      await locksmith.connect(second).createTrustAndRootKey(stb("Second Trust"), second.address);
       await notary.connect(second).setTrustedLedgerRole(1, 0, ledger.address, owner.address, true, stb('Owner'))
-      await locksmith.connect(third).createTrustAndRootKey(stb("thirdTrust"));
+      await locksmith.connect(third).createTrustAndRootKey(stb("thirdTrust"), third.address);
       await notary.connect(third).setTrustedLedgerRole(2, 0, ledger.address, owner.address, true, stb('Owner'))
       
       // initial deposits

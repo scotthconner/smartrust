@@ -47,8 +47,9 @@ contract Locksmith is Initializable, OwnableUpgradeable, UUPSUpgradeable {
      * @param creator   the creator of the trust.
      * @param trustId   the resulting id of the trust (trustCount).
      * @param trustName the trust's human readable name.
+     * @param recipient the address of the root key recipient
      */
-    event trustCreated(address creator, uint256 trustId, bytes32 trustName);
+    event trustCreated(address creator, uint256 trustId, bytes32 trustName, address recipient);
     
     /**
      * keyMinted
@@ -186,8 +187,9 @@ contract Locksmith is Initializable, OwnableUpgradeable, UUPSUpgradeable {
      * mint the first root key, and give it to the caller.
      *
      * @param trustName A string defining the name of the trust, like 'My Family Trust'
+     * @param recipient The address to receive the root key for this trust.
      */
-    function createTrustAndRootKey(bytes32 trustName) external {
+    function createTrustAndRootKey(bytes32 trustName, address recipient) external {
         // build the trust with post-increment IDs
         // the incrementing here is important to prevent
         // re-entrancy
@@ -205,10 +207,10 @@ contract Locksmith is Initializable, OwnableUpgradeable, UUPSUpgradeable {
 
         // re-entrant
         // mint the root key, give it to the sender.
-        mintKey(t, t.rootKeyId, msg.sender, false);
+        mintKey(t, t.rootKeyId, recipient, false);
 
         // the trust was successfully created
-        emit trustCreated(msg.sender, t.id, t.name);
+        emit trustCreated(msg.sender, t.id, t.name, recipient);
     }
     
     /**

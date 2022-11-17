@@ -128,7 +128,7 @@ TrustTestFixtures = (function() {
         await TrustTestFixtures.freshLocksmithProxy();
 
       // with the contract in place, create a trust and get the owner key
-      await locksmith.connect(root).createTrustAndRootKey(stb("Conner Trust"));
+      await locksmith.connect(root).createTrustAndRootKey(stb("Conner Trust"), root.address);
 
       return {keyVault, locksmith, owner, root, second, third};
     },
@@ -441,7 +441,7 @@ TrustTestFixtures = (function() {
       await locksmith.connect(root).copyKey(0, 5, third.address, true);
 
       // create a second trust and give root a key
-      await locksmith.connect(second).createTrustAndRootKey(stb('Second Trust'));
+      await locksmith.connect(second).createTrustAndRootKey(stb('Second Trust'), second.address);
       await locksmith.connect(second).createKey(8, stb('Trustee'), root.address, true);
 
       // test a trusted collateral provider for second trust

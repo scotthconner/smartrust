@@ -79,7 +79,7 @@ describe("AlarmClock", function () {
 
       // create another trust, making the key valid, but will still fail because
       // its not in the trust key ring
-      await locksmith.connect(second).createTrustAndRootKey(stb("My Second Trust"));
+      await locksmith.connect(second).createTrustAndRootKey(stb("My Second Trust"), second.address);
       await expect(alarmClock.connect(root).createAlarm(0, stb("proof-of-life"), now(), 100, 4))
         .to.be.revertedWith('INVALID_SNOOZE_KEY');
     });

@@ -270,7 +270,7 @@ describe("Notary", function () {
         .withArgs(root.address, 0, 0, owner.address, third.address, true, COLLATERAL_PROVIDER());
 
       // create another trust, that gives us a valid root key '1'.
-      await expect(await locksmith.connect(second).createTrustAndRootKey(stb('Second Trust')))
+      await expect(await locksmith.connect(second).createTrustAndRootKey(stb('Second Trust'), second.address))
         .to.emit(locksmith, 'trustCreated');
 
       // call from the right ledger, the right collateral provide, AND a root key, just not
@@ -375,7 +375,7 @@ describe("Notary", function () {
         .withArgs(root.address, 0, 0, owner.address, third.address, true, COLLATERAL_PROVIDER());
 
       // create another trust, that gives us a valid root key '1'.
-      await expect(await locksmith.connect(second).createTrustAndRootKey(stb('Second Trust')))
+      await expect(await locksmith.connect(second).createTrustAndRootKey(stb('Second Trust'), second.address))
         .to.emit(locksmith, 'trustCreated');
 
       // call from the right ledger, the right collateral provide, AND a root key, just not
@@ -596,7 +596,7 @@ describe("Notary", function () {
         .withArgs(root.address, 0, 0, owner.address, second.address, true, SCRIBE());
 
       // mint a second key outside of the trust
-      await locksmith.connect(second).createTrustAndRootKey(stb('Second Trust'));
+      await locksmith.connect(second).createTrustAndRootKey(stb('Second Trust'), second.address);
 
       // call from the right ledger, the right collateral provider, and scribe
       // but lengths are different

@@ -73,7 +73,7 @@ describe("TokenVault", function () {
       expect(await coin.balanceOf(third.address)).to.equal(eth(12));
 
       // create a second trust with a different owner
-      await locksmith.connect(second).createTrustAndRootKey(stb("Second Trust"));
+      await locksmith.connect(second).createTrustAndRootKey(stb("Second Trust"), second.address);
 
       // have the owner deposit some tokens into the account
       await expect(tokenVault.connect(second)
@@ -285,7 +285,7 @@ describe("TokenVault", function () {
         notary, ledger, tokenVault, coin,
         owner, root, second, third } = await loadFixture(TrustTestFixtures.fundedTokenVault);
 
-      await locksmith.connect(second).createTrustAndRootKey(stb("Second Trust"));
+      await locksmith.connect(second).createTrustAndRootKey(stb("Second Trust"), second.address);
 
       expect(await tokenVault.connect(second).getTokenTypes(1)).to.have.length(0);
       expect(await tokenVault.connect(root).getTokenTypes(0))
