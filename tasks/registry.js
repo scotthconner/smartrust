@@ -90,7 +90,16 @@ LocksmithRegistry = (function() {
     // contract address given the chain Id.
     /////////////////////////////////////////////
     getContractAddress: function(chainId, alias, registryType = 'contracts') {
-      return getNetworkRegistry(chainId, registryType).contracts[alias] || null; 
+      return (getNetworkRegistry(chainId, registryType).contracts[alias] || {})['address'] || null; 
+    },
+    /////////////////////////////////////////////
+    // getContractCodeHash
+    //
+    // Opens the registry, and gets a specific
+    // contract code hash given the chain Id.
+    /////////////////////////////////////////////
+    getContractCodeHash: function(chainId, alias, registryType = 'contracts') {
+      return (getNetworkRegistry(chainId, registryType).contracts[alias]||{})['codeHash'] || null; 
     },
     /////////////////////////////////////////////
     // saveContractAddress
@@ -106,7 +115,28 @@ LocksmithRegistry = (function() {
       var registry = getNetworkRegistry(chainId, registryType);
 
       // save the registry into the map
-      registry.contracts[alias] = address;
+      registry.contracts[alias] ||= {};
+      registry.contracts[alias]['address'] = address;
+
+      // save the registry
+      commitNetworkRegistry(registry);
+    },
+    /////////////////////////////////////////////
+    // saveContractCodeHash
+    //
+    // This method will take a code hash and store
+    // it in the registry. However, it will overwrite
+    // anything that is there!
+    /////////////////////////////////////////////
+    saveContractCodeHash: function(chainId, alias, codeHash, registryType = 'contracts') {
+      // this will error if the registry doesn't exist, this
+      // is on purpose to ensure that typos don't create new
+      // registries
+      var registry = getNetworkRegistry(chainId, registryType);
+
+      // save the registry into the map
+      registry.contracts[alias] ||= {};
+      registry.contracts[alias]['codeHash'] = codeHash;
 
       // save the registry
       commitNetworkRegistry(registry);

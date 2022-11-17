@@ -107,7 +107,7 @@ contract Locksmith is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         mapping(uint256 => uint256) keyMintCounts;
         mapping(uint256 => uint256) keyBurnCounts;
     }
-    
+
     // the global trust registry
     mapping(uint256 => Trust) public trustRegistry;
     uint256 private trustCount; // total number of trusts
@@ -117,7 +117,7 @@ contract Locksmith is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     // to trust resolution
     mapping(uint256 => uint256) public keyTrustAssociations;
     uint256 public keyCount; // the total number of keys
-    
+
     ///////////////////////////////////////////////////////
     // Constructor and Upgrade Methods
     //
@@ -180,6 +180,7 @@ contract Locksmith is Initializable, OwnableUpgradeable, UUPSUpgradeable {
 
         return trustRegistry[trustId].keys;
     }
+
     /**
      * createTrustAndRootKey
      *
@@ -476,5 +477,5 @@ contract Locksmith is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         require(rootKeyId == trustRegistry[trustId].rootKeyId, 'KEY_NOT_ROOT');
 
         return trustId;
-    }    
+    }
 }

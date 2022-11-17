@@ -45,11 +45,13 @@ const getContractInitializationDependencies = async function(alias) {
   var dependencies = [];
   for (pt of contract.interface.fragments.filter(f => f.type === 'function' && f.name === 'initialize')[0].inputs) {
     var contractDependency = pt.name.replace(/_/g,'');
-    var contractAddress = LocksmithRegistry.getContractAddress(chainId, contractDependency);
+    var contractAddress  = LocksmithRegistry.getContractAddress(chainId, contractDependency);
+    var contractCodeHash = LocksmithRegistry.getContractCodeHash(chainId, contractDependency);
 
     dependencies.push({ 
       alias: contractDependency,
-      address: contractAddress, 
+      address: contractAddress,
+      codeHash: contractCodeHash,
       integrity: await LocksmithRegistry.getDeployedDependencyAddress(chainId, alias, contractDependency)
     });
   }
@@ -90,13 +92,22 @@ task("show", "Show the state of the current genie deployment")
     
     console.log(greenText, "\n=== CURRENT ===\n");
     for(const c of LocksmithRegistry.getContractList() ) {
-      const currentAddress = LocksmithRegistry.getContractAddress(chainId, c);
+      const contract = await ethers.getContractFactory(c);
+      const currentAddress  = LocksmithRegistry.getContractAddress(chainId, c);
+      const currentCodeHash = LocksmithRegistry.getContractCodeHash(chainId, c);
+      const localCodeHash = ethers.utils.keccak256(contract.bytecode);
 
       // build the contract and get the dependencies
       const { dependencies, missing } = await sortDependencies(c);
 
       console.log("----------------------");
       console.log(currentAddress != null ? greenText : (missing.length === 0 ? yellowText : redText), c + ": " + currentAddress);
+      if (currentCodeHash === localCodeHash) {
+        console.log(greenText, " - Code Hash: " + currentCodeHash);
+      } else {
+        console.log(yellowText, " - Current Code Hash: " + currentCodeHash);
+        console.log(yellowText, " - Local Code Hash: " + localCodeHash);
+      }
       console.log(" - Dependencies: " + dependencies.map((d) => {
         if (d.address === null) {
           return blue(d.alias);
@@ -154,7 +165,11 @@ task("shadow", "Deploy a shadow ERC20 and fund the signer, mainly for localhost.
       console.log(greenText, "\n=== SIGNER INFO ===\n");
       console.log(" Signer Network Chain ID: " + chainId);
       console.log(" Signer Wallet Address: " + owner.address);    
-    
+      
+      const gasPrice = await owner.provider.getGasPrice();
+      console.log(greenText, "\n=== NETWORK CONDITIONS ===\n");
+      console.log( " Gas Price: " + ethers.utils.formatUnits(gasPrice, "gwei"));
+
       console.log(greenText, "\n=== Creating Shadow... ===\n");
       console.log(" Shadow Alias: " + taskArgs.alias);
       console.log(" Shadow ticker: " + taskArgs.ticker);
@@ -179,6 +194,7 @@ task("deploy", "Deploy a specific contract generating a new address for it.")
   .addParam('contract', 'The name of the contract you want to deploy.')
   .addOptionalParam('force', 'Flag to force deploy even if there\'s and existing address.', false, types.boolean)
   .addOptionalParam('upgrade', 'Flag to do an upgrade deployment even if there\'s and existing address.', false, types.boolean)
+  .addOptionalParam('dry', 'Flag to do the operation up until the point of actually deploying/upgrading, and stopping.')
   .setAction(async (taskArgs) => {
     // this assumes that the signer has been loaded, either through
     // hardhat local defaults, or using alchemy and testnet or production
@@ -205,7 +221,11 @@ task("deploy", "Deploy a specific contract generating a new address for it.")
     console.log(" Input alias: " + taskArgs['contract']);
     console.log(" Factory Signer Chain ID: " + await contract.signer.getChainId());
     console.log(" Factory Signer Address:" + await contract.signer.getAddress());
-   
+
+    const gasPrice = await owner.provider.getGasPrice();
+    console.log(greenText, "\n=== NETWORK CONDITIONS ===\n");
+    console.log( " Gas Price: " + ethers.utils.formatUnits(gasPrice, "gwei"));
+
     const { dependencies, missing } = await sortDependencies(taskArgs['contract']); 
     const color = missing.length === 0 ? greenText : (
       missing.length === dependencies.length ? redText : yellowText );
@@ -217,6 +237,8 @@ task("deploy", "Deploy a specific contract generating a new address for it.")
     console.log(dependencies);
    
     const currentAddress = LocksmithRegistry.getContractAddress(chainId, taskArgs['contract']);
+    const currentCodeHash = LocksmithRegistry.getContractCodeHash(chainId, taskArgs['contract']);
+    const localCodeHash = ethers.utils.keccak256(contract.bytecode);
     const hasAddress = currentAddress != null;
 
     // check to make sure we are doing a sane upgrade
@@ -256,13 +278,30 @@ task("deploy", "Deploy a specific contract generating a new address for it.")
 
     console.log("Preparing dependency arguments...");
     const preparedArguments = dependencies.map((d) => d.address);
-    
+
+    console.log("Local Code Hash: " + localCodeHash);
+
+    // stop here if its a dry run
+    if (taskArgs['dry']) {
+      console.log(greenText, "Upgrade: " + taskArgs['upgrade']);
+      console.log(greenText, "This was a dry run, so we won't actualy do this.");
+      return 0;
+    }
+
     // upgrade?
     if (taskArgs['upgrade']) {
+
+      // no-op?
+      if (currentCodeHash === localCodeHash) {
+        console.log(yellowText, "It looks like the code hashes are identical, so the upgrade won't do anything: " + localCodeHash);
+        console.log(yellowText, "We are aborting because of this."); 
+        return 1;
+      }
+
       console.log("Calling upgrades.upgradeProxy(" + currentAddress + 
         ", [contract:" + taskArgs['contract'] + "])"); 
       const deployment = await upgrades.upgradeProxy(currentAddress, contract);
-      console.log("Upgrade complete! No saving to the registry required! Yay.");
+      console.log("Upgrade complete!");
     } else {
       // nah, just a standard deloyment. forced or otherwise.
       console.log("Calling upgrades.deployProxy with #initialize([" + preparedArguments + "])"); 
@@ -273,6 +312,9 @@ task("deploy", "Deploy a specific contract generating a new address for it.")
       LocksmithRegistry.saveContractAddress(chainId, taskArgs['contract'], deployment.address);
       console.log(greenText, "Address has been successfully saved in the registry!");
     }
+
+    LocksmithRegistry.saveContractCodeHash(chainId, taskArgs['contract'], localCodeHash);
+    console.log(greenText, "The code hash been saved as well: " + localCodeHash); 
   });
 
 task("respect", "Make the current registry's key vault respect the current locksmith.")
