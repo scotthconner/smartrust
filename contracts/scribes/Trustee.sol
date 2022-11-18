@@ -18,7 +18,8 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
 // The trustee contract respects keys minted for trusts by it's associated locksmith.
-import '../Locksmith.sol';
+import '../interfaces/IKeyVault.sol';
+import '../interfaces/ILocksmith.sol';
 
 // The trustee contract acts a scribe against a ledger. It is associated
 // at deployment time to a specific ledger.
@@ -89,7 +90,7 @@ contract Trustee is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     ///////////////////////////////////////////////////////
     // Storage
     ///////////////////////////////////////////////////////
-    Locksmith public locksmith;         // key validation
+    ILocksmith public locksmith;         // key validation
     TrustEventLog public trustEventLog; // event detection
     Ledger public ledger;               // ledger manipulation
 
@@ -134,7 +135,7 @@ contract Trustee is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     function initialize(address _Locksmith, address _Ledger, address _TrustEventLog) initializer public {
         __Ownable_init();
         __UUPSUpgradeable_init();
-        locksmith = Locksmith(_Locksmith);
+        locksmith = ILocksmith(_Locksmith);
         ledger = Ledger(_Ledger);
         trustEventLog = TrustEventLog(_TrustEventLog); 
     }
@@ -339,7 +340,7 @@ contract Trustee is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         uint256[] calldata beneficiaries, uint256[] calldata amounts) external returns (uint256) {
 
         // make sure the caller is holding the key they are operating
-        require(locksmith.keyVault().balanceOf(msg.sender, trusteeKeyId) > 0, "KEY_NOT_HELD");
+        require(IKeyVault(locksmith.getKeyVault()).keyBalanceOf(msg.sender, trusteeKeyId, false) > 0, "KEY_NOT_HELD");
     
         // make sure the entry is valid
         Policy storage t = trustees[trusteeKeyId];
@@ -380,7 +381,7 @@ contract Trustee is Initializable, OwnableUpgradeable, UUPSUpgradeable {
      */
     function requireRootHolder(uint256 rootKeyId) internal view returns (uint256) {
         // make sure that the caller is holding the key they are trying to use
-        require(locksmith.keyVault().balanceOf(msg.sender, rootKeyId) > 0, "KEY_NOT_HELD");
+        require(IKeyVault(locksmith.getKeyVault()).keyBalanceOf(msg.sender, rootKeyId, false) > 0, "KEY_NOT_HELD");
 
         // inspect the key they are holding and ensure its root
         (,,uint256 trustId,bool isRoot,) = locksmith.inspectKey(rootKeyId);

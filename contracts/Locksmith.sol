@@ -19,7 +19,8 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
 // A locksmith stores all of the keys from their associated trusts into
 // a key vault.
-import "./KeyVault.sol";
+import "./interfaces/IKeyVault.sol";
+import "./interfaces/ILocksmith.sol";
 
 // some of the methods here could be subject to re-entrancy
 // so we are going to hire a guard when we access the keyVault
@@ -35,56 +36,13 @@ import "./KeyVault.sol";
  * a different contract, that take a dependency on the Locksmith for
  * understanding key ownership and user permissions.
  */
-contract Locksmith is Initializable, OwnableUpgradeable, UUPSUpgradeable {
-    ///////////////////////////////////////////////////////
-    // Events
-    ///////////////////////////////////////////////////////
-    /**
-     * trustCreated
-     *
-     * This event is emitted when a trust is created.
-     *
-     * @param creator   the creator of the trust.
-     * @param trustId   the resulting id of the trust (trustCount).
-     * @param trustName the trust's human readable name.
-     * @param recipient the address of the root key recipient
-     */
-    event trustCreated(address creator, uint256 trustId, bytes32 trustName, address recipient);
-    
-    /**
-     * keyMinted
-     *
-     * This event is emitted when a key is minted. This event
-     * is also emitted when a root key is minted upon trust creation.
-     *
-     * @param creator  the creator of the trust key
-     * @param trustId  the trust ID they are creating the key for
-     * @param keyId    the key ID that was minted by the creator
-     * @param keyName  the named alias for the key given by the creator
-     * @param receiver the receiving wallet address where the keyId was deposited.
-     */
-    event keyMinted(address creator, uint256 trustId, uint256 keyId, bytes32 keyName, address receiver);
-    
-    /**
-     * keyBurned
-     *
-     * This event is emitted when a key is burned by the root key
-     * holder. 
-     *
-     * @param rootHolder the root key holder requesting the burn 
-     * @param trustId    the trust ID they are burning from 
-     * @param keyId      the key ID to burn 
-     * @param target     the address of the wallet that loses key access 
-     * @param amount     the number of keys burned in the operation
-     */
-    event keyBurned(address rootHolder, uint256 trustId, uint256 keyId, address target, uint256 amount);
- 
+contract Locksmith is ILocksmith, Initializable, OwnableUpgradeable, UUPSUpgradeable {
     ///////////////////////////////////////////////////////
     // Storage
     ///////////////////////////////////////////////////////
     
     // reference to the KeyVault used by this Locksmith
-    KeyVault public keyVault;
+    address public keyVault;
 
     // main data structure for each trust
     struct Trust {
@@ -141,7 +99,7 @@ contract Locksmith is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         __Ownable_init();
         __UUPSUpgradeable_init();
 
-        keyVault = KeyVault(_KeyVault);
+        keyVault = _KeyVault;
     }
 
     /**
@@ -163,6 +121,15 @@ contract Locksmith is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     // of the contract. They are for interaction with by wallets,
     // web frontends, and tests.
     ////////////////////////////////////////////////////////
+
+    /**
+     * getKeyVault
+     *
+     * @return the address of the dependent keyvault
+     */
+    function getKeyVault() external view returns (address){
+        return keyVault;
+    }
 
     /**
      * getKeys()
@@ -323,7 +290,7 @@ contract Locksmith is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         require(t.keyMintCounts[keyId] > 0, 'TRUST_KEY_NOT_FOUND');
 
         // the root key holder has permission, so bind it
-        keyVault.soulbind(keyHolder, keyId, amount);
+        IKeyVault(keyVault).soulbind(keyHolder, keyId, amount);
     }
 
     /**
@@ -347,7 +314,7 @@ contract Locksmith is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         // burn them, and count the burn for logging.
         // this call is re-entrant, but we do all of
         // the state mutation afterwards.
-        keyVault.burn(holder, keyId, amount);
+        IKeyVault(keyVault).burn(holder, keyId, amount);
 
         t.keyBurnCounts[keyId] += amount;
         emit keyBurned(msg.sender, t.id, keyId, holder, amount);
@@ -447,12 +414,13 @@ contract Locksmith is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         // we want to soulbind here
         if (bind) {
             // this is considered an additive soulbinding
-            keyVault.soulbind(receiver, keyId, 
-                keyVault.soulboundKeyAmounts(receiver, keyId) + 1);
+            // this shouldn't be re-entrant if its a view function?
+            IKeyVault(keyVault).soulbind(receiver, keyId, 
+                IKeyVault(keyVault).keyBalanceOf(receiver, keyId, true) + 1); 
         }
 
         // THIS IS RE-ENTRANT
-        keyVault.mint(receiver, keyId, 1, "");
+        IKeyVault(keyVault).mint(receiver, keyId, 1, "");
         emit keyMinted(msg.sender, trust.id, keyId, trust.keyNames[keyId], receiver);
     }
     
@@ -470,7 +438,7 @@ contract Locksmith is Initializable, OwnableUpgradeable, UUPSUpgradeable {
      */
     function getTrustFromRootKey(uint256 rootKeyId) internal view returns (uint256) {
         // make sure that the message sender holds this key ID
-        require(keyVault.balanceOf(msg.sender, rootKeyId) > 0, 'KEY_NOT_HELD');    
+        require(IKeyVault(keyVault).keyBalanceOf(msg.sender, rootKeyId, false) > 0, 'KEY_NOT_HELD');    
 
         // make sure that the keyID is the rootKeyID
         uint256 trustId = keyTrustAssociations[rootKeyId];

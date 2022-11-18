@@ -23,7 +23,8 @@ using AssetResourceName for AssetResourceName.AssetType;
 
 // We have a full contract dependency on the locksmith, which
 // must be deployed first.
-import "../Locksmith.sol";
+import "../interfaces/IKeyVault.sol";
+import "../interfaces/ILocksmith.sol";
 import "../Ledger.sol";
 ///////////////////////////////////////////////////////////
 
@@ -50,7 +51,7 @@ contract EtherVault is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     // Storage
     ///////////////////////////////////////////////////////
     // Locksmith verifies key-holdership. 
-    Locksmith public locksmith;
+    ILocksmith public locksmith;
     
     // The Locksmith provides access to mutate the ledger.
     Ledger public ledger;
@@ -85,7 +86,7 @@ contract EtherVault is Initializable, OwnableUpgradeable, UUPSUpgradeable {
 
         // this implies a specific deployment order that trust key
         // must be mined first.
-        locksmith = Locksmith(_Locksmith);
+        locksmith = ILocksmith(_Locksmith);
         ledger = Ledger(_Ledger);
 
         // This is a more transparent way of holding the bytes32,
@@ -130,7 +131,8 @@ contract EtherVault is Initializable, OwnableUpgradeable, UUPSUpgradeable {
      */
     function deposit(uint256 keyId) payable external {
         // stop right now if the message sender doesn't hold the key
-        require(locksmith.keyVault().balanceOf(msg.sender, keyId) > 0, 'KEY_NOT_HELD');
+        require(IKeyVault(locksmith.getKeyVault()).keyBalanceOf(msg.sender, keyId, false) > 0, 
+            'KEY_NOT_HELD');
 
         // track the deposit on the ledger
         // this could revert for a few reasons:
@@ -158,7 +160,8 @@ contract EtherVault is Initializable, OwnableUpgradeable, UUPSUpgradeable {
      */
     function withdrawal(uint256 keyId, uint256 amount) external {
         // stop right now if the message sender doesn't hold the key
-        require(locksmith.keyVault().balanceOf(msg.sender, keyId) > 0, 'KEY_NOT_HELD');
+        require(IKeyVault(locksmith.getKeyVault()).keyBalanceOf(msg.sender, keyId, false) > 0,
+            'KEY_NOT_HELD');
 
         // withdrawal from the ledger *first*. if there is an overdraft,
         // the entire transaction will revert.

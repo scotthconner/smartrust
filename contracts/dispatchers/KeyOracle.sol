@@ -22,7 +22,8 @@ import '../TrustEventLog.sol';
 
 // To oracle-ize a key's actions, we need to be able to verify the
 // key's authenticity via the trusted Locksmith.
-import '../Locksmith.sol';
+import '../interfaces/IKeyVault.sol';
+import '../interfaces/ILocksmith.sol';
 
 // We want to be able to keep track of all key oracles for
 // a given key.
@@ -71,7 +72,7 @@ contract KeyOracle is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     ///////////////////////////////////////////////////////
     // Storage
     ///////////////////////////////////////////////////////
-    Locksmith public locksmith;
+    ILocksmith public locksmith;
     TrustEventLog public trustEventLog;
 
     // keyId => [eventHashes] 
@@ -104,7 +105,7 @@ contract KeyOracle is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         __Ownable_init();
         __UUPSUpgradeable_init();
         trustEventLog = TrustEventLog(_TrustEventLog);
-        locksmith = Locksmith(_Locksmith);
+        locksmith = ILocksmith(_Locksmith);
     }
 
     /**
@@ -160,7 +161,7 @@ contract KeyOracle is Initializable, OwnableUpgradeable, UUPSUpgradeable {
      */
     function createKeyOracle(uint256 rootKeyId, uint256 keyId, bytes32 description) external {
         // ensure the caller is holding the rootKey
-        require(locksmith.keyVault().balanceOf(msg.sender, rootKeyId) > 0, 'KEY_NOT_HELD');
+        require(IKeyVault(locksmith.getKeyVault()).keyBalanceOf(msg.sender, rootKeyId, false) > 0, 'KEY_NOT_HELD');
         require(locksmith.isRootKey(rootKeyId), "KEY_NOT_ROOT");
 
         // inspect the keys used, make sure each of them are valid
@@ -208,7 +209,7 @@ contract KeyOracle is Initializable, OwnableUpgradeable, UUPSUpgradeable {
      */
     function fireKeyOracleEvent(uint256 keyId, bytes32 eventHash) external {
         // ensure the caller holders the key Id
-        require(locksmith.keyVault().balanceOf(msg.sender, keyId) > 0, 'KEY_NOT_HELD');
+        require(IKeyVault(locksmith.getKeyVault()).keyBalanceOf(msg.sender, keyId, false) > 0, 'KEY_NOT_HELD');
 
         // make sure the event hash is registered to the given key
         require(oracleKeyEvents[keyId].contains(eventHash), 'MISSING_KEY_EVENT');

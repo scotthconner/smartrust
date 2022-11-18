@@ -112,10 +112,10 @@ contract TrustCreator is Initializable, OwnableUpgradeable, UUPSUpgradeable {
      * @return the ID of the trust that was created
      * @return the ID of the root key that was created
      */
-    function createDefaultTrust(bytes32 trustName, address[] calldata providers, address[] calldata scribes, 
-        bytes32[] calldata keyAliases, address[] calldata keyReceivers, bool[] calldata keySoulbindings) 
-            external returns (uint256, uint256) {
+    //function createDefaultTrust(bytes32 trustName, address[] calldata providers, address[] calldata scribes, 
+    //    bytes32[] calldata keyAliases, address[] calldata keyReceivers, bool[] calldata keySoulbindings) 
+    //        external returns (uint256, uint256) {
 
-        return (0, 0);
-    }
+    //    return (0, 0);
+    //}
 }

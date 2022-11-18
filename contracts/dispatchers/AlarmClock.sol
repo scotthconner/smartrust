@@ -22,7 +22,8 @@ import '../TrustEventLog.sol';
 
 // Only root keys will be able to register events, and only keys
 // on the root's key ring will be able to snooze the alarm.
-import '../Locksmith.sol';
+import '../interfaces/IKeyVault.sol';
+import '../interfaces/ILocksmith.sol';
 
 // Because hashmaps aren't iterable 
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
@@ -116,7 +117,7 @@ contract AlarmClock is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     ///////////////////////////////////////////////////////
     // Storage
     ///////////////////////////////////////////////////////
-    Locksmith public locksmith;
+    ILocksmith public locksmith;
     TrustEventLog public trustEventLog;
 
     struct Alarm {
@@ -153,7 +154,7 @@ contract AlarmClock is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         __Ownable_init();
         __UUPSUpgradeable_init();
         trustEventLog = TrustEventLog(_TrustEventLog);
-        locksmith = Locksmith(_Locksmith);
+        locksmith = ILocksmith(_Locksmith);
     }
 
     /**
@@ -208,7 +209,7 @@ contract AlarmClock is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         uint256 snoozeInterval, uint256 snoozeKeyId) external {
         
         // ensure the caller is holding the rootKey
-        require(locksmith.keyVault().balanceOf(msg.sender, rootKeyId) > 0, 'KEY_NOT_HELD');
+        require(IKeyVault(locksmith.getKeyVault()).keyBalanceOf(msg.sender, rootKeyId, false) > 0, 'KEY_NOT_HELD');
         (bool rootValid,, uint256 rootTrustId,bool isRoot,) = locksmith.inspectKey(rootKeyId);
         require(isRoot, 'KEY_NOT_ROOT');
 
@@ -290,7 +291,7 @@ contract AlarmClock is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         require(alarm.snoozeKeyId == snoozeKeyId, 'WRONG_SNOOZE_KEY');
 
         // ensure the caller is holding the proper snooze key
-        require(locksmith.keyVault().balanceOf(msg.sender, snoozeKeyId) > 0, 'KEY_NOT_HELD');
+        require(IKeyVault(locksmith.getKeyVault()).keyBalanceOf(msg.sender, snoozeKeyId, false) > 0, 'KEY_NOT_HELD');
 
         // ensure the event isn't already fired
         require(!trustEventLog.firedEvents(eventHash), 'OVERSNOOZE');

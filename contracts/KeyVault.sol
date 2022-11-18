@@ -17,6 +17,10 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 // UUPS Proxy Standard
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
+// KeyVault Interface - implemented to keep bytecode clean across upgrade tracking
+// also used nicely for platform building.
+import './interfaces/IKeyVault.sol';
+
 // We are going to use the Enumerable Set to keep track of where
 // the keys are going and who owns what
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
@@ -34,24 +38,11 @@ using EnumerableSet for EnumerableSet.AddressSet;
  * Only the contract deployer and any associated minters (locksmith's)
  * can manage the keys.
  */
-contract KeyVault is Initializable, ERC1155Upgradeable, OwnableUpgradeable, UUPSUpgradeable {
+contract KeyVault is IKeyVault, ERC1155Upgradeable, OwnableUpgradeable, UUPSUpgradeable {
     ///////////////////////////////////////////////////////
     // Events
     ///////////////////////////////////////////////////////
     
-    /**
-     * setSoulboundKeyAmount 
-     *
-     * This event fires when the state of a soulbind key is set.
-     *
-     * @param operator  the person making the change, should be the locksmith
-     * @param keyHolder the 'soul' we are changing the binding for
-     * @param keyId     the Id we are setting the binding state for
-     * @param amount    the number of tokens this person must hold
-     */
-    event setSoulboundKeyAmount(address operator, address keyHolder, 
-        uint256 keyId, uint256 amount); 
-
     ///////////////////////////////////////////////////////
     // Storage
     ///////////////////////////////////////////////////////
@@ -63,7 +54,7 @@ contract KeyVault is Initializable, ERC1155Upgradeable, OwnableUpgradeable, UUPS
     // and delinquent key holders from moving their NFT
     // or having it stolen out of their wallet.
     // wallet / keyId => amount
-    mapping(address => mapping(uint256 => uint256)) public soulboundKeyAmounts;
+    mapping(address => mapping(uint256 => uint256)) private soulboundKeyAmounts;
 
     // we want to keep track of each key type
     // in each address for introspection
@@ -124,7 +115,7 @@ contract KeyVault is Initializable, ERC1155Upgradeable, OwnableUpgradeable, UUPS
      * @param holder the address of the key holder you want to see
      * @return an array of key IDs held by the user.
      */
-    function getKeys(address holder) public view returns (uint256[] memory) {
+    function getKeys(address holder) external view returns (uint256[] memory) {
         return addressKeys[holder].values();
     }
 
@@ -137,8 +128,23 @@ contract KeyVault is Initializable, ERC1155Upgradeable, OwnableUpgradeable, UUPS
      * @param keyId the key ID to look for
      * @return an array of addresses that hold that key
      */
-    function getHolders(uint256 keyId) public view returns (address[] memory) {
+    function getHolders(uint256 keyId) external view returns (address[] memory) {
         return keyHolders[keyId].values();
+    }
+
+    /**
+     * keyBalanceOf
+     *
+     * We want to expose a generic ERC1155 interface here, but we are
+     * going to layer it through a key vault interface..
+     *
+     * @param account   the wallet address you want the balance for
+     * @param id        the key Id you want the balance of.
+     * @param soulbound true if you want the soulbound balance
+     * @return the token balance for that wallet and key id
+     */
+    function keyBalanceOf(address account, uint256 id, bool soulbound) external view returns (uint256) {
+        return soulbound ? soulboundKeyAmounts[account][id] : this.balanceOf(account, id);
     }
 
     ////////////////////////////////////////////////////////

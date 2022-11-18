@@ -18,7 +18,8 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
 // The Ledger respects keys minted for trusts by it's associated locksmith.
-import './Locksmith.sol';
+import './interfaces/IKeyVault.sol';
+import './interfaces/ILocksmith.sol';
 
 // We want to use an enumerable set to save byte-code when
 // managing roles.
@@ -140,7 +141,7 @@ contract Notary is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     // Storage
     ///////////////////////////////////////////////////////
     // the notary only respects one locksmith
-    Locksmith public locksmith;
+    ILocksmith public locksmith;
 
     // Key-holders enable collateral to be withdrawn from
     // the ledger.
@@ -188,7 +189,7 @@ contract Notary is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     function initialize(address _Locksmith) initializer public {
         __Ownable_init();
         __UUPSUpgradeable_init();
-        locksmith = Locksmith(_Locksmith);
+        locksmith = ILocksmith(_Locksmith);
     }
 
     /**
@@ -256,13 +257,13 @@ contract Notary is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         bool trustLevel, bytes32 actorAlias) external {
 
         // make sure that the caller is holding the key they are trying to use
-        require(locksmith.keyVault().balanceOf(msg.sender, rootKeyId) > 0, "KEY_NOT_HELD");
+        require(IKeyVault(locksmith.getKeyVault()).keyBalanceOf(msg.sender, rootKeyId, false) > 0, "KEY_NOT_HELD");
         
         // make sure the key is a valid root key 
         require(locksmith.isRootKey(rootKeyId), "KEY_NOT_ROOT");
 
         // the caller is holding it a valid root key, this lookup is safe 
-        uint256 trustId = locksmith.keyTrustAssociations(rootKeyId); 
+        (,,uint256 trustId,,) = locksmith.inspectKey(rootKeyId); 
 
         if (trustLevel) {
             // make sure they are not already a provider on the trust
@@ -317,7 +318,7 @@ contract Notary is Initializable, OwnableUpgradeable, UUPSUpgradeable {
      */
     function setWithdrawalAllowance(address ledger, address provider, uint256 keyId, bytes32 arn, uint256 amount) external {
         // panic if the message sender isn't the key holder
-        require(locksmith.keyVault().balanceOf(msg.sender, keyId) > 0, 'KEY_NOT_HELD');
+        require(IKeyVault(locksmith.getKeyVault()).keyBalanceOf(msg.sender, keyId, false) > 0, 'KEY_NOT_HELD');
         withdrawalAllowances[ledger][keyId][provider][arn] = amount;    
         emit withdrawalAllowanceAssigned(msg.sender, keyId, ledger, provider, arn, amount); 
     }
