@@ -7,10 +7,6 @@ pragma solidity ^0.8.16;
 // We need this to use the ERC1155 token standard and be able to ugprade
 import "@openzeppelin/contracts-upgradeable/token/ERC1155/ERC1155Upgradeable.sol";
 
-// We want the contract to be ownable by the deployer - only they can set the
-// locksmith.
-import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
-
 // Required for Upgradeable Contracts
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
@@ -38,7 +34,7 @@ using EnumerableSet for EnumerableSet.AddressSet;
  * Only the contract deployer and any associated minters (locksmith's)
  * can manage the keys.
  */
-contract KeyVault is IKeyVault, ERC1155Upgradeable, OwnableUpgradeable, UUPSUpgradeable {
+contract KeyVault is IKeyVault, ERC1155Upgradeable, UUPSUpgradeable {
     ///////////////////////////////////////////////////////
     // Events
     ///////////////////////////////////////////////////////
@@ -46,7 +42,8 @@ contract KeyVault is IKeyVault, ERC1155Upgradeable, OwnableUpgradeable, UUPSUpgr
     ///////////////////////////////////////////////////////
     // Storage
     ///////////////////////////////////////////////////////
-    address public locksmith;
+    address private owner;
+    address public  locksmith;
 
     // The respected locksmith can mint and burn tokens, as
     // well as bind specific keys to wallets and prevent the
@@ -86,7 +83,7 @@ contract KeyVault is IKeyVault, ERC1155Upgradeable, OwnableUpgradeable, UUPSUpgr
      *
      */
     function initialize() initializer public {
-        __Ownable_init();
+        owner = msg.sender;
         __UUPSUpgradeable_init();
     }
 
@@ -100,7 +97,9 @@ contract KeyVault is IKeyVault, ERC1155Upgradeable, OwnableUpgradeable, UUPSUpgr
      *
      * //UNUSED -param newImplementation the new address implementation to upgrade to
      */
-    function _authorizeUpgrade(address) internal view onlyOwner override {}
+    function _authorizeUpgrade(address) internal view override {
+        require(msg.sender == owner, 'NOT_OWNER');
+    }
 
     ////////////////////////////////////////////////////////
     // Introspection
@@ -161,7 +160,8 @@ contract KeyVault is IKeyVault, ERC1155Upgradeable, OwnableUpgradeable, UUPSUpgr
      *
      * @param _Locksmith the address of the locksmith to respect
      */
-    function setRespectedLocksmith(address _Locksmith) onlyOwner external {
+    function setRespectedLocksmith(address _Locksmith) external {
+        require(msg.sender == owner, 'NOT_OWNER');
         locksmith = _Locksmith;
     }
 

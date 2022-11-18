@@ -34,6 +34,12 @@ describe("Locksmith", function () {
       const { locksmith } = await loadFixture(TrustTestFixtures.freshLocksmithProxy);
       expect((await locksmith.inspectKey(0))[0]).to.equal(false);
     });
+
+    it("Protect #setRespectedLockedsmith", async function() {
+      const { owner, root, locksmith, keyVault } = await loadFixture(TrustTestFixtures.freshLocksmithProxy);
+      await expect(keyVault.connect(root).setRespectedLocksmith(locksmith.address))
+        .to.be.revertedWith('NOT_OWNER');
+    });
   });
   
   ////////////////////////////////////////////////////////////
@@ -44,13 +50,19 @@ describe("Locksmith", function () {
   ////////////////////////////////////////////////////////////
   describe("Contract upgrade", function() {
     it("Should be able to upgrade", async function() {
-      const { keyVault, locksmith } = await loadFixture(TrustTestFixtures.freshLocksmithProxy);
+      const { keyVault, locksmith, root } = await loadFixture(TrustTestFixtures.freshLocksmithProxy);
       
       const lockv2 = await ethers.getContractFactory("Locksmith")
       const lockAgain = await upgrades.upgradeProxy(locksmith.address, lockv2);
 
       const vaultv2 = await ethers.getContractFactory("KeyVault")
       const vaultAgain = await upgrades.upgradeProxy(keyVault.address, vaultv2);
+
+      // can't upgrade the key vault if you are not the owner!
+      const vaultHack = await ethers.getContractFactory("KeyVault", root)
+      await expect(upgrades.upgradeProxy(keyVault.address, vaultHack))
+        .to.be.revertedWith('NOT_OWNER');
+
       expect(true);
     });
   });
