@@ -18,7 +18,7 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
 // This dispatcher will register and fire events into the event log. 
-import '../TrustEventLog.sol';
+import '../interfaces/ITrustEventLog.sol';
 
 // To oracle-ize a key's actions, we need to be able to verify the
 // key's authenticity via the trusted Locksmith.
@@ -73,7 +73,7 @@ contract KeyOracle is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     // Storage
     ///////////////////////////////////////////////////////
     ILocksmith public locksmith;
-    TrustEventLog public trustEventLog;
+    ITrustEventLog public trustEventLog;
 
     // keyId => [eventHashes] 
     mapping(uint256 => EnumerableSet.Bytes32Set) private oracleKeyEvents;
@@ -104,7 +104,7 @@ contract KeyOracle is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     function initialize(address _Locksmith, address _TrustEventLog) initializer public {
         __Ownable_init();
         __UUPSUpgradeable_init();
-        trustEventLog = TrustEventLog(_TrustEventLog);
+        trustEventLog = ITrustEventLog(_TrustEventLog);
         locksmith = ILocksmith(_Locksmith);
     }
 

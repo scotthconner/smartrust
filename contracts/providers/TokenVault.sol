@@ -33,7 +33,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 // must be deployed first.
 import "../interfaces/IKeyVault.sol";
 import "../interfaces/ILocksmith.sol";
-import "../Ledger.sol";
+import "../interfaces/ILedger.sol";
 ///////////////////////////////////////////////////////////
 
 /**
@@ -62,7 +62,7 @@ contract TokenVault is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     ILocksmith public locksmith;
     
     // The Locksmith provides access to mutate the ledger.
-    Ledger public ledger;
+    ILedger public ledger;
 
     // witnessed token addresses
     // trust => [registered addresses] 
@@ -97,7 +97,7 @@ contract TokenVault is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         // this implies a specific deployment order that trust key
         // must be mined first.
         locksmith = ILocksmith(_Locksmith);
-        ledger = Ledger(_Ledger);
+        ledger = ILedger(_Ledger);
     }
 
     /**

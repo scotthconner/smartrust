@@ -16,6 +16,8 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 // We are using the UUPSUpgradeable Proxy pattern instead of the transparent proxy
 // pattern because its more gas efficient and comes with some better trade-offs.
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+
+import './interfaces/ITrustEventLog.sol';
 ///////////////////////////////////////////////////////////
 
 /**
@@ -52,38 +54,7 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
  * but only the dispatcher who has registered for the event hash
  * can fire it.
  */
-contract TrustEventLog is Initializable, OwnableUpgradeable, UUPSUpgradeable {
-    ////////////////////////////////////////////////////////
-    // Events
-    //
-    // This is going to help indexers and web applications
-    // watch and respond to blocks that contain trust transactions.
-    ////////////////////////////////////////////////////////
-
-    /**
-     * trustEventRegistered
-     *
-     * This event is emitted when a dispatcher registers
-     * itself as the origin for a future event.
-     *
-     * @param dispatcher       the event dispatcher who will log the event in the future
-     * @param trustId          the trust the event is associated with
-     * @param eventHash        the event hash the dispatcher will log.
-     * @param eventDescription the alias event description from the dispatcher
-     */
-    event trustEventRegistered(address dispatcher, uint256 trustId, bytes32 eventHash, bytes32 eventDescription);
-
-    /**
-     * trustEventLogged
-     *
-     * This event is emitted when a dispatcher logs an event
-     * hash into the log.
-     * 
-     * @param dispatcher the event dispatcher who logged the event
-     * @param eventHash  the keccak256 of the event metadata
-     */
-    event trustEventLogged(address dispatcher, bytes32 eventHash);
-
+contract TrustEventLog is ITrustEventLog, Initializable, OwnableUpgradeable, UUPSUpgradeable {
     ///////////////////////////////////////////////////////
     // Storage
     ///////////////////////////////////////////////////////
@@ -99,8 +70,7 @@ contract TrustEventLog is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     mapping(uint256 => mapping(address => bytes32[])) private trustDispatcherEvents;
 
     // eventHash => hasFired?
-    // when an event is properly fired by its dispatcher, set that
-    // here.
+    // NOTE: This acts as an interface method for ITrustEventLog
     mapping(bytes32 => bool) public firedEvents;
 
     ///////////////////////////////////////////////////////
@@ -155,7 +125,7 @@ contract TrustEventLog is Initializable, OwnableUpgradeable, UUPSUpgradeable {
      * @param dispatcher the address of the dispatcher you want events for, or zero for all 
      * @return the array of event hashes for the trust
      */
-    function getRegisteredTrustEvents(uint256 trustId, address dispatcher) public view returns (bytes32[] memory) {
+    function getRegisteredTrustEvents(uint256 trustId, address dispatcher) external view returns (bytes32[] memory) {
         return dispatcher == address(0) ? trustEventRegistry[trustId] : trustDispatcherEvents[trustId][dispatcher];
     }
 
@@ -233,8 +203,4 @@ contract TrustEventLog is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     
         emit trustEventLogged(msg.sender, eventHash);
     }
-
-    ////////////////////////////////////////////////////////
-    // Internal Methods
-    ////////////////////////////////////////////////////////
 }

@@ -25,7 +25,7 @@ using AssetResourceName for AssetResourceName.AssetType;
 // must be deployed first.
 import "../interfaces/IKeyVault.sol";
 import "../interfaces/ILocksmith.sol";
-import "../Ledger.sol";
+import "../interfaces/ILedger.sol";
 ///////////////////////////////////////////////////////////
 
 /**
@@ -54,7 +54,7 @@ contract EtherVault is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     ILocksmith public locksmith;
     
     // The Locksmith provides access to mutate the ledger.
-    Ledger public ledger;
+    ILedger public ledger;
 
     // We hard-code the arn into the contract.
     bytes32 public ethArn;
@@ -87,7 +87,7 @@ contract EtherVault is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         // this implies a specific deployment order that trust key
         // must be mined first.
         locksmith = ILocksmith(_Locksmith);
-        ledger = Ledger(_Ledger);
+        ledger = ILedger(_Ledger);
 
         // This is a more transparent way of holding the bytes32,
         // it could have been an immutable as well but its good

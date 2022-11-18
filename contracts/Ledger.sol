@@ -25,7 +25,8 @@ using CollateralProviderLedger for CollateralProviderLedger.CollateralProviderCo
 
 // the ledger relies on a notary to sign off on the
 // deposits, withdrawals, and fund movements on behalf of the key holders.
-import "./Notary.sol";
+import "./interfaces/INotary.sol";
+import "./interfaces/ILedger.sol";
 ///////////////////////////////////////////////////////////
 
 /**
@@ -50,74 +51,12 @@ import "./Notary.sol";
  * All trusted relationships are managed through the ledger's
  * associated Notary, and are anointed by a root key holder.
  */
-contract Ledger is Initializable, OwnableUpgradeable, UUPSUpgradeable {
-    ////////////////////////////////////////////////////////
-    // Events
-    //
-    // This is going to help indexers and web applications
-    // watch and respond to blocks that contain trust transactions.
-    ////////////////////////////////////////////////////////
-    
-    /**
-     * depositOccurred 
-     *
-     * This event fires when new assets enter a vault from
-     * the outside world.
-     *
-     * @param provider      address of the collateral provider that deposited the asset
-     * @param trustId       ID of the trust that has approved the collateral provider 
-     * @param keyId         keyId associated with the deposit, most often a root key
-     * @param arn           asset resource name hash of the asset deposited
-     * @param amount        amount of asset that was deposited
-     * @param keyBalance    provider's total arn balance for that key
-     * @param trustBalance  provider's total arn balance for that trust
-     * @param ledgerBalance provider's total arn balance for the ledger
-     */
-    event depositOccurred(address provider, uint256 trustId, uint256 keyId, 
-        bytes32 arn, uint256 amount, 
-        uint256 keyBalance, uint256 trustBalance, uint256 ledgerBalance); 
-
-    /**
-     * withdrawalOccurred
-     *
-     * This event fires when assets leave a vault into an external wallet.
-     *
-     * @param provider address of the collateral provider that withdrew the asset 
-     * @param trustId  ID of the trust that has approved the collateral provider 
-     * @param keyId    keyId associated with the withdrawal
-     * @param arn      asset resource name hash of the asset withdrawn 
-     * @param amount   amount of asset that was withdrawn 
-     * @param keyBalance    provider's total arn balance for that key
-     * @param trustBalance  provider's total arn balance for that trust
-     * @param ledgerBalance provider's total arn balance for the ledger
-     */
-    event withdrawalOccurred(address provider, uint256 trustId, uint256 keyId, 
-        bytes32 arn, uint256 amount, 
-        uint256 keyBalance, uint256 trustBalance, uint256 ledgerBalance); 
-
-    /**
-     * ledgerTransferOccurred
-     *
-     * This event fires when assets move from one key to
-     * another, usually as part of receiving a trust benefit.
-     *
-     * @param scribe           the trusted scribe for the action 
-     * @param provider         address of the contract or user that initiated the ledger transfer
-     * @param arn              asset resource name of the asset that was moved
-     * @param trustId          the associated trust that is being operated on
-     * @param rootKeyId        keyId that will have a reduction in asset balance
-     * @param keys             keyIds that will have an increase in asset balance
-     * @param amounts          amount of assets to move
-     * @param finalRootBalance resulting balance for the root key's arn rights
-     */
-    event ledgerTransferOccurred(address scribe, address provider, bytes32 arn, uint256 trustId,
-        uint256 rootKeyId, uint256[] keys, uint256[] amounts, uint256 finalRootBalance); 
-    
+contract Ledger is ILedger, Initializable, OwnableUpgradeable, UUPSUpgradeable {
     ///////////////////////////////////////////////////////
     // Storage
     ///////////////////////////////////////////////////////
     // the ledger only respects the notary
-    Notary public notary;
+    address public notary;
     
     // ledger context
     CollateralProviderLedger.CollateralProviderContext private ledgerContext;
@@ -153,7 +92,7 @@ contract Ledger is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     function initialize(address _Notary) initializer public {
         __Ownable_init();
         __UUPSUpgradeable_init();
-        notary = Notary(_Notary);
+        notary = _Notary;
     }
 
     /**
@@ -323,7 +262,7 @@ contract Ledger is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         require(amount > 0, 'ZERO_AMOUNT');
         
         // make sure the provider (the message sender) is trusted
-        uint256 trustId = notary.notarizeDeposit(msg.sender, rootKeyId, arn, amount);
+        uint256 trustId = INotary(notary).notarizeDeposit(msg.sender, rootKeyId, arn, amount);
         
         // make the deposit at the ledger, trust, and key contexts
         uint256 ledgerBalance = ledgerContext.deposit(msg.sender, arn, amount);
@@ -353,7 +292,7 @@ contract Ledger is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         require(amount > 0, 'ZERO_AMOUNT');
      
         // make sure the withdrawal can be notarized with the key-holder 
-        uint256 trustId = notary.notarizeWithdrawal(msg.sender, keyId, arn, amount);
+        uint256 trustId = INotary(notary).notarizeWithdrawal(msg.sender, keyId, arn, amount);
 
         // make the withdrawal at the ledger, trust, and key contexts
         uint256 ledgerBalance = ledgerContext.withdrawal(msg.sender, arn, amount);
@@ -389,7 +328,7 @@ contract Ledger is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         external returns (uint256) {
 
         // notarize the distribution and obtain the trust ID
-        uint256 trustId = notary.notarizeDistribution(msg.sender, provider, arn, rootKeyId, keys, amounts);
+        uint256 trustId = INotary(notary).notarizeDistribution(msg.sender, provider, arn, rootKeyId, keys, amounts);
 
         // now that it is notarized, for each key context make the deposits.
         // to save on gas, we aren't doing a withdrawal against the root for

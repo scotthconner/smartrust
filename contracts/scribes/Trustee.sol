@@ -23,11 +23,11 @@ import '../interfaces/ILocksmith.sol';
 
 // The trustee contract acts a scribe against a ledger. It is associated
 // at deployment time to a specific ledger.
-import '../Ledger.sol';
+import '../interfaces/ILedger.sol';
 
 // The trustee contract can enable scribe roles based on events inside
 // of the trust event log. Events are logged by dispatchers.
-import '../TrustEventLog.sol';
+import '../interfaces/ITrustEventLog.sol';
 
 // We want to keep track of the policies for a given trust easily
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
@@ -91,8 +91,8 @@ contract Trustee is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     // Storage
     ///////////////////////////////////////////////////////
     ILocksmith public locksmith;         // key validation
-    TrustEventLog public trustEventLog; // event detection
-    Ledger public ledger;               // ledger manipulation
+    ITrustEventLog public trustEventLog; // event detection
+    ILedger public ledger;               // ledger manipulation
 
     // A trust Policy enables a keyholder 
     // to distribute root key trust funds.
@@ -136,8 +136,8 @@ contract Trustee is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         __Ownable_init();
         __UUPSUpgradeable_init();
         locksmith = ILocksmith(_Locksmith);
-        ledger = Ledger(_Ledger);
-        trustEventLog = TrustEventLog(_TrustEventLog); 
+        ledger = ILedger(_Ledger);
+        trustEventLog = ITrustEventLog(_TrustEventLog); 
     }
 
     /**

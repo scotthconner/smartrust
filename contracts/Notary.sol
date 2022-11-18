@@ -20,6 +20,7 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 // The Ledger respects keys minted for trusts by it's associated locksmith.
 import './interfaces/IKeyVault.sol';
 import './interfaces/ILocksmith.sol';
+import './interfaces/INotary.sol';
 
 // We want to use an enumerable set to save byte-code when
 // managing roles.
@@ -44,7 +45,7 @@ using EnumerableSet for EnumerableSet.AddressSet;
  * A notary won't approve funds to move between trust keys unless
  * a root key holder has approved the scribe moving the funds.
  */
-contract Notary is Initializable, OwnableUpgradeable, UUPSUpgradeable {
+contract Notary is INotary, Initializable, OwnableUpgradeable, UUPSUpgradeable {
     ////////////////////////////////////////////////////////
     // Events
     //
@@ -84,58 +85,6 @@ contract Notary is Initializable, OwnableUpgradeable, UUPSUpgradeable {
      */
     event withdrawalAllowanceAssigned(address keyHolder, uint256 keyId,
         address ledger, address provider, bytes32 arn, uint256 amount);
-
-    /**
-     * notaryDepositApproval 
-     *
-     * This event fires when a deposit onto a ledger for a collateral
-     * provider and root key is approved.
-     *
-     * @param ledger    the ledger the deposit request came from
-     * @param provider  the provider the collateral is coming from
-     * @param trustId   the trust id for the associated root key
-     * @param rootKeyId the root key the deposit occured on
-     * @param arn       the asset being deposited
-     * @param amount    the amount being deposited
-     */
-    event notaryDepositApproval(address ledger, address provider, uint256 trustId, uint256 rootKeyId,
-        bytes32 arn, uint256 amount);
-
-    /**
-     * notaryWithdrawalApproval
-     *
-     * This event fires when a deposit onto a ledger for a collateral
-     * provider and root key is approved.
-     *
-     * @param ledger    the ledger the withdrawal request came from
-     * @param provider  the provider the collateral is coming from
-     * @param trustId   the trust id for the associated root key
-     * @param keyId     the key the withdrawal occured on
-     * @param arn       the asset being withdrawn 
-     * @param amount    the amount being withdrawn 
-     * @param allowance the remaining allowance for this tuple
-     */
-    event notaryWithdrawalApproval(address ledger, address provider, uint256 trustId, 
-        uint256 keyId, bytes32 arn, uint256 amount, uint256 allowance);
-
-    /**
-     * notaryDistributionApproval
-     *
-     * This event fires when a trust distribution request from a ledger
-     * is approved for a root key, ledger, and provider.
-     *
-     * @param ledger    the ledger tracking fund balances
-     * @param provider  the collateral provider for the funds
-     * @param scribe    the scribe moving the funds
-     * @param arn       the asset being distributed
-     * @param trustId   the trust id associated with the root key
-     * @param rootKeyId the root key funds are moved from
-     * @param keys      array of in-trust destination keys
-     * @param amounts   array of amounts per key
-     */
-    event notaryDistributionApproval(address ledger, address provider, address scribe,
-        bytes32 arn, uint256 trustId, uint256 rootKeyId,
-        uint256[] keys, uint256[] amounts);
 
     ///////////////////////////////////////////////////////
     // Storage

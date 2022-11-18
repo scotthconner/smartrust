@@ -18,7 +18,7 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
 // This dispatcher will register and fire events into the event log. 
-import '../TrustEventLog.sol';
+import '../interfaces/ITrustEventLog.sol';
 
 // Only root keys will be able to register events, and only keys
 // on the root's key ring will be able to snooze the alarm.
@@ -118,7 +118,7 @@ contract AlarmClock is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     // Storage
     ///////////////////////////////////////////////////////
     ILocksmith public locksmith;
-    TrustEventLog public trustEventLog;
+    ITrustEventLog public trustEventLog;
 
     struct Alarm {
         bytes32 eventHash;      // the event to fire upon challenge
@@ -153,7 +153,7 @@ contract AlarmClock is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     function initialize(address _Locksmith, address _TrustEventLog) initializer public {
         __Ownable_init();
         __UUPSUpgradeable_init();
-        trustEventLog = TrustEventLog(_TrustEventLog);
+        trustEventLog = ITrustEventLog(_TrustEventLog);
         locksmith = ILocksmith(_Locksmith);
     }
 
