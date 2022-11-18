@@ -156,8 +156,10 @@ contract Locksmith is ILocksmith, Initializable, OwnableUpgradeable, UUPSUpgrade
      *
      * @param trustName A string defining the name of the trust, like 'My Family Trust'
      * @param recipient The address to receive the root key for this trust.
+     * @return the trust ID that was created
+     * @return the root key ID that was created
      */
-    function createTrustAndRootKey(bytes32 trustName, address recipient) external {
+    function createTrustAndRootKey(bytes32 trustName, address recipient) external returns (uint256, uint256) {
         // build the trust with post-increment IDs
         // the incrementing here is important to prevent
         // re-entrancy
@@ -179,6 +181,8 @@ contract Locksmith is ILocksmith, Initializable, OwnableUpgradeable, UUPSUpgrade
 
         // the trust was successfully created
         emit trustCreated(msg.sender, t.id, t.name, recipient);
+
+        return (t.id, t.rootKeyId);
     }
     
     /**

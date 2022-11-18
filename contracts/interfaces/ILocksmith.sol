@@ -91,8 +91,10 @@ interface ILocksmith {
      *
      * @param trustName A string defining the name of the trust, like 'My Family Trust'
      * @param recipient The address to receive the root key for this trust.
+     * @return the trust ID that was created
+     * @return the root Key ID that was created
      */
-    function createTrustAndRootKey(bytes32 trustName, address recipient) external;
+    function createTrustAndRootKey(bytes32 trustName, address recipient) external returns (uint256, uint256);
     
     /**
      * isRootKey
