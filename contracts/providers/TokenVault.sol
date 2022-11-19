@@ -31,6 +31,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 // We have a full contract dependency on the locksmith, which
 // must be deployed first.
+import "../interfaces/ITrustedLedgerActor.sol";
 import "../interfaces/IKeyVault.sol";
 import "../interfaces/ILocksmith.sol";
 import "../interfaces/ILedger.sol";
@@ -54,7 +55,7 @@ import "../interfaces/ILedger.sol";
  * In the end, this contract holds the tokens and abstracts out the ARN 
  * into the ERC20 protocol implementation.
  */
-contract TokenVault is Initializable, OwnableUpgradeable, UUPSUpgradeable {
+contract TokenVault is ITrustedLedgerActor, Initializable, OwnableUpgradeable, UUPSUpgradeable {
     ///////////////////////////////////////////////////////
     // Storage
     ///////////////////////////////////////////////////////
@@ -119,6 +120,18 @@ contract TokenVault is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     // of the contract. They are for interaction with by wallets,
     // web frontends, and tests.
     ////////////////////////////////////////////////////////
+
+    /**
+     * getAlias
+     *
+     * Returns a string that describes this collateral provider by a
+     * human readable name.
+     *
+     * @return the string name alias of the provider
+     */
+    function getAlias() external pure returns (string memory) {
+        return 'Locksmith TokenVault';
+    }
 
     /**
      * deposit

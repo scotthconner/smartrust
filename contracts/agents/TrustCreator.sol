@@ -101,35 +101,43 @@ contract TrustCreator is Initializable, OwnableUpgradeable, UUPSUpgradeable {
      * This method creates a standard trust using the trust dependencies as 
      * specified by the user.
      *
-     * The length of providers and providerAliases must match.
-     * The length of scribes and scribeAliases must match.
+     * The locksmith must implement the ILocksmith interface.
+     * The scribes and the providers must implement the ITrustedLedgerActor interface.
+     *
      * The length of keyAliases, keyReceivers, and keySoulbindings must match.
      *
-     * @param trustName       the name of the trust to create, like 'My Living Will'
-     * @param providers       an array of contract addresses that you approve to act as collateral providers
-     * @param providerAliases an array of aliases for the providers
-     * @param scribes         an array of contract addresses tat you approve to act as ledger scribes
-     * @param scribeAliases   an array of aliases for the scribes
-     * @param keyAliases      an array of key aliases you want to create, like 'Camden' or 'Chloe' or 'Trustee'
-     * @param keyReceivers    an array of addresses to receive the keys created
-     * @param keySoulbindings an array specifying if you want each minted key to be soulbound to the recieving address
+     * @param trustName      the name of the trust to create, like 'My Living Will'
+     * @param locksmith      the address of the locksmith you want to create the trust with
+     * @param providers      an array of contract addresses that you approve to act as collateral providers
+     * @param scribes        an array of contract addresses tat you approve to act as ledger scribes
+     * @param keyAliases     key names, like "Rebecca" or "Coinbase Trustee"
+     * @param keyReceivers   the wallet addresses to send each new key
+     * @param soulboundCount if each key you want to be soulbound
      * @return the ID of the trust that was created
      * @return the ID of the root key that was created
      */
-    function createDefaultTrust(bytes32 trustName, 
-        address[] calldata providers, bytes32[] calldata providerAliases,
-        address[] calldata scribes, bytes32[] calldata scribeAliases,
-        bytes32[] calldata keyAliases, address[] calldata keyReceivers, bool[] calldata keySoulbindings) 
+    function createDefaultTrust(bytes32 trustName,
+        address locksmith,
+        address[] memory providers, 
+        address[] memory scribes,
+        bytes32[] memory keyAliases,
+        address[] memory keyReceivers,
+        bool[] memory soulboundCount)
             external returns (uint256, uint256) {
     
         // validate to make sure the input has the right dimensions
-
+        require(keyAliases.length == keyReceivers.length, 'KEY_ALIAS_RECEIVER_DIMENSION_MISMATCH');
+        require(keyAliases.length == soulboundCount.length, 'KEY_ALIAS_SOULBOUND_DIMENSION_MISMATCH');
+        
         // create the trust
+        //(uint256 trustId, uint256 rootKeyId) = 
+        //    ILocksmith(locksmith).createTrustAndRootKey(trustName, address(this));
 
         // create the keys
 
         // trust the ledger actors
 
         // return the trustID and the rootKeyId
+        return (0,0);
     }
 }
