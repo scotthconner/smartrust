@@ -25,7 +25,9 @@ describe("Notary", function () {
   ////////////////////////////////////////////////////////////
   describe("Contract deployment", function () {
     it("Should not fail the deployment", async function () {
-      const { notary } = await loadFixture(TrustTestFixtures.freshNotaryProxy);
+      const { notary, locksmith, root } = await loadFixture(TrustTestFixtures.freshNotaryProxy);
+
+      await expect(notary.initialize(locksmith.address)).to.be.revertedWith("Initializable: contract is already initialized");
       expect(true);
     });
   });
@@ -38,9 +40,15 @@ describe("Notary", function () {
   ////////////////////////////////////////////////////////////
   describe("Contract upgrade", function() {
     it("Should be able to upgrade", async function() {
-      const { notary } = await loadFixture(TrustTestFixtures.freshNotaryProxy);
+      const { notary, root } = await loadFixture(TrustTestFixtures.freshNotaryProxy);
       const notaryv2 = await ethers.getContractFactory("Notary")
       const notaryAgain = await upgrades.upgradeProxy(notary.address, notaryv2);
+
+      // try to upgrade if you're not the owner
+      const notaryFail = await ethers.getContractFactory("Notary", root)
+      await expect(upgrades.upgradeProxy(notary.address, notaryFail))
+        .to.be.revertedWith("Ownable: caller is not the owner");
+
       expect(true);
     });
   });

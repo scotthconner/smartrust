@@ -27,9 +27,12 @@ describe("Trustee", function () {
   ////////////////////////////////////////////////////////////
   describe("Contract deployment", function () {
     it("Should not fail the deployment", async function () {
-      const {trustee} = await loadFixture(TrustTestFixtures.fullTrusteeHarness);
+      const {trustee, locksmith, ledger, events } = await loadFixture(TrustTestFixtures.fullTrusteeHarness);
+      await expect(trustee.initialize(locksmith.address, ledger.address, events.address))
+        .to.be.revertedWith("Initializable: contract is already initialized");
       expect(true);
     });
+
   });
   
   ////////////////////////////////////////////////////////////
@@ -40,13 +43,21 @@ describe("Trustee", function () {
   ////////////////////////////////////////////////////////////
   describe("Contract upgrade", function() {
     it("Should be able to upgrade", async function() {
-      const {locksmith, log, ledger, trustee} = await loadFixture(TrustTestFixtures.fullTrusteeHarness);
+      const {locksmith, events, ledger, trustee, root} = await loadFixture(TrustTestFixtures.fullTrusteeHarness);
 
       const contract = await ethers.getContractFactory("Trustee")
       const v2 = await upgrades.upgradeProxy(trustee.address, contract, [
-        locksmith.address, ledger.address, log
+        locksmith.address, ledger.address, events.address 
       ]);
       await v2.deployed();
+
+      // try to upgrade if you're not the owner
+      const fail = await ethers.getContractFactory("Trustee", root)
+      await expect(upgrades.upgradeProxy(trustee.address, fail, [
+        locksmith.address,
+        ledger.address,
+        events.address
+      ])).to.be.revertedWith("Ownable: caller is not the owner");
 
       expect(true);
     });

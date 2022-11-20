@@ -22,7 +22,10 @@ describe("AlarmClock", function () {
   ////////////////////////////////////////////////////////////
   describe("Contract deployment", function () {
     it("Should not fail the deployment", async function () {
-      const {alarmClock} = await loadFixture(TrustTestFixtures.addedAlarmClock);
+      const {alarmClock, locksmith, events, root} = await loadFixture(TrustTestFixtures.addedAlarmClock);
+      
+      await expect(alarmClock.initialize(locksmith.address, events.address))
+        .to.be.revertedWith("Initializable: contract is already initialized");
       expect(true);
     });
   });
@@ -35,12 +38,17 @@ describe("AlarmClock", function () {
   ////////////////////////////////////////////////////////////
   describe("Contract upgrade", function() {
     it("Should be able to upgrade", async function() {
-      const {alarmClock, locksmith, events} = await loadFixture(TrustTestFixtures.addedAlarmClock);
+      const {alarmClock, locksmith, events, root} = await loadFixture(TrustTestFixtures.addedAlarmClock);
 
       const contract = await ethers.getContractFactory("AlarmClock")
       const v2 = await upgrades.upgradeProxy(alarmClock.address, contract, [
         locksmith.address, events.address]);
       await v2.deployed();
+
+      // try to upgrade if you're not the owner
+      const fail = await ethers.getContractFactory("AlarmClock", root)
+      await expect(upgrades.upgradeProxy(alarmClock.address, fail))
+        .to.be.revertedWith("Ownable: caller is not the owner");
 
       expect(true);
     });

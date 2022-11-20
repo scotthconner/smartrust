@@ -156,4 +156,28 @@ interface INotary {
      */
     function notarizeDistribution(address scribe, address provider, bytes32 arn, 
         uint256 rootKeyId, uint256[] calldata keys, uint256[] calldata amounts) external returns (uint256);
+
+    /**
+     * setTrustedLedgerRole
+     *
+     * Root key holders entrust specific actors to modify the trust's ledger.
+     *
+     * Collateral providers bring liabilities to the ledger. Scribes move
+     * collateral from providers in between keys.
+     *
+     * The root key holder establishes the trusted relationship between
+     * their trust (root key) and the actions these proxies take on the ledger
+     * on behalf of their trust's key holders.
+     *
+     * (root) -> (provider/scribe) -> (ledger) -> (notary)
+     *
+     * @param rootKeyId  the root key the caller is trying to use to enable an actor
+     * @param role       the role the actor will play (provider or scribe)
+     * @param ledger     the contract of the ledger used by the actor
+     * @param actor      the contract of the ledger actor
+     * @param trustLevel the flag to set the trusted status of this actor
+     * @param actorAlias the alias of the actor, set if the trustLevel is true
+     */
+    function setTrustedLedgerRole(uint256 rootKeyId, uint8 role, address ledger, address actor,
+        bool trustLevel, bytes32 actorAlias) external;
 }

@@ -23,7 +23,6 @@ using AssetResourceName for AssetResourceName.AssetType;
 
 // We have a full contract dependency on the locksmith, which
 // must be deployed first.
-import "../interfaces/ITrustedLedgerActor.sol";
 import "../interfaces/IKeyVault.sol";
 import "../interfaces/ILocksmith.sol";
 import "../interfaces/ILedger.sol";
@@ -47,7 +46,7 @@ import "../interfaces/ILedger.sol";
  * In the end, this contract holds the ether and abstracts out the ARN 
  * into the protocol implementation.
  */
-contract EtherVault is ITrustedLedgerActor, Initializable, OwnableUpgradeable, UUPSUpgradeable {
+contract EtherVault is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     ///////////////////////////////////////////////////////
     // Storage
     ///////////////////////////////////////////////////////
@@ -120,18 +119,6 @@ contract EtherVault is ITrustedLedgerActor, Initializable, OwnableUpgradeable, U
     // of the contract. They are for interaction with by wallets,
     // web frontends, and tests.
     ////////////////////////////////////////////////////////
-
-    /**
-     * getAlias
-     *
-     * Returns a string that describes this collateral provider by a
-     * human readable name.
-     *
-     * @return the string name alias of the provider
-     */
-    function getAlias() external pure returns (string memory) {
-        return 'Locksmith EtherVault'; 
-    }
 
     /**
      * deposit

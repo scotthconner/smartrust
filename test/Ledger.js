@@ -26,7 +26,11 @@ describe("Ledger", function () {
   ////////////////////////////////////////////////////////////
   describe("Contract deployment", function () {
     it("Should not fail the deployment", async function () {
-      const { ledger } = await loadFixture(TrustTestFixtures.freshLedgerProxy);
+      const { ledger, notary } = await loadFixture(TrustTestFixtures.freshLedgerProxy);
+
+      // try to call initialize outside of the deployment
+      await expect(ledger.initialize(notary.address)).to.be.revertedWith("Initializable: contract is already initialized");
+
       expect(true);
     });
 
@@ -45,10 +49,15 @@ describe("Ledger", function () {
   ////////////////////////////////////////////////////////////
   describe("Contract upgrade", function() {
     it("Should be able to upgrade", async function() {
-      const { notary, ledger } = await loadFixture(TrustTestFixtures.freshLedgerProxy);
+      const { notary, ledger, root } = await loadFixture(TrustTestFixtures.freshLedgerProxy);
       
       const ledgerv2 = await ethers.getContractFactory("Ledger")
       const ledgerAgain = await upgrades.upgradeProxy(ledger.address, ledgerv2);
+
+      // try to upgrade if you're not the owner
+      const ledgerv2Fail = await ethers.getContractFactory("Ledger", root)
+      await expect(upgrades.upgradeProxy(ledger.address, ledgerv2Fail))
+        .to.be.revertedWith("Ownable: caller is not the owner");
       
       const notaryv2 = await ethers.getContractFactory("Notary")
       const notaryAgain = await upgrades.upgradeProxy(notary.address, notaryv2);
@@ -65,8 +74,18 @@ describe("Ledger", function () {
       const peer = await upgrades.deployProxy(Peer, [ledger.address]);
       await peer.deployed();
 
+      // fail to upgrade the peer because its not the owner
+      const fail = await ethers.getContractFactory("Peer", root);
+      await expect(upgrades.upgradeProxy(peer.address, fail, [
+        ledger.address
+      ])).to.be.revertedWith("Ownable: caller is not the owner");
+
       // peer will revert when trying to call deposit
       await expect(peer.connect(owner).deposit()).to.be.revertedWith('UNTRUSTED_ACTOR');
+      
+      // fail initialize on the peer
+      await expect(peer.initialize(ledger.address))
+        .to.be.revertedWith("Initializable: contract is already initialized");
 
       // now set the peer properly
       await expect(await notary.connect(root).setTrustedLedgerRole(0, 0, ledger.address, peer.address, true, stb('Peer')))
@@ -88,7 +107,9 @@ describe("Ledger", function () {
         .withArgs(peer.address, 0, 0, stb('ether'), eth(1), eth(2), eth(2), eth(2));
 
       // upgrade the peer contract
-      const peerAgain = await upgrades.upgradeProxy(peer.address, Peer);
+      const peerAgain = await upgrades.upgradeProxy(peer.address, Peer, [
+        ledger.address
+      ]);
       
       // do another successful deposit
       await expect(peerAgain.connect(second).deposit())

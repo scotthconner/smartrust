@@ -22,7 +22,10 @@ describe("KeyOracle", function () {
   ////////////////////////////////////////////////////////////
   describe("Contract deployment", function () {
     it("Should not fail the deployment", async function () {
-      const {keyOracle} = await loadFixture(TrustTestFixtures.addedKeyOracle);
+      const {keyOracle, locksmith, events} = await loadFixture(TrustTestFixtures.addedKeyOracle);
+
+      await expect(keyOracle.initialize(locksmith.address, events.address))
+        .to.be.revertedWith("Initializable: contract is already initialized");
       expect(true);
     });
   });
@@ -35,12 +38,17 @@ describe("KeyOracle", function () {
   ////////////////////////////////////////////////////////////
   describe("Contract upgrade", function() {
     it("Should be able to upgrade", async function() {
-      const {keyOracle, locksmith, events} = await loadFixture(TrustTestFixtures.addedKeyOracle);
+      const {keyOracle, locksmith, events, root} = await loadFixture(TrustTestFixtures.addedKeyOracle);
 
       const contract = await ethers.getContractFactory("KeyOracle")
       const v2 = await upgrades.upgradeProxy(keyOracle.address, contract, [
         locksmith.address, events.address]);
       await v2.deployed();
+
+      // try to upgrade if you're not the owner
+      const fail = await ethers.getContractFactory("KeyOracle", root)
+      await expect(upgrades.upgradeProxy(keyOracle.address, fail))
+        .to.be.revertedWith("Ownable: caller is not the owner");
 
       expect(true);
     });

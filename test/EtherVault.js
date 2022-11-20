@@ -30,6 +30,9 @@ describe("EtherVault", function () {
         root, second, third
       } = await loadFixture(TrustTestFixtures.freshEtherVault);
 
+      await expect(vault.initialize(locksmith.address, ledger.address))
+        .to.be.revertedWith("Initializable: contract is already initialized");
+      
       expect(true);
     });
 
@@ -61,6 +64,14 @@ describe("EtherVault", function () {
         locksmith.address, 
         ledger.address
       ]);
+
+      // try to upgrade if you're not the owner
+      const fail = await ethers.getContractFactory("EtherVault", root)
+      await expect(upgrades.upgradeProxy(vault.address, fail, [
+        locksmith.address,
+        ledger.address
+      ])).to.be.revertedWith("Ownable: caller is not the owner");
+
       expect(true);
     });
   });

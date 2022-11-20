@@ -19,6 +19,8 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
 // We need the Locksmith ABI to create trusts 
 import '../interfaces/ILocksmith.sol';
+import '../interfaces/INotary.sol';
+import '../interfaces/ILedger.sol';
 ///////////////////////////////////////////////////////////
 
 /**
@@ -52,6 +54,9 @@ contract TrustCreator is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     ///////////////////////////////////////////////////////
     // Storage
     ///////////////////////////////////////////////////////
+    ILocksmith public locksmith;
+    INotary    public notary;
+    address    public ledger;
 
     ///////////////////////////////////////////////////////
     // Constructor and Upgrade Methods
@@ -70,10 +75,16 @@ contract TrustCreator is Initializable, OwnableUpgradeable, UUPSUpgradeable {
      *
      * Fundamentally replaces the constructor for an upgradeable contract.
      *
+     * @param _Locksmith the address of the assumed locksmith
+     * @param _Notary    the address of the assumed notary
+     * @param _Ledger    the address of the assumed ledger
      */
-    function initialize() initializer public {
+    function initialize(address _Locksmith, address _Notary, address _Ledger) initializer public {
         __Ownable_init();
         __UUPSUpgradeable_init();
+        locksmith = ILocksmith(_Locksmith);
+        notary    = INotary(_Notary);
+        ledger    = _Ledger;
     }
 
     /**
@@ -106,38 +117,52 @@ contract TrustCreator is Initializable, OwnableUpgradeable, UUPSUpgradeable {
      *
      * The length of keyAliases, keyReceivers, and keySoulbindings must match.
      *
-     * @param trustName      the name of the trust to create, like 'My Living Will'
-     * @param locksmith      the address of the locksmith you want to create the trust with
-     * @param providers      an array of contract addresses that you approve to act as collateral providers
-     * @param scribes        an array of contract addresses tat you approve to act as ledger scribes
-     * @param keyAliases     key names, like "Rebecca" or "Coinbase Trustee"
-     * @param keyReceivers   the wallet addresses to send each new key
-     * @param soulboundCount if each key you want to be soulbound
+     * @param trustName       the name of the trust to create, like 'My Living Will'
+     * @param providers       an array of contract addresses that you approve to act as collateral providers
+     * @param providerAliases the bytes32 encoded identifiers for the providers you want to trust
+     * @param scribes         an array of contract addresses tat you approve to act as ledger scribes
+     * @param scribeAliases   the bytes32 encoded identifiers for the scribes you want to trust
+     * @param keyAliases      key names, like "Rebecca" or "Coinbase Trustee"
+     * @param keyReceivers    the wallet addresses to send each new key
+     * @param isSoulbound     if each key you want to be soulbound
      * @return the ID of the trust that was created
      * @return the ID of the root key that was created
      */
-    function createDefaultTrust(bytes32 trustName,
-        address locksmith,
-        address[] memory providers, 
+    /*function createDefaultTrust(bytes32 trustName,
+        address[] memory providers,
+        bytes32[] memory providerAliases,
         address[] memory scribes,
+        bytes32[] memory scribeAliases,
         bytes32[] memory keyAliases,
         address[] memory keyReceivers,
-        bool[] memory soulboundCount)
+        bool[] memory isSoulbound)
             external returns (uint256, uint256) {
-    
+
         // validate to make sure the input has the right dimensions
         require(keyAliases.length == keyReceivers.length, 'KEY_ALIAS_RECEIVER_DIMENSION_MISMATCH');
-        require(keyAliases.length == soulboundCount.length, 'KEY_ALIAS_SOULBOUND_DIMENSION_MISMATCH');
+        require(keyAliases.length == isSoulbound.length, 'KEY_ALIAS_SOULBOUND_DIMENSION_MISMATCH');
+        require(providers.length == providerAliases.length, 'PROVIDER_DIMENSION_MISMATCH');
+        require(scribes.length == scribeAliases.length, 'SCRIBE_DIMENSION_MISMATCH');
         
         // create the trust
-        //(uint256 trustId, uint256 rootKeyId) = 
-        //    ILocksmith(locksmith).createTrustAndRootKey(trustName, address(this));
+        (uint256 trustId, uint256 rootKeyId) = locksmith.createTrustAndRootKey(trustName, address(this));
 
-        // create the keys
+        // create all of the keys
+        for(uint256 x = 0; x < keyAliases.length; x++) {
+            locksmith.createKey(rootKeyId, keyAliases[x], keyReceivers[x], isSoulbound[x]); 
+        }
 
         // trust the ledger actors
+        for(uint256 y = 0; y < providers.length; y++) {
+            notary.setTrustedLedgerRole(rootKeyId, 0, ledger, providers[y], true, providerAliases[y]); 
+        }
+        for(uint256 z = 0; z < scribes.length; z++) {
+            notary.setTrustedLedgerRole(rootKeyId, 0, ledger, scribes[z], true, scribeAliases[z]); 
+        }
+
+        // send the key to the message sender
 
         // return the trustID and the rootKeyId
         return (0,0);
-    }
+    }*/
 }

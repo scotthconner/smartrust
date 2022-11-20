@@ -26,7 +26,12 @@ describe("Locksmith", function () {
   ////////////////////////////////////////////////////////////
   describe("Contract deployment", function () {
     it("Should not fail the deployment", async function () {
-      const { trust } = await loadFixture(TrustTestFixtures.freshLocksmithProxy);
+      const { keyVault, locksmith } = await loadFixture(TrustTestFixtures.freshLocksmithProxy);
+
+      // try to call initialize outside of the deployment
+      await expect(keyVault.initialize()).to.be.revertedWith("Initializable: contract is already initialized");
+      await expect(locksmith.initialize(keyVault.address)).to.be.revertedWith("Initializable: contract is already initialized");
+
       expect(true);
     });
 
@@ -54,6 +59,11 @@ describe("Locksmith", function () {
       
       const lockv2 = await ethers.getContractFactory("Locksmith")
       const lockAgain = await upgrades.upgradeProxy(locksmith.address, lockv2);
+
+      // try to upgrade if you're not the owner
+      const locksmithFail = await ethers.getContractFactory("Locksmith", root)
+      await expect(upgrades.upgradeProxy(locksmith.address, locksmithFail))
+        .to.be.revertedWith("Ownable: caller is not the owner");
 
       const vaultv2 = await ethers.getContractFactory("KeyVault")
       const vaultAgain = await upgrades.upgradeProxy(keyVault.address, vaultv2);

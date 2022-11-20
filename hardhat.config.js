@@ -8,11 +8,13 @@ require('./tasks/genie.js');
 
 /** @type import('hardhat/config').HardhatUserConfig */
 module.exports = {
-  solidity: "0.8.16",
-  settings: {
-    optimizer: {
-      enabled: true,
-      runs: 1000,
+  solidity: {
+    version: "0.8.16",
+    settings: {
+      optimizer: {
+        enabled: true,
+        runs: 1000,
+      }
     }
   }, 
   gasReporter: {

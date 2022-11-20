@@ -25,6 +25,7 @@ describe("TrustEventLog", function () {
   describe("Contract deployment", function () {
     it("Should not fail the deployment", async function () {
       const {events} = await loadFixture(TrustTestFixtures.freshTrustEventLog);
+      await expect(events.initialize()).to.be.revertedWith("Initializable: contract is already initialized");
       expect(true);
     });
   });
@@ -37,11 +38,16 @@ describe("TrustEventLog", function () {
   ////////////////////////////////////////////////////////////
   describe("Contract upgrade", function() {
     it("Should be able to upgrade", async function() {
-      const {events} = await loadFixture(TrustTestFixtures.freshTrustEventLog);
+      const {events, root } = await loadFixture(TrustTestFixtures.freshTrustEventLog);
 
       const contract = await ethers.getContractFactory("TrustEventLog")
       const v2 = await upgrades.upgradeProxy(events.address, contract, []);
       await v2.deployed();
+
+      // try to upgrade if you're not the owner
+      const contractFail = await ethers.getContractFactory("TrustEventLog", root)
+      await expect(upgrades.upgradeProxy(events.address, contractFail))
+        .to.be.revertedWith("Ownable: caller is not the owner");
 
       expect(true);
     });

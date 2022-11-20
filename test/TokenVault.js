@@ -29,6 +29,9 @@ describe("TokenVault", function () {
       
       expect(await tokenVault.locksmith()).to.equal(locksmith.address);
       expect(await tokenVault.ledger()).to.equal(ledger.address);
+
+      await expect(tokenVault.initialize(locksmith.address, ledger.address))
+        .to.be.revertedWith("Initializable: contract is already initialized");
     });
 
     it("Should have no coin balance", async function () {
@@ -45,12 +48,20 @@ describe("TokenVault", function () {
   ////////////////////////////////////////////////////////////
   describe("Contract upgrade", function() {
     it("Should be able to upgrade", async function() {
-      const { locksmith, ledger, tokenVault, coin} = await loadFixture(TrustTestFixtures.freshTokenVault);
+      const { root, locksmith, ledger, tokenVault, coin} = await loadFixture(TrustTestFixtures.freshTokenVault);
 
       const erc20v2 = await ethers.getContractFactory("TokenVault")
       const ercAgain = await upgrades.upgradeProxy(tokenVault.address, erc20v2, [
         locksmith.address, ledger.address
       ]);
+
+      // try to upgrade if you're not the owner
+      const fail = await ethers.getContractFactory("TokenVault", root)
+      await expect(upgrades.upgradeProxy(tokenVault.address, fail, [
+        locksmith.address,
+        ledger.address
+      ])).to.be.revertedWith("Ownable: caller is not the owner");
+
       expect(true);
     });
   });
