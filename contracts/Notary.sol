@@ -54,23 +54,6 @@ contract Notary is INotary, Initializable, OwnableUpgradeable, UUPSUpgradeable {
     ////////////////////////////////////////////////////////
 
     /**
-     * trustedRoleChange 
-     *
-     * This event fires when a root key holder modifies
-     * the trust level of a collateral provider.
-     *
-     * @param keyHolder  address of the keyHolder
-     * @param trustId    the trust ID for the keyHolder
-     * @param rootKeyId  the key ID used as root for the trust
-     * @param ledger     address of the ledger 
-     * @param actor      address of the contract trusted for providing collateral
-     * @param trustLevel the collateral provider flag, true or false
-     * @param role       the role they will play
-     */
-    event trustedRoleChange(address keyHolder, uint256 trustId, uint256 rootKeyId,
-        address ledger, address actor, bool trustLevel, uint role); 
-
-    /**
      * withdrawalAllowanceAssigned 
      *
      * This event fires when a hey holder approves a collateral provider

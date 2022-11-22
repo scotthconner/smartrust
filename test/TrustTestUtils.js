@@ -415,6 +415,32 @@ TrustTestFixtures = (function() {
         owner, root, second, third};
     },
     //////////////////////////////////////////////////////////
+    // Added creator 
+    //
+    // Adds a contract that feeds an orchestration of 
+    // a default trust.
+    //////////////////////////////////////////////////////////
+    addedCreator: async function() {
+      const {keyVault, locksmith,
+        notary, ledger, vault, tokenVault, coin,
+        events, trustee, keyOracle, alarmClock,
+        owner, root, second, third} = 
+        await TrustTestFixtures.addedAlarmClock();
+
+      // deploy the creator 
+      const Creator = await ethers.getContractFactory("TrustCreator");
+      const creator= await upgrades.deployProxy(Creator, [
+        keyVault.address, locksmith.address, notary.address,
+        ledger.address, vault.address, tokenVault.address, trustee.address
+      ]);
+      await creator.deployed();
+      
+      return {keyVault, locksmith,
+        notary, ledger, vault, tokenVault, coin,
+        events, trustee, keyOracle, alarmClock, creator,
+        owner, root, second, third};
+    },
+    //////////////////////////////////////////////////////////
     // Deployed Hardhat Testing
     //
     // This is a fixture we use to help test the frontend
@@ -423,9 +449,9 @@ TrustTestFixtures = (function() {
     deployedHardhat: async function() {
       const {keyVault, locksmith,
         notary, ledger, vault, tokenVault, coin,
-        events, trustee, keyOracle, alarmClock,
+        events, trustee, keyOracle, alarmClock, creator,
         owner, root, second, third} = 
-        await TrustTestFixtures.addedAlarmClock();
+        await TrustTestFixtures.addedCreator();
 
       // give out some keys
       await locksmith.connect(root).createKey(0, stb('Testing Four'), root.address, false);
