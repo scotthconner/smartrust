@@ -133,8 +133,8 @@ contract TrustCreator is ERC1155Holder, Initializable, OwnableUpgradeable, UUPSU
      * The length of keyAliases, keyReceivers, and keySoulbindings must match.
      *
      * @param trustName       the name of the trust to create, like 'My Living Will'
-     * @param keyAliases      key names, like "Rebecca" or "Coinbase Trustee"
      * @param keyReceivers    the wallet addresses to send each new key
+     * @param keyAliases      key names, like "Rebecca" or "Coinbase Trustee"
      * @param isSoulbound     if each key you want to be soulbound
      * @return the ID of the trust that was created
      * @return the ID of the root key that was created
@@ -152,13 +152,15 @@ contract TrustCreator is ERC1155Holder, Initializable, OwnableUpgradeable, UUPSU
         // create the trust
         (uint256 trustId, uint256 rootKeyId) = locksmith.createTrustAndRootKey(trustName, address(this));
 
+        // make sure we have the trust key
+        assert(IERC1155(keyContract).balanceOf(address(this), rootKeyId) > 0);
+
         // create all of the keys
         for(uint256 x = 0; x < keyAliases.length; x++) {
             locksmith.createKey(rootKeyId, keyAliases[x], keyReceivers[x], isSoulbound[x]); 
         }
 
         // trust the ledger actors
-        // "Ether Vault"
         notary.setTrustedLedgerRole(rootKeyId, 0, ledger, etherVault, true, stringToBytes32('Ether Vault')); 
         notary.setTrustedLedgerRole(rootKeyId, 0, ledger, tokenVault, true, stringToBytes32('Token Vault'));
         notary.setTrustedLedgerRole(rootKeyId, 1, ledger, trustee, true, stringToBytes32('Trustee Program'));
@@ -171,7 +173,7 @@ contract TrustCreator is ERC1155Holder, Initializable, OwnableUpgradeable, UUPSU
     }
 
     ///////////////////////////////////////////////////////
-    // Storage
+    // Internal methods 
     ///////////////////////////////////////////////////////
     
     /**
@@ -179,8 +181,8 @@ contract TrustCreator is ERC1155Holder, Initializable, OwnableUpgradeable, UUPSU
      *
      * Normally, the user is providing a string on the client side
      * and this is done with javascript. The easiest way to solve
-     * this with creating more APIs on the contract is to give
-     * credit to this guy on stack overflow.
+     * this without creating more APIs on the contract and requiring
+     * more gas is to give credit to this guy on stack overflow.
      *
      * https://ethereum.stackexchange.com/questions/9142/how-to-convert-a-string-to-bytes32
      * 
@@ -188,10 +190,12 @@ contract TrustCreator is ERC1155Holder, Initializable, OwnableUpgradeable, UUPSU
      * @return result the equivalent result of the same using ethers.js
      */
     function stringToBytes32(string memory source) internal pure returns (bytes32 result) {
-        bytes memory tempEmptyStringTest = bytes(source);
-        if (tempEmptyStringTest.length == 0) {
-            return 0x0;
-        }
+        // Note: I'm not using this portion because there isn't
+        // a use case where this will be empty.
+        // bytes memory tempEmptyStringTest = bytes(source);
+        //if (tempEmptyStringTest.length == 0) {
+        //    return 0x0;
+        // }
 
         assembly {
             result := mload(add(source, 32))

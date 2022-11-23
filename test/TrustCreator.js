@@ -88,18 +88,19 @@ describe("TrustCreator", function () {
 
       // make sure we don't hold the key
       expect(await keyVault.balanceOf(root.address, 4)).eql(bn(0));
-      
+     
       await expect(await creator.connect(root).spawnTrust(stb('Easy Trust'), [], [],[]))
           .to.emit(locksmith, 'trustCreated')
           .withArgs(creator.address, 1, stb('Easy Trust'), creator.address)
           .to.emit(locksmith, 'keyMinted')
           .withArgs(creator.address, 1, 4, stb('root'), creator.address)
           .to.emit(notary, 'trustedRoleChange')
+          .withArgs(creator.address, 1, 4, ledger.address, trustee.address, true, 1)
+          .to.emit(notary, 'trustedRoleChange')
+          .withArgs(creator.address, 1, 4, ledger.address, tokenVault.address, true, 0)
+          .to.emit(notary, 'trustedRoleChange')
           .withArgs(creator.address, 1, 4, ledger.address, vault.address, true, 0)
-          .to.emit(notary, 'trustedRoleChange')
-          .withArgs(creator.address, 1, 4, ledger.address, keyVault.address, true, 0)
-          .to.emit(notary, 'trustedRoleChange')
-          .withArgs(creator.address, 1, 4, ledger.address, trustee.address, true, 1);
+          .to.emit(notary, 'trustedRoleChange');
 
       // make sure the contract doesn't have one still
       // Note: this is obviously where the caller has to trust this contract.
@@ -114,7 +115,7 @@ describe("TrustCreator", function () {
       // inspect the sanity of the trust created
       expect(await locksmith.trustRegistry(1)).to.eql([
         bn(1), stb('Easy Trust'), bn(4), bn(1)
-      ])
+      ]);
 
       // ensure that the notary sees the default actors
       expect(await notary.getTrustedActors(ledger.address, 1, 0))
@@ -129,6 +130,67 @@ describe("TrustCreator", function () {
         .eql(stb('Token Vault'));
       expect(await notary.actorAliases(ledger.address, 1, 1, trustee.address))
         .eql(stb('Trustee Program'));
+    });
+
+    it("Successfully creates a trust with multiple keys", async function() {
+      const {keyVault, locksmith, notary, creator,
+        ledger, vault, tokenVault, trustee, owner, root, second, third } =
+        await loadFixture(TrustTestFixtures.addedCreator);
+
+      // make sure we don't hold the key
+      expect(await keyVault.balanceOf(root.address, 4)).eql(bn(0));
+
+      await expect(await creator.connect(root).spawnTrust(stb('Multi-Trust'), 
+          [owner.address, second.address, third.address],
+          [stb('Larry'), stb('Curly'), stb('Moe')], 
+          [true, true, false]))
+          .to.emit(locksmith, 'trustCreated')
+          .withArgs(creator.address, 1, stb('Multi-Trust'), creator.address)
+          .to.emit(locksmith, 'keyMinted')
+          .withArgs(creator.address, 1, 4, stb('root'), creator.address)
+          .to.emit(locksmith, 'keyMinted')
+          .withArgs(creator.address, 1, 5, stb('Larry'), owner.address)
+          .to.emit(locksmith, 'keyMinted')
+          .withArgs(creator.address, 1, 6, stb('Curly'), second.address)
+          .to.emit(locksmith, 'keyMinted')
+          .withArgs(creator.address, 1, 7, stb('Moe'), third.address)
+          .to.emit(notary, 'trustedRoleChange')
+          .withArgs(creator.address, 1, 4, ledger.address, trustee.address, true, 1)
+          .to.emit(notary, 'trustedRoleChange')
+          .withArgs(creator.address, 1, 4, ledger.address, tokenVault.address, true, 0)
+          .to.emit(notary, 'trustedRoleChange')
+          .withArgs(creator.address, 1, 4, ledger.address, vault.address, true, 0)
+          .to.emit(notary, 'trustedRoleChange');
+
+      // make sure the contract doesn't have one still
+      // Note: this is obviously where the caller has to trust this contract.
+      // You would also want to check key inventory afterwards
+      expect(await keyVault.balanceOf(creator.address, 4)).eql(bn(0));
+      expect(await keyVault.balanceOf(creator.address, 5)).eql(bn(0));
+      expect(await keyVault.balanceOf(creator.address, 6)).eql(bn(0));
+      expect(await keyVault.balanceOf(creator.address, 7)).eql(bn(0));
+
+      // assert that the key recivers actually hold their keys 
+      expect(await keyVault.balanceOf(root.address, 4)).eql(bn(1));
+      expect(await keyVault.balanceOf(owner.address, 5)).eql(bn(1));
+      expect(await keyVault.balanceOf(second.address, 6)).eql(bn(1));
+      expect(await keyVault.balanceOf(third.address, 7)).eql(bn(1));
+
+      // check the soulboundness of the keys
+      expect(await keyVault.keyBalanceOf(owner.address, 5, true)).eql(bn(1));
+      expect(await keyVault.keyBalanceOf(second.address, 6, true)).eql(bn(1));
+      expect(await keyVault.keyBalanceOf(third.address, 7, false)).eql(bn(1));
+
+      // inspect the sanity of the trust created
+      expect(await locksmith.trustRegistry(1)).to.eql([
+        bn(1), stb('Multi-Trust'), bn(4), bn(4)
+      ]);
+
+      // ensure that the notary sees the default actors
+      expect(await notary.getTrustedActors(ledger.address, 1, 0))
+        .eql([vault.address, tokenVault.address]);
+      expect(await notary.getTrustedActors(ledger.address, 1, 1))
+        .eql([trustee.address]);
     });
   });
 });
