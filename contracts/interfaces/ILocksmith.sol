@@ -121,8 +121,9 @@ interface ILocksmith {
      * @param keyName   an alias that you want to give the key
      * @param receiver  address you want to receive an NFT key for the trust.
      * @param bind      true if you want to bind the key to the receiver
+     * @return the ID of the key that was created
      */
-    function createKey(uint256 rootKeyId, bytes32 keyName, address receiver, bool bind) external; 
+    function createKey(uint256 rootKeyId, bytes32 keyName, address receiver, bool bind) external returns (uint256); 
 
     /**
      * copyKey

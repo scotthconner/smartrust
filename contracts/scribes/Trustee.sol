@@ -25,6 +25,9 @@ import '../interfaces/ILocksmith.sol';
 // at deployment time to a specific ledger.
 import '../interfaces/ILedger.sol';
 
+// We will be implementing this interface to act as a trustee
+import '../interfaces/ITrustee.sol';
+
 // The trustee contract can enable scribe roles based on events inside
 // of the trust event log. Events are logged by dispatchers.
 import '../interfaces/ITrustEventLog.sol';
@@ -52,41 +55,7 @@ using EnumerableSet for EnumerableSet.UintSet;
  * of triggering events from a dispatcher.
  *
  */
-contract Trustee is Initializable, OwnableUpgradeable, UUPSUpgradeable {
-    ////////////////////////////////////////////////////////
-    // Events
-    //
-    // This is going to help indexers and web applications
-    // watch and respond to blocks that contain trust transactions.
-    ////////////////////////////////////////////////////////
-
-    /**
-     * trusteePolicySet
-     *
-     * This event is fired when a root key holder configures
-     * a trustee.
-     *
-     * @param actor         the address of the root key holder
-     * @param rootKeyId     the root key to use to set up the trustee role
-     * @param trusteeKeyId  the key Id to anoint as trustee
-     * @param beneficiaries the keys the trustee can move funds to
-     * @param events        the list of events that must occur before activating the role
-     */
-    event trusteePolicySet(address actor, uint256 rootKeyId, uint256 trusteeKeyId,
-        uint256[] beneficiaries, bytes32[] events);
-
-    /**
-     * trusteePolicyRemoved
-     *
-     * This event is fired when a root key holder removes
-     * a trustee configuration from the scribe contract.
-     *
-     * @param actor        the message sender
-     * @param rootKeyId    the root key used as authority to remove
-     * @param trusteeKeyId the key to remove as trustee
-     */
-    event trusteePolicyRemoved(address actor, uint256 rootKeyId, uint256 trusteeKeyId);
-
+contract Trustee is ITrustee, Initializable, OwnableUpgradeable, UUPSUpgradeable {
     ///////////////////////////////////////////////////////
     // Storage
     ///////////////////////////////////////////////////////

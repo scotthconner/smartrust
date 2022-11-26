@@ -24,6 +24,7 @@ import '../interfaces/ITrustEventLog.sol';
 // on the root's key ring will be able to snooze the alarm.
 import '../interfaces/IKeyVault.sol';
 import '../interfaces/ILocksmith.sol';
+import '../interfaces/IAlarmClock.sol';
 
 // Because hashmaps aren't iterable 
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
@@ -57,63 +58,7 @@ using EnumerableSet for EnumerableSet.Bytes32Set;
  * a keyholder to get access to the trust's assets once the trust originator
  * has expired to the ethereal realm.
  */
-contract AlarmClock is Initializable, OwnableUpgradeable, UUPSUpgradeable {
-    ////////////////////////////////////////////////////////
-    // Events
-    //
-    // This is going to help indexers and web applications
-    // watch and respond to blocks that contain trust transactions.
-    ////////////////////////////////////////////////////////
-
-    /**
-     * alarmClockRegistered 
-     *
-     * This event is emitted when a dispatcher registers
-     * itself as the origin for a future alarm event.
-     *
-     * @param operator         the message sender that initiated the alarm creation.
-     * @param trustId          the trust the event is associated with
-     * @param rootKeyId        the verified root key that was used to generate the alarm 
-     * @param alarmTime        the time the alarm can be successfully challenged
-     * @param snoozeInterval   the time added to the alarm time for each snooze
-     * @param snoozeKeyId      the key that was anointed as the alarm snoozer
-     *                         NOTE: If snooze interval is 0, keyId is invalid
-     * @param eventHash        the event hash the dispatcher has logged.
-     */
-    event alarmClockRegistered(address operator, uint256 trustId, uint256 rootKeyId, 
-        uint256 alarmTime, uint256 snoozeInterval, uint256 snoozeKeyId, bytes32 eventHash);
-
-    /**
-     * alarmClockChallenged
-     *
-     * This event is emitted when a key-less challenger successfully
-     * challenges the alarm clock against it's alarm time. Unsuccessful
-     * challenges do not emit an event as they result in a transaction
-     * reversion.
-     *
-     * @param operator    the message sender that initiated the challenge.
-     *                    Note: is not required to be a key-holder.
-     * @param eventHash   the hash of the event that was registered for the given alarm.
-     * @param alarmTime   the alarm time for the event hash at the time of challenge.
-     * @param currentTime the current timestamp of the block processing the challenge transaction. 
-     */
-    event alarmClockChallenged(address operator, bytes32 eventHash, uint256 alarmTime,
-        uint256 currentTime);
-    
-    /**
-     * alarmClockSnoozed
-     *
-     * This event is emitted when the snooze key holder properly snoozes the
-     * alarm. An alarm can be snoozed even *past* the alarm time as long as
-     * the alarm has not yet been challenged.
-     *
-     * @param operator     the message sender that initiated the snooze
-     * @param eventHash    the hash of the event that was snoozed
-     * @param snoozeKeyId  the key ID used for snoozing
-     * @param newAlarmTime the resulting new alarm time that was established
-     */
-    event alarmClockSnoozed(address operator, bytes32 eventHash, uint256 snoozeKeyId, uint256 newAlarmTime);
-
+contract AlarmClock is IAlarmClock, Initializable, OwnableUpgradeable, UUPSUpgradeable {
     ///////////////////////////////////////////////////////
     // Storage
     ///////////////////////////////////////////////////////
@@ -204,9 +149,10 @@ contract AlarmClock is Initializable, OwnableUpgradeable, UUPSUpgradeable {
      * @param alarmTime      the timestamp of when the alarm clock should go off
      * @param snoozeInterval the internval to increment the alarm time by when snoozed.
      * @param snoozeKeyId    the key ID from the trust to use to snooze the alarm
+     * @return the event hash created for the alarm
      */
     function createAlarm(uint256 rootKeyId, bytes32 description, uint256 alarmTime, 
-        uint256 snoozeInterval, uint256 snoozeKeyId) external {
+        uint256 snoozeInterval, uint256 snoozeKeyId) external returns (bytes32) {
         
         // ensure the caller is holding the rootKey
         require(IKeyVault(locksmith.getKeyVault()).keyBalanceOf(msg.sender, rootKeyId, false) > 0, 'KEY_NOT_HELD');
@@ -243,6 +189,8 @@ contract AlarmClock is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         // emit the oracle creation event
         emit alarmClockRegistered(msg.sender, rootTrustId, rootKeyId, 
             alarmTime, snoozeInterval, snoozeKeyId, eventHash);
+
+        return eventHash;
     }
 
     /**

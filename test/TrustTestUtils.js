@@ -431,7 +431,8 @@ TrustTestFixtures = (function() {
       const Creator = await ethers.getContractFactory("TrustCreator");
       const creator= await upgrades.deployProxy(Creator, [
         keyVault.address, locksmith.address, notary.address,
-        ledger.address, vault.address, tokenVault.address, trustee.address
+        ledger.address, vault.address, tokenVault.address, trustee.address,
+        alarmClock.address
       ]);
       await creator.deployed();
       

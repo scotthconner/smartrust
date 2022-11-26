@@ -27,6 +27,8 @@ import '../interfaces/IKeyVault.sol';
 import '../interfaces/ILocksmith.sol';
 import '../interfaces/INotary.sol';
 import '../interfaces/ILedger.sol';
+import '../interfaces/IAlarmClock.sol';
+import '../interfaces/ITrustee.sol';
 ///////////////////////////////////////////////////////////
 
 /**
@@ -60,16 +62,18 @@ contract TrustCreator is ERC1155Holder, Initializable, OwnableUpgradeable, UUPSU
     ///////////////////////////////////////////////////////
     // Storage
     ///////////////////////////////////////////////////////
-    ILocksmith public locksmith;
-    INotary    public notary;
-    address    public ledger;
+    ILocksmith  public locksmith;
+    INotary     public notary;
+    IAlarmClock public alarmClock;
+    address     public trustee;
 
     // permission registry: add these to the notary
     // upon trust creation using the new ROOT key.
-    address public keyContract;
     address public etherVault;
     address public tokenVault;
-    address public trustee;
+    
+    address public keyVault;
+    address public ledger;
 
     ///////////////////////////////////////////////////////
     // Constructor and Upgrade Methods
@@ -93,16 +97,17 @@ contract TrustCreator is ERC1155Holder, Initializable, OwnableUpgradeable, UUPSU
      * @param _Ledger    the address of the assumed ledger
      */
     function initialize(address _IKeyVault, address _Locksmith, address _Notary, address _Ledger, 
-        address _EtherVault, address _TokenVault, address _Trustee) initializer public {
+        address _EtherVault, address _TokenVault, address _Trustee, address _AlarmClock) initializer public {
         __Ownable_init();
         __UUPSUpgradeable_init();
-        keyContract = _IKeyVault;
+        keyVault = _IKeyVault;
         locksmith = ILocksmith(_Locksmith);
         notary    = INotary(_Notary);
+        trustee = _Trustee;
+        alarmClock = IAlarmClock(_AlarmClock);
         ledger    = _Ledger;
         etherVault = _EtherVault;
         tokenVault = _TokenVault;
-        trustee = _Trustee;
     }
 
     /**
@@ -145,28 +150,67 @@ contract TrustCreator is ERC1155Holder, Initializable, OwnableUpgradeable, UUPSU
         bool[] memory isSoulbound)
             external returns (uint256, uint256) {
 
-        // validate to make sure the input has the right dimensions
-        require(keyAliases.length == keyReceivers.length, 'KEY_ALIAS_RECEIVER_DIMENSION_MISMATCH');
-        require(keyAliases.length == isSoulbound.length, 'KEY_ALIAS_SOULBOUND_DIMENSION_MISMATCH');
-        
-        // create the trust
-        (uint256 trustId, uint256 rootKeyId) = locksmith.createTrustAndRootKey(trustName, address(this));
-
-        // make sure we have the trust key
-        assert(IERC1155(keyContract).balanceOf(address(this), rootKeyId) > 0);
-
-        // create all of the keys
-        for(uint256 x = 0; x < keyAliases.length; x++) {
-            locksmith.createKey(rootKeyId, keyAliases[x], keyReceivers[x], isSoulbound[x]); 
-        }
-
-        // trust the ledger actors
-        notary.setTrustedLedgerRole(rootKeyId, 0, ledger, etherVault, true, stringToBytes32('Ether Vault')); 
-        notary.setTrustedLedgerRole(rootKeyId, 0, ledger, tokenVault, true, stringToBytes32('Token Vault'));
-        notary.setTrustedLedgerRole(rootKeyId, 1, ledger, trustee, true, stringToBytes32('Trustee Program'));
+        // use the internal method to create the trust
+        (uint256 trustId, uint256 rootKeyId,) = createDefaultTrust(trustName,
+            keyReceivers, keyAliases, isSoulbound);
 
         // send the key to the message sender
-        IERC1155(keyContract).safeTransferFrom(address(this), msg.sender, rootKeyId, 1, '');
+        IERC1155(keyVault).safeTransferFrom(address(this), msg.sender, rootKeyId, 1, '');
+
+        // return the trustID and the rootKeyId
+        return (trustId, rootKeyId);
+    }
+
+    /**
+     * createDeadSimpleTrust
+     *
+     * This will create a default trust, but also take some additional
+     * parameters for setting up a trustee attached to a deadman's switch
+     *
+     * There must be at least two key receivers (one trustee, one beneficiaries).
+     *
+     * The deadman's switch will be tied to the root key.
+     *
+     * @param trustName        the name of the trust to create, like 'My Living Will'
+     * @param keyReceivers     the wallet addresses to send each new key
+     * @param keyAliases       key names, like "Rebecca" or "Coinbase Trustee"
+     * @param isSoulbound      if each key you want to be soulbound
+     * @param alarmClockTime   the unix timestamp (compatible with solidity's block.timestamp)
+     *                         of when the deadman switch will trip unless snoozed.
+     * @param snoozeInterval   the number of seconds that are allowed in between each snooze.
+     * @return the trust ID of the created trust
+     * @return the root Key ID of the created trust
+     */
+    function createDeadSimpleTrust(bytes32 trustName, 
+        address[] memory keyReceivers, bytes32[] memory keyAliases, bool[] memory isSoulbound,
+        uint256 alarmClockTime, uint256 snoozeInterval) 
+        external 
+        returns (uint256, uint256) {
+
+        // make sure we have enough key receivers to complete the set-up
+        require(keyReceivers.length >= 2 && keyAliases.length >= 2 && isSoulbound.length >= 2,
+            'INSUFFICIENT_RECEIVERS');
+
+        // use the internal method to create the trust
+        (uint256 trustId, uint256 rootKeyId, uint256[] memory keys) = createDefaultTrust(trustName,
+            keyReceivers, keyAliases, isSoulbound);
+
+        // build the alarm clock
+        bytes32[] memory events = new bytes32[](1);
+        events[0] = alarmClock.createAlarm(rootKeyId, stringToBytes32('Deadman\'s Switch'), alarmClockTime,
+            snoozeInterval, rootKeyId); 
+
+        // rebuild the array because we're hitting stack limits on input parameters
+        uint256[] memory beneficiaries = new uint256[](keys.length-1);
+        for(uint256 x = 1; x < keys.length; x++) {
+            beneficiaries[x-1] = keys[x];
+        }
+
+        // assign the trustee, with the first one assumed as the trustee key
+        ITrustee(trustee).setPolicy(rootKeyId, keys[0], beneficiaries, events); 
+
+        // send the root key key to the message sender
+        IERC1155(keyVault).safeTransferFrom(address(this), msg.sender, rootKeyId, 1, '');
 
         // return the trustID and the rootKeyId
         return (trustId, rootKeyId);
@@ -175,6 +219,56 @@ contract TrustCreator is ERC1155Holder, Initializable, OwnableUpgradeable, UUPSU
     ///////////////////////////////////////////////////////
     // Internal methods 
     ///////////////////////////////////////////////////////
+    
+    /**
+     * createDefaultTrust 
+     *
+     * This is an internal method that creates a default trust. When this
+     * method returns, the contract is still holding the root key for
+     * the created trust. This enables us to do more set-up before
+     * passing it back to the caller.
+     *
+     * The length of keyAliases, keyReceivers, and keySoulbindings must match.
+     *
+     * @param trustName       the name of the trust to create, like 'My Living Will'
+     * @param keyReceivers    the wallet addresses to send each new key
+     * @param keyAliases      key names, like "Rebecca" or "Coinbase Trustee"
+     * @param isSoulbound     if each key you want to be soulbound
+     * @return the ID of the trust that was created
+     * @return the ID of the root key that was created
+     * @return the in-order IDs of the keys that were created
+     */
+    function createDefaultTrust(bytes32 trustName,
+        address[] memory keyReceivers,
+        bytes32[] memory keyAliases,
+        bool[] memory isSoulbound)
+            internal returns (uint256, uint256, uint256[] memory) {
+
+        // validate to make sure the input has the right dimensions
+        require(keyAliases.length == keyReceivers.length, 'KEY_ALIAS_RECEIVER_DIMENSION_MISMATCH');
+        require(keyAliases.length == isSoulbound.length, 'KEY_ALIAS_SOULBOUND_DIMENSION_MISMATCH');
+        
+        // create the trust
+        (uint256 trustId, uint256 rootKeyId) = locksmith.createTrustAndRootKey(trustName, address(this));
+
+        // make sure we have the trust key
+        assert(IERC1155(keyVault).balanceOf(address(this), rootKeyId) > 0);
+
+        uint256[] memory keyIDs = new uint256[](keyReceivers.length);
+
+        // create all of the keys
+        for(uint256 x = 0; x < keyReceivers.length; x++) {
+            keyIDs[x] = locksmith.createKey(rootKeyId, keyAliases[x], keyReceivers[x], isSoulbound[x]); 
+        }
+
+        // trust the ledger actors
+        notary.setTrustedLedgerRole(rootKeyId, 0, ledger, etherVault, true, stringToBytes32('Ether Vault')); 
+        notary.setTrustedLedgerRole(rootKeyId, 0, ledger, tokenVault, true, stringToBytes32('Token Vault'));
+        notary.setTrustedLedgerRole(rootKeyId, 1, ledger, trustee, true, stringToBytes32('Trustee Program'));
+
+        // return the trustID and the rootKeyId
+        return (trustId, rootKeyId, keyIDs);
+    }
     
     /**
      * stringToBytes32

@@ -217,8 +217,9 @@ contract Locksmith is ILocksmith, Initializable, OwnableUpgradeable, UUPSUpgrade
      * @param keyName   an alias that you want to give the key
      * @param receiver  address you want to receive an NFT key for the trust.
      * @param bind      true if you want to bind the key to the receiver
+     * @return the ID of the key that was created
      */
-    function createKey(uint256 rootKeyId, bytes32 keyName, address receiver, bool bind) external {
+    function createKey(uint256 rootKeyId, bytes32 keyName, address receiver, bool bind) external returns (uint256) {
         // increment the number of unique keys in the system
         // its important to do it this way to prevent re-entrancy
         uint256 newKeyId = keyCount++;
@@ -236,7 +237,9 @@ contract Locksmith is ILocksmith, Initializable, OwnableUpgradeable, UUPSUpgrade
 
         // mint the key into the target wallet.
         // THIS IS RE-ENTRANT!!!!
-        mintKey(t, newKeyId, receiver, bind); 
+        mintKey(t, newKeyId, receiver, bind);
+
+        return newKeyId;
     }
 
     /**
