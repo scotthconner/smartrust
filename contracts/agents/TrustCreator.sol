@@ -96,11 +96,11 @@ contract TrustCreator is ERC1155Holder, Initializable, OwnableUpgradeable, UUPSU
      * @param _Notary    the address of the assumed notary
      * @param _Ledger    the address of the assumed ledger
      */
-    function initialize(address _IKeyVault, address _Locksmith, address _Notary, address _Ledger, 
+    function initialize(address _KeyVault, address _Locksmith, address _Notary, address _Ledger, 
         address _EtherVault, address _TokenVault, address _Trustee, address _AlarmClock) initializer public {
         __Ownable_init();
         __UUPSUpgradeable_init();
-        keyVault = _IKeyVault;
+        keyVault = _KeyVault;
         locksmith = ILocksmith(_Locksmith);
         notary    = INotary(_Notary);
         trustee = _Trustee;

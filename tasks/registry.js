@@ -11,7 +11,8 @@ LocksmithRegistry = (function() {
     'TrustEventLog',
     'KeyOracle',
     'AlarmClock',
-    'Trustee'
+    'Trustee',
+    'TrustCreator',
   ];
 
   /////////////////////////////////////////////

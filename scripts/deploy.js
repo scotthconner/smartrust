@@ -13,7 +13,7 @@ const fs = require('fs');
 
 async function main() {
   const {keyVault, locksmith,
-    notary, ledger, vault, tokenVault, 
+    notary, ledger, vault, tokenVault, creator, 
     coin, matic, avax, grt, usdc, dai,
     events, trustee, keyOracle, alarmClock,
     owner, root, second, third } = 
@@ -37,6 +37,7 @@ async function main() {
     trustee:    trustee.address,
     keyOracle:  keyOracle.address,
     alarmClock: alarmClock.address,
+    creator: creator.address,
   };
 
   let data = JSON.stringify(contracts, null, 2);
@@ -60,11 +61,12 @@ async function main() {
   console.log("events: " + events.address);        
   console.log("keyOracle: " + keyOracle.address);        
   console.log("alarmClock: " + alarmClock.address);        
-  console.log("trustee: " + trustee.address);        
+  console.log("trustee: " + trustee.address);
+  console.log("creator: " + creator.address);
   console.log("owner: " + owner.address);        
   console.log("root: " + root.address);        
   console.log("second: " + second.address);        
-  console.log("third: " + third.address);        
+  console.log("third: " + third.address); 
 }
 
 // We recommend this pattern to be able to use async/await everywhere
