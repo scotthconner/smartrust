@@ -199,9 +199,23 @@ task("deploy", "Deploy a specific contract generating a new address for it.")
     // this assumes that the signer has been loaded, either through
     // hardhat local defaults, or using alchemy and testnet or production
     // credentials via dotenv (.env) and hardhat.config.js
-    const [owner] = await ethers.getSigners();
+    var [owner] = await ethers.getSigners();
     const chainId = await owner.getChainId();
     const balance = await owner.provider.getBalance(owner.address);
+
+    const FEE_DATA = {
+      maxFeePerGas:         ethers.utils.parseUnits('10', 'gwei'),
+      maxPriorityFeePerGas: ethers.utils.parseUnits('10', 'gwei'),
+      gasLimit:             ethers.utils.parseUnits('100000000', 'gwei'),
+    };
+
+    if (chainId.toString() === '31415') {
+      // Wrap the provider so we can override fee data.
+      const provider = new ethers.providers.FallbackProvider([ethers.provider], 1);
+      provider.getFeeData = async () => FEE_DATA;
+      // override the signer, connected to the provider with hardcoded fee data
+      owner = new ethers.Wallet(process.env.MY_PRIVATE_KEY, provider);
+    }
 
     // do a sanity check.
     if (taskArgs.force && taskArgs.upgrade) {
@@ -216,7 +230,9 @@ task("deploy", "Deploy a specific contract generating a new address for it.")
     console.log(" Signer Wallet Address: " + owner.address);
     console.log(" Signer Balance: " + ethers.utils.formatEther(balance));
 
-    const contract = await ethers.getContractFactory(taskArgs['contract']);
+    // Create the signer for the mnemonic, connected to the provider with hardcoded fee data
+    const contract = await ethers.getContractFactory(taskArgs['contract'], owner);
+    
     console.log(greenText, "\n=== CONTRACT INFO ===\n");
     console.log(" Input alias: " + taskArgs['contract']);
     console.log(" Factory Signer Chain ID: " + await contract.signer.getChainId());
@@ -305,16 +321,20 @@ task("deploy", "Deploy a specific contract generating a new address for it.")
     } else {
       // nah, just a standard deloyment. forced or otherwise.
       console.log("Calling upgrades.deployProxy with #initialize([" + preparedArguments + "])"); 
-      const deployment = await upgrades.deployProxy(contract, preparedArguments); 
-      await deployment.deployed();
+      try {
+        const deployment = await upgrades.deployProxy(contract, preparedArguments); 
+        await deployment.deployed();
       
-      console.log(greenText, "Deployment complete! Address: " + deployment.address);
-      LocksmithRegistry.saveContractAddress(chainId, taskArgs['contract'], deployment.address);
-      console.log(greenText, "Address has been successfully saved in the registry!");
+        console.log(greenText, "Deployment complete! Address: " + deployment.address);
+        LocksmithRegistry.saveContractAddress(chainId, taskArgs['contract'], deployment.address);
+        console.log(greenText, "Address has been successfully saved in the registry!");
+        LocksmithRegistry.saveContractCodeHash(chainId, taskArgs['contract'], localCodeHash);
+        console.log(greenText, "The code hash been saved as well: " + localCodeHash); 
+      } catch (error) {
+        console.log("oooops!: " + error);
+        throw error;
+      }
     }
-
-    LocksmithRegistry.saveContractCodeHash(chainId, taskArgs['contract'], localCodeHash);
-    console.log(greenText, "The code hash been saved as well: " + localCodeHash); 
   });
 
 task("respect", "Make the current registry's key vault respect the current locksmith.")
