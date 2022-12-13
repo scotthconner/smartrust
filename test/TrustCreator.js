@@ -231,7 +231,43 @@ describe("TrustCreator", function () {
         [owner.address, second.address], [stb('Trustee'), stb('Benny'), stb('Johnny')], [true, true],
         await now() + 100, 60 * 60 * 24)).to.be.revertedWith('KEY_ALIAS_RECEIVER_DIMENSION_MISMATCH');
     });
-    
+   
+    it("Successful setup with multiple beneficiaries but no alarm clock", async function() {
+      const {keyVault, locksmith, notary, creator, alarmClock, events,
+        ledger, vault, tokenVault, trustee, owner, root, second } =
+        await loadFixture(TrustTestFixtures.addedCreator);
+
+      await expect(await creator.connect(root).createDeadSimpleTrust(stb('Conner Trust'),
+        [owner.address, second.address], [stb('Trustee'), stb('Benny')], [false, true],
+        0, bn(60 * 60 * 24)))
+          .to.emit(locksmith, 'trustCreated')
+          .withArgs(creator.address, 1, stb('Conner Trust'), creator.address)
+          .to.emit(locksmith, 'keyMinted')
+          .withArgs(creator.address, 1, 4, stb('root'), creator.address)
+          .to.emit(locksmith, 'keyMinted')
+          .withArgs(creator.address, 1, 5, stb('Trustee'), owner.address)
+          .to.emit(locksmith, 'keyMinted')
+          .withArgs(creator.address, 1, 6, stb('Benny'), second.address)
+          .to.emit(notary, 'trustedRoleChange')
+          .withArgs(creator.address, 1, 4, ledger.address, trustee.address, true, 1)
+          .to.emit(notary, 'trustedRoleChange')
+          .withArgs(creator.address, 1, 4, ledger.address, tokenVault.address, true, 0)
+          .to.emit(notary, 'trustedRoleChange')
+          .withArgs(creator.address, 1, 4, ledger.address, vault.address, true, 0)
+          .to.emit(trustee, 'trusteePolicySet')
+          .withArgs(creator.address, 4, 5, [bn(6)], []);
+
+      // check to ensure the trustee is there, but that there is no event hash.
+      // other tests will do more rigorous assertions on the rest of the state.
+      // because there are no events, the trustee is enabled.
+      await expect(await trustee.getPolicy(5)).eql([
+        true, bn(4), [bn(6)], []
+      ]);
+
+      // make sure that there are actually no events for the trust
+      await expect(await events.getRegisteredTrustEvents(1, alarmClock.address)).eql([]);
+    });
+
     it("Successful setup with multiple beneficiaries", async function() {
       const {keyVault, locksmith, notary, creator, alarmClock,
         ledger, vault, tokenVault, trustee, owner, root, second } =

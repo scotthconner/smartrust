@@ -169,7 +169,9 @@ contract TrustCreator is ERC1155Holder, Initializable, OwnableUpgradeable, UUPSU
      *
      * There must be at least two key receivers (one trustee, one beneficiaries).
      *
-     * The deadman's switch will be tied to the root key.
+     * The deadman's switch will be tied to the root key. However, if the alarmClockTime
+     * is set to zero, the deadman's switch / event will not be created, and a default
+     * trustee will be generated.
      *
      * @param trustName        the name of the trust to create, like 'My Living Will'
      * @param keyReceivers     the wallet addresses to send each new key
@@ -195,10 +197,12 @@ contract TrustCreator is ERC1155Holder, Initializable, OwnableUpgradeable, UUPSU
         (uint256 trustId, uint256 rootKeyId, uint256[] memory keys) = createDefaultTrust(trustName,
             keyReceivers, keyAliases, isSoulbound);
 
-        // build the alarm clock
+        // build the alarm clock, optionally
         bytes32[] memory events = new bytes32[](1);
-        events[0] = alarmClock.createAlarm(rootKeyId, stringToBytes32('Deadman\'s Switch'), alarmClockTime,
-            snoozeInterval, rootKeyId); 
+        if(alarmClockTime != 0) {
+            events[0] = alarmClock.createAlarm(rootKeyId, stringToBytes32('Deadman\'s Switch'), alarmClockTime,
+                snoozeInterval, rootKeyId);
+        }
 
         // rebuild the array because we're hitting stack limits on input parameters
         uint256[] memory beneficiaries = new uint256[](keys.length-1);
@@ -207,7 +211,8 @@ contract TrustCreator is ERC1155Holder, Initializable, OwnableUpgradeable, UUPSU
         }
 
         // assign the trustee, with the first one assumed as the trustee key
-        ITrustee(trustee).setPolicy(rootKeyId, keys[0], beneficiaries, events); 
+        ITrustee(trustee).setPolicy(rootKeyId, keys[0], beneficiaries, 
+            alarmClockTime == 0 ? (new bytes32[](0)) : events); 
 
         // send the root key key to the message sender
         IERC1155(keyVault).safeTransferFrom(address(this), msg.sender, rootKeyId, 1, '');
