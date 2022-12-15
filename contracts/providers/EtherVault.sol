@@ -59,6 +59,9 @@ contract EtherVault is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     // We hard-code the arn into the contract.
     bytes32 public ethArn;
 
+    // keep track of contract balance for invariant control
+    uint256 public etherBalance;
+
     ///////////////////////////////////////////////////////
     // Constructor and Upgrade Methods
     //
@@ -140,9 +143,14 @@ contract EtherVault is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         // - the vault is not a trusted collateral provider the ledger
         (,,uint256 finalLedgerBalance) = ledger.deposit(keyId, ethArn, msg.value);
 
+        // once the ledger is updated, keep track of the ether balance
+        // here as well. we can't rely on address(this).balance due to
+        // self-destruct attacks
+        etherBalance += msg.value;
+
         // jam the vault if the ledger's balance 
         // provisions doesn't match the vault balance
-        assert(finalLedgerBalance == address(this).balance);
+        assert(finalLedgerBalance == etherBalance); 
     }
 
     /**
@@ -167,9 +175,18 @@ contract EtherVault is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         // the entire transaction will revert.
         (,, uint256 finalLedgerBalance) = ledger.withdrawal(keyId, ethArn, amount);
 
+        // decrement the ether balance. We don't want to rely
+        // on address(this).balance due to self-destruct attacks
+        etherBalance -= amount;
+
         // jam the vault if the ledger's balance doesn't
-        // match the vault balance after withdrawal
-        assert(finalLedgerBalance == (address(this).balance - amount));
+        // match the vault's preceived balance after withdrawal
+        assert(finalLedgerBalance == etherBalance);
+
+        // let's also make sure nothing else weird is happening, and
+        // that even if we are taking self-destruct attacks, that the
+        // vault is solvent.
+        assert(address(this).balance >= etherBalance);
 
         // We trust that the ledger didn't overdraft so 
         // send at the end to prevent re-entrancy.
