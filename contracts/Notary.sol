@@ -281,8 +281,9 @@ contract Notary is INotary, Initializable, OwnableUpgradeable, UUPSUpgradeable {
      * @return the valid trust Id for the key
      */
     function notarizeDeposit(address provider, uint256 keyId, bytes32 arn, uint256 amount) external returns (uint256) {
-        // we need a trusted provider, and the key to be root.
-        uint256 trustId = requireTrustedActor(keyId, provider, COLLATERAL_PROVIDER, true);
+        // we need a trusted provider. Since the trust was provided by the root key,
+        // we will allow deposits for it even if it's not root.
+        uint256 trustId = requireTrustedActor(keyId, provider, COLLATERAL_PROVIDER, false);
 
         emit notaryDepositApproval(msg.sender, provider, trustId, keyId, arn, amount);
         return trustId;

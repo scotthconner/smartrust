@@ -21,11 +21,11 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "../../libraries/AssetResourceName.sol";
 using AssetResourceName for AssetResourceName.AssetType;
 
-// We have a full contract dependency on the locksmith, which
-// must be deployed first.
+// We have interface dependencies from the platorm 
 import "../interfaces/IKeyVault.sol";
 import "../interfaces/ILocksmith.sol";
 import "../interfaces/ILedger.sol";
+import "../interfaces/IEtherCollateralProvider.sol";
 ///////////////////////////////////////////////////////////
 
 /**
@@ -46,7 +46,7 @@ import "../interfaces/ILedger.sol";
  * In the end, this contract holds the ether and abstracts out the ARN 
  * into the protocol implementation.
  */
-contract EtherVault is Initializable, OwnableUpgradeable, UUPSUpgradeable {
+contract EtherVault is IEtherCollateralProvider, Initializable, OwnableUpgradeable, UUPSUpgradeable {
     ///////////////////////////////////////////////////////
     // Storage
     ///////////////////////////////////////////////////////
@@ -126,16 +126,15 @@ contract EtherVault is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     /**
      * deposit
      *
-     * This method will enable root key holders to deposit eth into
+     * This method will enable users to deposit eth into
      * the trust. This method operates as a payable
      * transaction where the message's value parameter is what is deposited.
      *
      * @param keyId the ID of the key that the depositor is using.
      */
     function deposit(uint256 keyId) payable external {
-        // stop right now if the message sender doesn't hold the key
-        require(IKeyVault(locksmith.getKeyVault()).keyBalanceOf(msg.sender, keyId, false) > 0, 
-            'KEY_NOT_HELD');
+        // we used to make sure that the caller held the key, but we have since
+        // removed this restriction to allow the trust to behave more like a wallet
 
         // track the deposit on the ledger
         // this could revert for a few reasons:

@@ -121,18 +121,19 @@ describe("EtherVault", function () {
       expect(await ethers.provider.getBalance(vault.address)).to.equal(eth(33));
     });
 
-    it("Can't deposit without holding key", async function() {
+    it("Can deposit without holding key", async function() {
       const { owner, keyVault, locksmith,
         notary, ledger, vault,
         root, second, third
       } = await loadFixture(TrustTestFixtures.freshEtherVault);
 
       // try to deposit with a key not held
-      await expect(vault.connect(second).deposit(1, {value: eth(10)}))
-        .to.be.revertedWith("KEY_NOT_HELD");
+      await expect(await vault.connect(second).deposit(0, {value: eth(10)}))
+        .to.emit(ledger, "depositOccurred")
+        .withArgs(vault.address, 0, 0, ethArn(), eth(10), eth(10), eth(10), eth(10));
     });
 
-    it("Can't deposit if a beneficiary", async function() {
+    it("Can deposit on non-root", async function() {
       const { owner, keyVault, locksmith,
         notary, ledger, vault,
         root, second, third
@@ -143,31 +144,10 @@ describe("EtherVault", function () {
         .to.emit(locksmith, "keyMinted")
         .withArgs(root.address, 0, 1, stb('beneficiary'), second.address);
 
-      // try to deposit as a beneficiary, not good!
-      await expect(vault.connect(second).deposit(1, {value: eth(10)}))
-        .to.be.revertedWith("KEY_NOT_ROOT");
+      // try to deposit as a beneficiary
+      await expect(await vault.connect(second).deposit(1, {value: eth(10)}))
+        .to.emit(ledger, "depositOccurred");     
     })
-
-    it("Can't deposit if not root", async function() {
-      const { owner, keyVault, locksmith,
-        notary, ledger, vault,
-        root, second, third
-      } = await loadFixture(TrustTestFixtures.freshEtherVault);
-
-      // give the other account a trustee key
-      await expect(await locksmith.connect(root).createKey(0, stb('t'), second.address, false))
-        .to.emit(locksmith, "keyMinted")
-        .withArgs(root.address, 0, 1, stb('t'), second.address);
-
-      // try to deposit as a trustee
-      await expect(vault.connect(second).deposit(1, {value: eth(10)}))
-        .to.be.revertedWith('KEY_NOT_ROOT');
-
-      // validate the trust balances
-      expect(await ethers.provider.getBalance(vault.address)).to.equal(eth(0));
-      expect(await ledger.getContextArnBalances(TRUST(),0,vault.address,[ethArn()]))
-        .eql([eth(0)]);
-    });
   });
 
   ////////////////////////////////////////////////////////////

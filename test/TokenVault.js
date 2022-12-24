@@ -108,15 +108,15 @@ describe("TokenVault", function () {
         .eql([eth(3)]);
     });
 
-    it("Does not hold key used for deposit", async function() {
+    it("Does not need to hold key used for deposit", async function() {
       const { keyVault, locksmith, 
         notary, ledger, tokenVault, coin,
         owner, root, second, third } = await loadFixture(TrustTestFixtures.freshTokenVault);
 
       // try to deposit without a key 
-      await expect(tokenVault.connect(second)
-        .deposit(0, coin.address, eth(3))) 
-        .to.be.revertedWith("KEY_NOT_HELD");
+      await expect(await tokenVault.connect(second).deposit(0, coin.address, eth(3))) 
+        .to.emit(ledger, "depositOccurred")
+        .withArgs(tokenVault.address, 0, 0, tokenArn(coin.address), eth(3), eth(3), eth(3), eth(3));
     });
 
     it("Does not have deposit permission", async function() {
@@ -124,14 +124,14 @@ describe("TokenVault", function () {
         notary, ledger, tokenVault, coin,
         owner, root, second, third } = await loadFixture(TrustTestFixtures.freshTokenVault);
 
-      // mint a beneficiary token to the other 
-      await locksmith.connect(root).createKey(0, stb('beneficiary'), second.address, false); 
+      // mint a different root 
+      await locksmith.connect(root).createTrustAndRootKey(stb('my-trust'), second.address)
       expect(await keyVault.balanceOf(second.address, 1)).to.equal(1);
 
       // try to deposit as a beneficiary, and fail
       await expect(tokenVault.connect(second)
         .deposit(1, coin.address, eth(3))) 
-        .to.be.revertedWith("KEY_NOT_ROOT");
+        .to.be.revertedWith("UNTRUSTED_ACTOR");
     });
 
     it("Does not have enough ERC20 to deposit", async function() {

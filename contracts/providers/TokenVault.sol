@@ -29,11 +29,11 @@ using EnumerableSet for EnumerableSet.AddressSet;
 // ERC20. This enables the trusts to hold all sorts of assets, not just ethereum.
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-// We have a full contract dependency on the locksmith, which
-// must be deployed first.
+// Platform interfaces
 import "../interfaces/IKeyVault.sol";
 import "../interfaces/ILocksmith.sol";
 import "../interfaces/ILedger.sol";
+import "../interfaces/ITokenCollateralProvider.sol";
 ///////////////////////////////////////////////////////////
 
 /**
@@ -54,7 +54,7 @@ import "../interfaces/ILedger.sol";
  * In the end, this contract holds the tokens and abstracts out the ARN 
  * into the ERC20 protocol implementation.
  */
-contract TokenVault is Initializable, OwnableUpgradeable, UUPSUpgradeable {
+contract TokenVault is ITokenCollateralProvider, Initializable, OwnableUpgradeable, UUPSUpgradeable {
     ///////////////////////////////////////////////////////
     // Storage
     ///////////////////////////////////////////////////////
@@ -68,6 +68,9 @@ contract TokenVault is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     // trust => [registered addresses] 
     mapping(uint256 => EnumerableSet.AddressSet) private witnessedTokenAddresses;
     mapping(bytes32 => address) private arnContracts;
+
+    // we need to keep track of the deposit balances safely
+    mapping(address => uint256) tokenBalances;
 
     ///////////////////////////////////////////////////////
     // Constructor and Upgrade Methods
@@ -132,8 +135,9 @@ contract TokenVault is Initializable, OwnableUpgradeable, UUPSUpgradeable {
      * @param amount the amount to deposit
      */
     function deposit(uint256 keyId, address token, uint256 amount) external {
-        // stop right now if the message sender doesn't hold the key
-        require(IKeyVault(locksmith.getKeyVault()).keyBalanceOf(msg.sender, keyId, false) > 0, 'KEY_NOT_HELD');
+        // we have removed the requirement that the caller be holding the key
+        // for deposit. this is because we want to enable anyone to deposit
+        // funds on behalf of the key owner.
 
         // generate the token arn
         bytes32 tokenArn = AssetResourceName.AssetType({
@@ -160,9 +164,12 @@ contract TokenVault is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         // - the vault is not a trusted collateral provider the ledger
         (,,uint256 finalLedgerBalance) = ledger.deposit(keyId, tokenArn, amount);
 
+        // increment the witnessed token balance
+        tokenBalances[token] += amount;
+
         // jam the vault if the ledger's balance 
         // provisions doesn't match the vault balance
-        assert(finalLedgerBalance == IERC20(token).balanceOf(address(this)));
+        assert(finalLedgerBalance == tokenBalances[token]);
 
         // update the witnessed token addresses, so we can easily describe
         // the trust-level tokens in this vault.
@@ -250,9 +257,12 @@ contract TokenVault is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         // the entire transaction will revert.
         (,, uint256 finalLedgerBalance) = ledger.withdrawal(keyId, arn, amount);
 
+        // decrement the witnessed token balance
+        tokenBalances[token] -= amount;
+
         // jam the vault if the ledger's balance doesn't
         // match the vault balance after withdrawal
-        assert((IERC20(token).balanceOf(address(this))-amount) == finalLedgerBalance);
+        assert(tokenBalances[token] == finalLedgerBalance);
 
         // We trust that the ledger didn't overdraft so
         // send at the end to prevent re-entrancy.

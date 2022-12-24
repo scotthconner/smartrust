@@ -136,18 +136,6 @@ describe("Ledger", function () {
         .to.be.revertedWith('ZERO_AMOUNT');
     });
     
-    it("Can't deposit if not root", async function() {
-      const { keyVault, locksmith, ledger, owner, root, second } = await loadFixture(TrustTestFixtures.freshLedgerProxy);
-  
-      // create secondary key
-      await expect(locksmith.connect(root).createKey(0, stb('beneficiary'), second.address, false))
-        .to.emit(locksmith, "keyMinted")
-        .withArgs(root.address, 0, 1, stb('beneficiary'), second.address);
-
-      await expect(ledger.connect(owner).deposit(1, stb("ether"), eth(1)))
-        .to.be.revertedWith('KEY_NOT_ROOT');
-    });
-    
     it("Account Holder can't call deposit, withdrawal", async function() {
       const { ledger, owner, root } = await loadFixture(TrustTestFixtures.freshLedgerProxy);
 
@@ -155,8 +143,8 @@ describe("Ledger", function () {
         .to.be.revertedWith('UNTRUSTED_ACTOR');
       await expect(ledger.connect(root).withdrawal(0, stb('ether'), eth(1)))
         .to.be.revertedWith('UNTRUSTED_ACTOR');
-    });
-    
+    }); 
+
     it("Single Deposit and Balances", async function() {
       const { ledger, owner, root } = await loadFixture(TrustTestFixtures.freshLedgerProxy);
 
@@ -193,7 +181,19 @@ describe("Ledger", function () {
       expect(await ledger.getContextProviderRegistry(1,0,stb('a'))).eql([]);
       expect(await ledger.getContextProviderRegistry(2,0,stb('a'))).eql([]);
     });
-    
+   
+    it("Can deposit not on root key", async function() {
+      const { keyVault, locksmith, ledger, owner, root, second } = await loadFixture(TrustTestFixtures.freshLedgerProxy);
+
+      // create secondary key
+      await expect(locksmith.connect(root).createKey(0, stb('beneficiary'), second.address, false))
+        .to.emit(locksmith, "keyMinted")
+        .withArgs(root.address, 0, 1, stb('beneficiary'), second.address);
+
+      await expect(await ledger.connect(owner).deposit(1, stb("ether"), eth(1)))
+        .to.emit(ledger, 'depositOccurred');
+    });
+
     it("Multiple Deposits and Balances", async function() {
       const { keyVault, locksmith, notary, ledger, owner, root, second } 
         = await loadFixture(TrustTestFixtures.freshLedgerProxy);

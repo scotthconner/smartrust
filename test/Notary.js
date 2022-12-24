@@ -229,17 +229,6 @@ describe("Notary", function () {
         .to.be.revertedWith('INVALID_KEY');
     });
 
-    it("Attempting to notarize against non root-key fails", async function() {
-      const { locksmith, notary, owner, root, second, third } =
-        await loadFixture(TrustTestFixtures.freshNotaryProxy);
-
-      // mint a second key that is valid
-      await locksmith.connect(root).createKey(0, stb('beneficiary'), second.address, false);
-
-      await expect(notary.connect(owner).notarizeDeposit(third.address, 1, stb('ether'), eth(1)))
-        .to.be.revertedWith('KEY_NOT_ROOT');
-    });
-
     it("Attempting to notarize an untrusted provider fails", async function() {
       const { locksmith, notary, owner, root, second, third } =
         await loadFixture(TrustTestFixtures.freshNotaryProxy);
@@ -316,6 +305,23 @@ describe("Notary", function () {
       await expect(notary.connect(owner).notarizeDeposit(third.address, 0, stb('ether'), eth(1)))
         .to.emit(notary, 'notaryDepositApproval')
         .withArgs(owner.address, third.address, 0, 0, stb('ether'), eth(1));
+    });
+
+    it("Attempting to notarize against non root-key succeeds", async function() {
+      const { locksmith, notary, owner, root, second, third } =
+        await loadFixture(TrustTestFixtures.freshNotaryProxy);
+
+      // mint a second key that is valid
+      await locksmith.connect(root).createKey(0, stb('beneficiary'), second.address, false);
+
+      // trust 'third'
+      await expect(await notary.connect(root).setTrustedLedgerRole(0, COLLATERAL_PROVIDER(), owner.address,
+        third.address, true, stb(''))).to.emit(notary, 'trustedRoleChange')
+        .withArgs(root.address, 0, 0, owner.address, third.address, true, COLLATERAL_PROVIDER());
+
+      await expect(await notary.connect(owner).notarizeDeposit(third.address, 1, stb('ether'), eth(1)))
+         .to.emit(notary, 'notaryDepositApproval')
+         .withArgs(owner.address, third.address, 0, 1, stb('ether'), eth(1));
     });
   });
   
