@@ -601,9 +601,9 @@ describe("Ledger", function () {
         .to.emit(ledger, 'ledgerTransferOccurred')
         .withArgs(third.address, owner.address, stb('ether'), 0, 0, [1], [eth(1),eth(2)], eth(6));
       
-      // cant distribution funds unles its root. 
+      // even when its not root 
       await expect(ledger.connect(third).distribute(owner.address, stb('ether'), 1, [2], [eth(1)]))
-        .to.be.revertedWith('KEY_NOT_ROOT');
+        .to.emit(ledger, 'ledgerTransferOccurred');
 
       // now fail through a legitimate overdraft
       await expect(ledger.connect(third).distribute(owner.address, stb('ether'), 0, [1,2], [eth(5),eth(2)]))

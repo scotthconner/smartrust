@@ -518,7 +518,7 @@ describe("Notary", function () {
         .to.be.revertedWith('INVALID_KEY');
     });
 
-    it("Distribution fails notary when root key isn't root", async function() {
+    it("Distribution from notary when key isn't root", async function() {
       const { locksmith, notary, owner, root, second, third } =
         await loadFixture(TrustTestFixtures.freshNotaryProxy);
 
@@ -535,11 +535,12 @@ describe("Notary", function () {
       // mint a second key
       await locksmith.connect(root).createKey(0, stb('second key'), root.address, false);
 
-      // call from the right ledger, the right collateral provider, and scribe
-      // but an invalid key
-      await expect(notary.connect(owner).notarizeDistribution(second.address, third.address,
-        stb('ether'), 1, [1], [eth(1)]))
-        .to.be.revertedWith('KEY_NOT_ROOT');
+      // call from the right ledger, the right collateral provider, and scribe,
+      // with non root key
+      await expect(await notary.connect(owner).notarizeDistribution(second.address, third.address,
+        stb('ether'), 1, [1], [eth(1)])).to.emit(notary, 'notaryDistributionApproval')
+          .withArgs(owner.address, third.address, second.address,
+            stb('ether'), 0, 1, [1], [eth(1)]);
     });
 
     it("Distribution fails notary when key and amounts lengths are different", async function() {

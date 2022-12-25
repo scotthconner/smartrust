@@ -283,7 +283,7 @@ contract Notary is INotary, Initializable, OwnableUpgradeable, UUPSUpgradeable {
     function notarizeDeposit(address provider, uint256 keyId, bytes32 arn, uint256 amount) external returns (uint256) {
         // we need a trusted provider. Since the trust was provided by the root key,
         // we will allow deposits for it even if it's not root.
-        uint256 trustId = requireTrustedActor(keyId, provider, COLLATERAL_PROVIDER, false);
+        uint256 trustId = requireTrustedActor(keyId, provider, COLLATERAL_PROVIDER);
 
         emit notaryDepositApproval(msg.sender, provider, trustId, keyId, arn, amount);
         return trustId;
@@ -309,7 +309,7 @@ contract Notary is INotary, Initializable, OwnableUpgradeable, UUPSUpgradeable {
      */
     function notarizeWithdrawal(address provider, uint256 keyId, bytes32 arn, uint256 amount) external returns (uint256) {
         // make sure the key is valid and the provider is trusted
-        uint256 trustId = requireTrustedActor(keyId, provider, COLLATERAL_PROVIDER, false);
+        uint256 trustId = requireTrustedActor(keyId, provider, COLLATERAL_PROVIDER);
 
         // make sure the withdrawal amount is approved by the keyholder
         // and then reduce the amount
@@ -350,9 +350,8 @@ contract Notary is INotary, Initializable, OwnableUpgradeable, UUPSUpgradeable {
     function notarizeDistribution(address scribe, address provider, bytes32 arn, 
         uint256 rootKeyId, uint256[] calldata keys, uint256[] calldata amounts) external returns (uint256) {
         
-        // the scribe needs to be trusted and the funds need
-        // to be coming out of the root key
-        uint256 trustId = requireTrustedActor(rootKeyId, scribe, SCRIBE, true);
+        // the scribe needs to be trusted
+        uint256 trustId = requireTrustedActor(rootKeyId, scribe, SCRIBE);
 
         // we also want to make sure the provider is trusted
         require(actorRegistry[msg.sender][trustId][COLLATERAL_PROVIDER].contains(provider), 
@@ -387,17 +386,13 @@ contract Notary is INotary, Initializable, OwnableUpgradeable, UUPSUpgradeable {
      * @param keyId the key Id for the operation 
      * @param actor the actor address to check
      * @param role  the role you need the actor to be trusted to play 
-     * @param needsRoot true if you need the key to be root 
      * @return the valid trust ID associated with the key 
      */
-    function requireTrustedActor(uint256 keyId, address actor, uint8 role, bool needsRoot) internal view returns (uint256) {
+    function requireTrustedActor(uint256 keyId, address actor, uint8 role) internal view returns (uint256) {
         // make sure the key is valid. you can't always ensure
         // that the actor is checking this 
         (bool valid,,uint256 trustId,bool isRoot,) = locksmith.inspectKey(keyId);
         require(valid, "INVALID_KEY");
-        
-        // make sure the root is key if needed 
-        require(!needsRoot || isRoot, "KEY_NOT_ROOT");
     
         // make sure the actor is trusted
         // we assume the message sender is the ledger
