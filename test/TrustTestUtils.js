@@ -18,6 +18,7 @@ KEY    = function() { return 2;}
 
 COLLATERAL_PROVIDER = function() { return 0; }
 SCRIBE = function() { return 1; }
+DISPATCHER = function() { return 2; }
 
 stb = function(string) {
   return ethers.utils.formatBytes32String(string);
@@ -152,6 +153,21 @@ TrustTestFixtures = (function() {
       return {keyVault, locksmith, notary, owner, root, second, third};
     },
     ////////////////////////////////////////////////////////////
+    // freshTrustEventLog
+    //
+    // This deploys the TrustEventLog and nothing else.
+    ////////////////////////////////////////////////////////////
+    freshTrustEventLog: async function() {
+      const {keyVault, locksmith, notary, owner, root, second, third} =
+        await TrustTestFixtures.freshNotaryProxy();
+
+      const TrustEventLog = await ethers.getContractFactory("TrustEventLog");
+      const events = await upgrades.deployProxy(TrustEventLog, [notary.address]);
+      await events.deployed();
+
+      return {keyVault, locksmith, notary, owner, root, second, third, events};
+    },
+    ////////////////////////////////////////////////////////////
     // freshLedgerProxy
     //
     // This fixture should represent the contract as it would
@@ -159,15 +175,8 @@ TrustTestFixtures = (function() {
     // considered the natural state of the contract at launch time.
     ////////////////////////////////////////////////////////////
     freshLedgerProxy: async function() {
-      const {keyVault, locksmith, owner, root, second, third} =
-        await TrustTestFixtures.freshNotaryProxy();
-
-      // deploy the required notary
-      const Notary = await ethers.getContractFactory("Notary");
-
-      // since the contract is upgradeable, use a proxy
-      const notary = await upgrades.deployProxy(Notary, [locksmith.address]);
-      await notary.deployed();
+      const {keyVault, locksmith, owner, root, second, third, notary, events} =
+        await TrustTestFixtures.freshTrustEventLog();
 
       // deploy the ledger 
       const Ledger = await ethers.getContractFactory("Ledger");
@@ -180,7 +189,7 @@ TrustTestFixtures = (function() {
       // testing simplicity
       await notary.connect(root).setTrustedLedgerRole(0, 0, ledger.address, owner.address, true, stb('Owner'));
 
-      return {keyVault, locksmith, notary, ledger, owner, root, second, third};
+      return {keyVault, locksmith, notary, ledger, owner, root, second, third, events};
     },
     ////////////////////////////////////////////////////////////
     // fundedLedgerProxy 
@@ -188,7 +197,7 @@ TrustTestFixtures = (function() {
     // Set up provider/scribe relationship and fund a root key
     ////////////////////////////////////////////////////////////
     fundedLedgerProxy: async function() {
-      const {keyVault, locksmith, notary, ledger, owner, root, second, third} =
+      const {keyVault, locksmith, notary, ledger, owner, root, second, third, events} =
         await TrustTestFixtures.freshLedgerProxy();
 
       // set up a trusted scribe 
@@ -197,7 +206,7 @@ TrustTestFixtures = (function() {
       // deposit the bat guano
       await ledger.connect(owner).deposit(0, stb('ether'), eth(10));
 
-      return {keyVault, locksmith, notary, ledger, owner, root, second, third};
+      return {keyVault, locksmith, notary, ledger, owner, root, second, third, events};
     },
     ////////////////////////////////////////////////////////////
     // freshEtherVault 
@@ -206,7 +215,7 @@ TrustTestFixtures = (function() {
     // collateral provider controled by root key deposits.
     ////////////////////////////////////////////////////////////
     freshEtherVault: async function() {
-      const {keyVault, locksmith, notary, ledger, owner, root, second, third} =
+      const {keyVault, locksmith, notary, ledger, owner, root, second, third, events} =
         await TrustTestFixtures.freshLedgerProxy();
 
       // deploy the vault 
@@ -225,7 +234,7 @@ TrustTestFixtures = (function() {
       await notary.connect(root).setTrustedLedgerRole(0, 0, ledger.address, vault.address, true, stb('Ether Vault'));
 
       return { owner, keyVault, locksmith, 
-        notary, ledger, vault, 
+        notary, ledger, vault, events, 
         root, second, third
       };
     },
@@ -236,14 +245,14 @@ TrustTestFixtures = (function() {
     ////////////////////////////////////////////////////////////
     fundedEtherVault: async function() {
       const {keyVault, locksmith, 
-        notary, ledger, vault, 
+        notary, ledger, vault, events,
         owner, root, second, third} =
         await TrustTestFixtures.freshEtherVault();
 
       await vault.connect(root).deposit(0, {value: eth(40)});
       
       return { owner, keyVault, locksmith, 
-        notary, ledger, vault, 
+        notary, ledger, vault, events,
         root, second, third
       };
     },
@@ -255,7 +264,7 @@ TrustTestFixtures = (function() {
     ////////////////////////////////////////////////////////////
     freshTokenVault: async function() {
       const {keyVault, locksmith, 
-        notary, ledger, vault, 
+        notary, ledger, vault, events,
         owner, root, second, third} =
         await TrustTestFixtures.fundedEtherVault();
 
@@ -286,7 +295,7 @@ TrustTestFixtures = (function() {
       await notary.connect(root).setTrustedLedgerRole(
         0, 0, ledger.address, tokenVault.address, true, stb('Token Vault'));
 
-      return {keyVault, locksmith, 
+      return {keyVault, locksmith, events,
         notary, ledger, vault, tokenVault, coin, 
         owner, root, second, third};
     },
@@ -297,30 +306,16 @@ TrustTestFixtures = (function() {
     // proxied for upgradable ERC20 trust funds.
     ////////////////////////////////////////////////////////////
     fundedTokenVault: async function() {
-      const {keyVault, locksmith, 
+      const {keyVault, locksmith, events,
         notary, ledger, vault, tokenVault, coin, 
         owner, root, second, third} =
         await TrustTestFixtures.freshTokenVault();
 
       await tokenVault.connect(root).deposit(0, coin.address, eth(5));
 
-      return {keyVault, locksmith, 
+      return {keyVault, locksmith, events,
         notary, ledger, vault, tokenVault, coin, 
         owner, root, second, third};
-    },
-    ////////////////////////////////////////////////////////////
-    // freshTrustEventLog 
-    //
-    // This deploys the TrustEventLog and nothing else.
-    ////////////////////////////////////////////////////////////
-    freshTrustEventLog: async function() {
-      const [owner, root, second, third] = await ethers.getSigners();
-      
-      const TrustEventLog = await ethers.getContractFactory("TrustEventLog");
-      const events = await upgrades.deployProxy(TrustEventLog, []);
-      await events.deployed();
-
-      return {owner, root, second, third, events};
     },
     ////////////////////////////////////////////////////////////
     // fullTrusteeHarness 
@@ -338,11 +333,10 @@ TrustTestFixtures = (function() {
     //    - a trustee scribe
     ////////////////////////////////////////////////////////////
     fullTrusteeHarness: async function() {
-      const {keyVault, locksmith, 
+      const {keyVault, locksmith, events,
         notary, ledger, vault, tokenVault, coin, 
         owner, root, second, third} =
         await TrustTestFixtures.fundedTokenVault();
-      const {events} = await TrustTestFixtures.freshTrustEventLog(); 
 
       // deploy the trustee contract
       const Trustee = await ethers.getContractFactory("Trustee");
@@ -384,7 +378,10 @@ TrustTestFixtures = (function() {
       const keyOracle = await upgrades.deployProxy(KeyOracle, [
         locksmith.address, events.address]);
       await keyOracle.deployed();
-      
+    
+      // trust the key oracle to register events
+      await notary.connect(root).setTrustedLedgerRole(0, DISPATCHER(), events.address, keyOracle.address, true, stb('key-oracle'));
+
       return {keyVault, locksmith,
         notary, ledger, vault, tokenVault, coin,
         events, trustee, keyOracle,
@@ -409,6 +406,9 @@ TrustTestFixtures = (function() {
         locksmith.address, events.address]);
       await alarmClock.deployed();
 
+      // trust the alarm clock to register events
+      await notary.connect(root).setTrustedLedgerRole(0, DISPATCHER(), events.address, alarmClock.address, true, stb('alarm-clock'));
+
       return {keyVault, locksmith,
         notary, ledger, vault, tokenVault, coin,
         events, trustee, keyOracle, alarmClock,
@@ -432,10 +432,10 @@ TrustTestFixtures = (function() {
       const creator= await upgrades.deployProxy(Creator, [
         keyVault.address, locksmith.address, notary.address,
         ledger.address, vault.address, tokenVault.address, trustee.address,
-        alarmClock.address
+        alarmClock.address, keyOracle.address, events.address
       ]);
       await creator.deployed();
-      
+     
       return {keyVault, locksmith,
         notary, ledger, vault, tokenVault, coin,
         events, trustee, keyOracle, alarmClock, creator,

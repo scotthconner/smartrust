@@ -64,8 +64,10 @@ contract TrustCreator is ERC1155Holder, Initializable, OwnableUpgradeable, UUPSU
     ///////////////////////////////////////////////////////
     ILocksmith  public locksmith;
     INotary     public notary;
-    IAlarmClock public alarmClock;
+    address     public alarmClock;
+    address     public keyOracle;
     address     public trustee;
+    address     public eventLog;
 
     // permission registry: add these to the notary
     // upon trust creation using the new ROOT key.
@@ -97,17 +99,19 @@ contract TrustCreator is ERC1155Holder, Initializable, OwnableUpgradeable, UUPSU
      * @param _Ledger    the address of the assumed ledger
      */
     function initialize(address _KeyVault, address _Locksmith, address _Notary, address _Ledger, 
-        address _EtherVault, address _TokenVault, address _Trustee, address _AlarmClock) initializer public {
+        address _EtherVault, address _TokenVault, address _Trustee, address _AlarmClock, address _KeyOracle, address _TrustEventLog) initializer public {
         __Ownable_init();
         __UUPSUpgradeable_init();
         keyVault = _KeyVault;
         locksmith = ILocksmith(_Locksmith);
         notary    = INotary(_Notary);
         trustee = _Trustee;
-        alarmClock = IAlarmClock(_AlarmClock);
+        alarmClock = _AlarmClock;
+        keyOracle = _KeyOracle;
         ledger    = _Ledger;
         etherVault = _EtherVault;
         tokenVault = _TokenVault;
+        eventLog = _TrustEventLog;
     }
 
     /**
@@ -200,7 +204,7 @@ contract TrustCreator is ERC1155Holder, Initializable, OwnableUpgradeable, UUPSU
         // build the alarm clock, optionally
         bytes32[] memory events = new bytes32[](1);
         if(alarmClockTime != 0) {
-            events[0] = alarmClock.createAlarm(rootKeyId, stringToBytes32('Deadman\'s Switch'), alarmClockTime,
+            events[0] = IAlarmClock(alarmClock).createAlarm(rootKeyId, stringToBytes32('Deadman\'s Switch'), alarmClockTime,
                 snoozeInterval, rootKeyId);
         }
 
@@ -270,6 +274,8 @@ contract TrustCreator is ERC1155Holder, Initializable, OwnableUpgradeable, UUPSU
         notary.setTrustedLedgerRole(rootKeyId, 0, ledger, etherVault, true, stringToBytes32('Ether Vault')); 
         notary.setTrustedLedgerRole(rootKeyId, 0, ledger, tokenVault, true, stringToBytes32('Token Vault'));
         notary.setTrustedLedgerRole(rootKeyId, 1, ledger, trustee, true, stringToBytes32('Trustee Program'));
+        notary.setTrustedLedgerRole(rootKeyId, 2, eventLog, alarmClock, true, stringToBytes32('Alarm Clock Dispatcher'));
+        notary.setTrustedLedgerRole(rootKeyId, 2, eventLog, keyOracle, true, stringToBytes32('Key Oracle Dispatcher'));
 
         // return the trustID and the rootKeyId
         return (trustId, rootKeyId, keyIDs);

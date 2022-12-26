@@ -18,6 +18,7 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
 import './interfaces/ITrustEventLog.sol';
+import './interfaces/INotary.sol';
 ///////////////////////////////////////////////////////////
 
 /**
@@ -58,6 +59,8 @@ contract TrustEventLog is ITrustEventLog, Initializable, OwnableUpgradeable, UUP
     ///////////////////////////////////////////////////////
     // Storage
     ///////////////////////////////////////////////////////
+    address public notary;
+
     // eventHash => dispatcher
     // holds the event hash to the dispatcher who has registered it
     mapping(bytes32 => address) public eventDispatchers;
@@ -90,10 +93,12 @@ contract TrustEventLog is ITrustEventLog, Initializable, OwnableUpgradeable, UUP
      *
      * Fundamentally replaces the constructor for an upgradeable contract.
      *
+     * @param _Notary the notary that is required to approve dispatchers
      */
-    function initialize() initializer public {
+    function initialize(address _Notary) initializer public {
         __Ownable_init();
         __UUPSUpgradeable_init();
+        notary = _Notary;
     }
 
     /**
@@ -156,6 +161,11 @@ contract TrustEventLog is ITrustEventLog, Initializable, OwnableUpgradeable, UUP
      * @param description a small description of the event
      */
     function registerTrustEvent(uint256 trustId, bytes32 eventHash, bytes32 description) external {
+        // we want to tell the notary about this to prevent
+        // unauthorized event spam. this will revert if
+        // the trust owner hasn't approved it.
+        INotary(notary).notarizeEventRegistration(msg.sender, trustId, eventHash, description);
+
         // make sure the hash isn't already registered
         require(address(0) == eventDispatchers[eventHash], 
             "DUPLICATE_REGISTRATION");

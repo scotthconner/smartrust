@@ -80,7 +80,7 @@ describe("Notary", function () {
       // create a second key
       await locksmith.connect(root).createKey(0, stb('second'), second.address, false);
 
-      for(var role = COLLATERAL_PROVIDER(); role <= SCRIBE(); role++) {
+      for(var role = COLLATERAL_PROVIDER(); role <= DISPATCHER(); role++) {
         await expect(notary.connect(second).setTrustedLedgerRole(1, role, owner.address, third.address, true, stb('')))
           .to.be.revertedWith('KEY_NOT_ROOT');
       }
@@ -90,7 +90,7 @@ describe("Notary", function () {
       const { locksmith, notary, owner, root, second, third } = 
         await loadFixture(TrustTestFixtures.freshNotaryProxy);
 
-      for(var role = COLLATERAL_PROVIDER(); role <= SCRIBE(); role++) {
+      for(var role = COLLATERAL_PROVIDER(); role <= DISPATCHER(); role++) {
         await expect(await notary.connect(root).setTrustedLedgerRole(0, role, owner.address, third.address, true, stb('')))
           .to.emit(notary, 'trustedRoleChange')
           .withArgs(root.address, 0, 0, owner.address, third.address, true, role);
@@ -103,7 +103,7 @@ describe("Notary", function () {
       const { locksmith, notary, owner, root, second, third } = 
         await loadFixture(TrustTestFixtures.freshNotaryProxy);
 
-      for(var role = COLLATERAL_PROVIDER(); role <= SCRIBE(); role++) {
+      for(var role = COLLATERAL_PROVIDER(); role <= DISPATCHER(); role++) {
         await expect(await notary.connect(root).setTrustedLedgerRole(0, role, owner.address, third.address, true, stb('')))
           .to.emit(notary, 'trustedRoleChange')
           .withArgs(root.address, 0, 0, owner.address, third.address, true, role);
@@ -117,7 +117,7 @@ describe("Notary", function () {
       const { locksmith, notary, owner, root, second, third } = 
         await loadFixture(TrustTestFixtures.freshNotaryProxy);
 
-      for(var role = COLLATERAL_PROVIDER(); role <= SCRIBE(); role++) {
+      for(var role = COLLATERAL_PROVIDER(); role <= DISPATCHER(); role++) {
         await expect(await notary.connect(root).setTrustedLedgerRole(0, role, owner.address, third.address, true, stb('')))
           .to.emit(notary, 'trustedRoleChange')
           .withArgs(root.address, 0, 0, owner.address, third.address, true, role);
@@ -134,7 +134,7 @@ describe("Notary", function () {
       const { locksmith, notary, owner, root, second, third } = 
         await loadFixture(TrustTestFixtures.freshNotaryProxy);
 
-      for(var role = COLLATERAL_PROVIDER(); role <= SCRIBE(); role++) {
+      for(var role = COLLATERAL_PROVIDER(); role <= DISPATCHER(); role++) {
         await expect(await notary.connect(root).setTrustedLedgerRole(0, role, owner.address, third.address, true, stb('')))
           .to.emit(notary, 'trustedRoleChange')
           .withArgs(root.address, 0, 0, owner.address, third.address, true, role);
@@ -161,7 +161,7 @@ describe("Notary", function () {
       const { locksmith, notary, owner, root, second, third } = 
         await loadFixture(TrustTestFixtures.freshNotaryProxy);
 
-      for(var role = COLLATERAL_PROVIDER(); role <= SCRIBE(); role++) {
+      for(var role = COLLATERAL_PROVIDER(); role <= DISPATCHER(); role++) {
         await expect(notary.connect(root).setTrustedLedgerRole(0, role, owner.address, third.address, false, stb('')))
           .to.be.revertedWith('NOT_CURRENT_ACTOR');
       }
@@ -647,6 +647,37 @@ describe("Notary", function () {
         stb('ether'), 0, [1, 2], [eth(1), eth(9)])).to.emit(notary, 'notaryDistributionApproval')
         .withArgs(owner.address, third.address, second.address,
           stb('ether'), 0, 0, [1, 2], [eth(1), eth(9)]);
+    });
+  });
+
+  ////////////////////////////////////////////////////////////
+  // Notarize Event Registration 
+  //
+  // We make sure that notarization occures correctly based
+  // on the trusted role.
+  //
+  // The owner will generally act as the dispatcher.
+  ////////////////////////////////////////////////////////////
+  describe("Notarize Event Registration", function() {
+    it("Notarization fails because the dispatcher isn't trusted", async function() {
+      const { locksmith, notary, owner, root, second, third } =
+        await loadFixture(TrustTestFixtures.freshNotaryProxy);
+      await expect(notary.connect(owner).notarizeEventRegistration(third.address, 0, stb('event'), stb('hello')))
+        .to.be.revertedWith('UNTRUSTED_DISPATCHER');
+    });
+    
+    it("Notarization succeeds", async function() {
+      const { locksmith, notary, owner, root, second, third } =
+        await loadFixture(TrustTestFixtures.freshNotaryProxy);
+
+      // trust the third as a dispatcher
+      await expect(await notary.connect(root).setTrustedLedgerRole(0, DISPATCHER(), owner.address,
+        third.address, true, stb(''))).to.emit(notary, 'trustedRoleChange')
+        .withArgs(root.address, 0, 0, owner.address, third.address, true, DISPATCHER());
+
+      await expect(notary.connect(owner).notarizeEventRegistration(third.address, 0, stb('event'), stb('hello')))
+        .to.emit(notary, 'notaryEventRegistrationApproval')
+        .withArgs(third.address, 0, stb('event'), stb('hello'));
     });
   });
 });

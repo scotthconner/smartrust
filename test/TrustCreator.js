@@ -22,11 +22,11 @@ describe("TrustCreator", function () {
   ////////////////////////////////////////////////////////////
   describe("Contract deployment", function () {
     it("Should not fail the deployment", async function () {
-      const { keyVault, locksmith, notary, ledger, alarmClock, 
-        vault, tokenVault, trustee, creator } = await loadFixture(TrustTestFixtures.addedCreator);
+      const { keyVault, locksmith, notary, ledger, alarmClock, events, 
+        vault, tokenVault, keyOracle, trustee, creator } = await loadFixture(TrustTestFixtures.addedCreator);
       
       await expect(creator.initialize(keyVault.address, locksmith.address, notary.address,
-        ledger.address, vault.address, tokenVault.address, trustee.address, alarmClock.address))
+        ledger.address, vault.address, tokenVault.address, trustee.address, alarmClock.address, keyOracle.address, events.address))
         .to.be.revertedWith("Initializable: contract is already initialized");
       expect(true);
     });
@@ -40,13 +40,13 @@ describe("TrustCreator", function () {
   ////////////////////////////////////////////////////////////
   describe("Contract upgrade", function() {
     it("Should be able to upgrade", async function() {
-      const { keyVault, locksmith, notary, creator,
+      const { keyVault, locksmith, notary, creator, keyOracle, events,
         ledger, vault, tokenVault, trustee, root } = await loadFixture(TrustTestFixtures.addedCreator);
 
       const contract = await ethers.getContractFactory("TrustCreator")
       const v2 = await upgrades.upgradeProxy(creator.address, contract, 
           [keyVault.address, locksmith.address, notary.address,
-          ledger.address, vault.address, tokenVault.address, trustee.address]);
+          ledger.address, vault.address, tokenVault.address, trustee.address, keyOracle.address, events.address]);
       await v2.deployed();
 
       // try to upgrade if you're not the owner

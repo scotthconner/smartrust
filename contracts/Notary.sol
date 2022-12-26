@@ -98,6 +98,7 @@ contract Notary is INotary, Initializable, OwnableUpgradeable, UUPSUpgradeable {
     // the contract.
     uint8 constant public COLLATERAL_PROVIDER = 0;
     uint8 constant public SCRIBE = 1;
+    uint8 constant public EVENT_DISPATCHER = 2;
 
     ///////////////////////////////////////////////////////
     // Constructor and Upgrade Methods
@@ -368,6 +369,43 @@ contract Notary is INotary, Initializable, OwnableUpgradeable, UUPSUpgradeable {
             arn, trustId, rootKeyId, keys, amounts);
         return trustId;
     }
+
+    ////////////////////////////////////////////////////////
+    // Event methods 
+    //
+    // These methods should be considered as the public interface
+    // of the contract for the event log.
+    ////////////////////////////////////////////////////////
+
+    /**
+     * notarizeEventRegistration
+     *
+     * This code will panic if hte notarization fails.
+     *
+     * Event registrations occur when a dispatcher declares they
+     * want to establish an event in a user's trust.
+     *
+     * However to reduce chain-spam and ensure that only events the
+     * trust owner wants in their wallet exist, the registration
+     * must first pass notary inspection.
+     *
+     * The notary logic can be anything. The inputs are the
+     * minimum required to establish an event entry.
+     *
+     * @param dispatcher  registration address origin
+     * @param trustId     the trust ID for the event
+     * @param eventHash   the unique event identifier
+     * @param description the description of the event
+     */
+    function notarizeEventRegistration(address dispatcher, uint256 trustId, bytes32 eventHash, bytes32 description) external {
+        // we want to make sure the dispatcher is trusted
+        // note: here we are using the event log as the "ledger".
+        require(actorRegistry[msg.sender][trustId][EVENT_DISPATCHER].contains(dispatcher),
+            'UNTRUSTED_DISPATCHER');
+
+        emit notaryEventRegistrationApproval(dispatcher, trustId, eventHash, description);
+    }
+
     ////////////////////////////////////////////////////////
     // Internal Methods
     //
@@ -391,7 +429,7 @@ contract Notary is INotary, Initializable, OwnableUpgradeable, UUPSUpgradeable {
     function requireTrustedActor(uint256 keyId, address actor, uint8 role) internal view returns (uint256) {
         // make sure the key is valid. you can't always ensure
         // that the actor is checking this 
-        (bool valid,,uint256 trustId,bool isRoot,) = locksmith.inspectKey(keyId);
+        (bool valid,,uint256 trustId,,) = locksmith.inspectKey(keyId);
         require(valid, "INVALID_KEY");
     
         // make sure the actor is trusted

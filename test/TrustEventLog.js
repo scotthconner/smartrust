@@ -24,8 +24,8 @@ describe("TrustEventLog", function () {
   ////////////////////////////////////////////////////////////
   describe("Contract deployment", function () {
     it("Should not fail the deployment", async function () {
-      const {events} = await loadFixture(TrustTestFixtures.freshTrustEventLog);
-      await expect(events.initialize()).to.be.revertedWith("Initializable: contract is already initialized");
+      const {events, notary} = await loadFixture(TrustTestFixtures.freshTrustEventLog);
+      await expect(events.initialize(notary.address)).to.be.revertedWith("Initializable: contract is already initialized");
       expect(true);
     });
   });
@@ -38,10 +38,10 @@ describe("TrustEventLog", function () {
   ////////////////////////////////////////////////////////////
   describe("Contract upgrade", function() {
     it("Should be able to upgrade", async function() {
-      const {events, root } = await loadFixture(TrustTestFixtures.freshTrustEventLog);
+      const {events, root, notary } = await loadFixture(TrustTestFixtures.freshTrustEventLog);
 
       const contract = await ethers.getContractFactory("TrustEventLog")
-      const v2 = await upgrades.upgradeProxy(events.address, contract, []);
+      const v2 = await upgrades.upgradeProxy(events.address, contract, [notary.address]);
       await v2.deployed();
 
       // try to upgrade if you're not the owner
@@ -60,13 +60,20 @@ describe("TrustEventLog", function () {
   ////////////////////////////////////////////////////////////
   describe("Basic Event Firing and Reading", function () {
     it("Registering Trust Event Success", async function() {
-      const {events, owner, root, second, third} = 
+      const {events, owner, root, second, third, notary} = 
         await loadFixture(TrustTestFixtures.freshTrustEventLog);
 
       await expect(await events.getRegisteredTrustEvents(0, owner.address)).eql([]);
       
-      // register the event
-      await expect(await events.connect(owner).registerTrustEvent(0, stb('death'), stb('Kenny dies')))
+      // register the event, it should fail as untrusted
+      await expect(events.connect(owner).registerTrustEvent(0, stb('death'), stb('Kenny dies')))
+        .to.be.revertedWith('UNTRUSTED_DISPATCHER');
+
+      // trust the dispatcher
+      await notary.connect(root).setTrustedLedgerRole(0, DISPATCHER(), events.address, owner.address, true, stb('owner'));
+
+      // now it will work
+      await expect(events.connect(owner).registerTrustEvent(0, stb('death'), stb('Kenny dies')))
         .to.emit(events, 'trustEventRegistered')
         .withArgs(owner.address, 0, stb('death'), stb('Kenny dies'));
 
@@ -79,8 +86,12 @@ describe("TrustEventLog", function () {
     });
 
     it("Duplicate registration of event fails", async function() {
-      const {events, owner, root, second, third} = 
+      const {events, owner, root, second, third, notary} = 
         await loadFixture(TrustTestFixtures.freshTrustEventLog);
+
+      // trust the dispatcher
+      await notary.connect(root).setTrustedLedgerRole(0, DISPATCHER(), events.address, 
+        owner.address, true, stb('owner'));
 
       // register the event
       await expect(await events.connect(owner).registerTrustEvent(0, stb('death'), stb('Kenny dies')))
@@ -93,7 +104,7 @@ describe("TrustEventLog", function () {
     });
 
     it("Dispatched event isn't registered", async function() {
-      const {events, owner, root, second, third} =
+      const {events, owner, root, second, third, notary} =
         await loadFixture(TrustTestFixtures.freshTrustEventLog);
 
       await expect(events.connect(owner).logTrustEvent(stb('death')))
@@ -101,8 +112,12 @@ describe("TrustEventLog", function () {
     });
 
     it("Dispatcher is not registrant", async function() {
-      const {events, owner, root, second, third} = 
+      const {events, owner, root, second, third, notary} = 
         await loadFixture(TrustTestFixtures.freshTrustEventLog);
+
+      // trust the dispatcher
+      await notary.connect(root).setTrustedLedgerRole(0, DISPATCHER(), events.address,
+        owner.address, true, stb('owner'));
 
       // register the event
       await expect(await events.connect(owner).registerTrustEvent(0, stb('death'), stb('Kenny dies')))
@@ -115,13 +130,17 @@ describe("TrustEventLog", function () {
     });
 
     it("Dispatched Event Fires Correctly, Can't be Re-fired", async function() {
-      const {events, owner, root, second, third} = 
+      const {events, owner, root, second, third, notary} = 
         await loadFixture(TrustTestFixtures.freshTrustEventLog);
 
       // the event hasn't been fired yet
       await expect(await events.eventDispatchers(stb('death'))).eql(zero());
       await expect(await events.eventDescriptions(stb('death'))).eql(stb(""));
       await expect(await events.firedEvents(stb('death'))).to.equal(false);
+
+      // trust the dispatcher
+      await notary.connect(root).setTrustedLedgerRole(0, DISPATCHER(), events.address, 
+        owner.address, true, stb('owner'));
 
       // event registration
       await expect(await events.connect(owner).registerTrustEvent(0, stb('death'), stb('Kenny dies')))
@@ -142,7 +161,7 @@ describe("TrustEventLog", function () {
     });
 
     it("Multiple events and dispatches work correctly", async function() {
-      const {events, owner, root, second, third} =
+      const {events, owner, root, second, third, notary} =
         await loadFixture(TrustTestFixtures.freshTrustEventLog);
 
       // the event hasn't been fired yet
@@ -152,6 +171,11 @@ describe("TrustEventLog", function () {
       await expect(await events.firedEvents(stb('birth'))).to.equal(false);
       await expect(await events.eventDispatchers(stb('lottery'))).eql(zero());
       await expect(await events.firedEvents(stb('lottery'))).to.equal(false);
+
+      await notary.connect(root).setTrustedLedgerRole(0, DISPATCHER(), events.address, 
+        owner.address, true, stb('owner'));
+      await notary.connect(root).setTrustedLedgerRole(0, DISPATCHER(), events.address, 
+        third.address, true, stb('third'));
 
       // event registration
       await expect(await events.connect(owner).registerTrustEvent(0, stb('death'), stb('Kenny dies')))

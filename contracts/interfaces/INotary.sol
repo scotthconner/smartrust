@@ -99,6 +99,20 @@ interface INotary {
         bytes32 arn, uint256 trustId, uint256 rootKeyId,
         uint256[] keys, uint256[] amounts);
 
+    /**
+     * notaryEventRegistrationApproval
+     *
+     * This event fires when a trust event log registration occurs
+     * from a dispatcher.
+     *
+     * @param dispatcher  the dispatcher that registered the event
+     * @param trustId     the trust id the event is associated with
+     * @param eventHash   the unique identifier for the event in question
+     * @param description a short description of the event
+     */
+    event notaryEventRegistrationApproval(address dispatcher, uint256 trustId, 
+        bytes32 eventHash, bytes32 description);
+
     ////////////////////////////////////////////////////////
     // Ledger Methods
     //
@@ -174,6 +188,28 @@ interface INotary {
     function notarizeDistribution(address scribe, address provider, bytes32 arn, 
         uint256 rootKeyId, uint256[] calldata keys, uint256[] calldata amounts) external returns (uint256);
 
+    /**
+     * notarizeEventRegistration
+     *
+     * This code will panic if hte notarization fails.
+     *
+     * Event registrations occur when a dispatcher declares they
+     * want to establish an event in a user's trust.
+     *
+     * However to reduce chain-spam and ensure that only events the 
+     * trust owner wants in their wallet exist, the registration
+     * must first pass notary inspection.
+     *
+     * The notary logic can be anything. The inputs are the
+     * minimum required to establish an event entry.
+     *
+     * @param dispatcher  registration address origin
+     * @param trustId     the trust ID for the event
+     * @param eventHash   the unique event identifier
+     * @param description the description of the event
+     */
+    function notarizeEventRegistration(address dispatcher, uint256 trustId, bytes32 eventHash, bytes32 description) external;
+    
     /**
      * setTrustedLedgerRole
      *

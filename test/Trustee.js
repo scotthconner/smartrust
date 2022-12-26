@@ -425,6 +425,10 @@ describe("Trustee", function () {
       await notary.connect(owner).setWithdrawalAllowance(vault.ledger(),
         vault.address, 1, ethArn(), eth(40));
 
+      // trust the dispatcher
+      await notary.connect(root).setTrustedLedgerRole(0, DISPATCHER(), events.address,
+        third.address, true, stb('third'));
+
       // register the event
       await expect(await events.connect(third).registerTrustEvent(0, stb('death'), stb('The owner dies')))
         .to.emit(events, 'trustEventRegistered')
@@ -478,6 +482,10 @@ describe("Trustee", function () {
       // blanket approval because we aren't testing that
       await notary.connect(owner).setWithdrawalAllowance(vault.ledger(),
         vault.address, 1, ethArn(), eth(40));
+
+      // trust the dispatcher
+      await notary.connect(root).setTrustedLedgerRole(0, DISPATCHER(), events.address,
+        third.address, true, stb('owner'));
 
       // register the event
       await expect(await events.connect(third).registerTrustEvent(0, stb('death'), stb('The owner dies')))
