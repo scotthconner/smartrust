@@ -335,7 +335,6 @@ contract Notary is INotary, Initializable, OwnableUpgradeable, UUPSUpgradeable {
      * A valid distribution:
      *  - must be done via a trusted scribe
      *  - must be done within the context of a trusted provider
-     *  - only moves funds out of a root key
      *  - only moves funds into keys within the root key's trust
      *
      * The caller must be the associated ledger.
