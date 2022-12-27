@@ -77,6 +77,7 @@ LocksmithRegistry = (function() {
       // this is a very naughty piece of code, that assumes
       // there is a public member that is lower-camelized for
       // the contract dependency.
+      // note: this has already tripped me up once with the event log dependency
       var method = dependency.charAt(0).toLowerCase() + dependency.slice(1);
       try { 
         return address !== null ? await contract.attach(address)[method]() : null;

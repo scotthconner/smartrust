@@ -269,7 +269,7 @@ describe("TrustCreator", function () {
     });
 
     it("Successful setup with multiple beneficiaries", async function() {
-      const {keyVault, locksmith, notary, creator, alarmClock,
+      const {keyVault, locksmith, notary, creator, alarmClock, events, keyOracle,
         ledger, vault, tokenVault, trustee, owner, root, second } =
         await loadFixture(TrustTestFixtures.addedCreator);
 
@@ -319,6 +319,8 @@ describe("TrustCreator", function () {
         .eql([vault.address, tokenVault.address]);
       expect(await notary.getTrustedActors(ledger.address, 1, 1))
         .eql([trustee.address]);
+      expect(await notary.getTrustedActors(events.address, 1, 2))
+        .eql([alarmClock.address, keyOracle.address]);
 
       // check to ensure the trustee is there
       await expect(await trustee.getPolicy(5)).eql([

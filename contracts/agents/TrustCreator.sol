@@ -67,7 +67,7 @@ contract TrustCreator is ERC1155Holder, Initializable, OwnableUpgradeable, UUPSU
     address     public alarmClock;
     address     public keyOracle;
     address     public trustee;
-    address     public eventLog;
+    address     public trustEventLog;
 
     // permission registry: add these to the notary
     // upon trust creation using the new ROOT key.
@@ -111,7 +111,7 @@ contract TrustCreator is ERC1155Holder, Initializable, OwnableUpgradeable, UUPSU
         ledger    = _Ledger;
         etherVault = _EtherVault;
         tokenVault = _TokenVault;
-        eventLog = _TrustEventLog;
+        trustEventLog = _TrustEventLog;
     }
 
     /**
@@ -274,8 +274,8 @@ contract TrustCreator is ERC1155Holder, Initializable, OwnableUpgradeable, UUPSU
         notary.setTrustedLedgerRole(rootKeyId, 0, ledger, etherVault, true, stringToBytes32('Ether Vault')); 
         notary.setTrustedLedgerRole(rootKeyId, 0, ledger, tokenVault, true, stringToBytes32('Token Vault'));
         notary.setTrustedLedgerRole(rootKeyId, 1, ledger, trustee, true, stringToBytes32('Trustee Program'));
-        notary.setTrustedLedgerRole(rootKeyId, 2, eventLog, alarmClock, true, stringToBytes32('Alarm Clock Dispatcher'));
-        notary.setTrustedLedgerRole(rootKeyId, 2, eventLog, keyOracle, true, stringToBytes32('Key Oracle Dispatcher'));
+        notary.setTrustedLedgerRole(rootKeyId, 2, trustEventLog, alarmClock, true, stringToBytes32('Alarm Clock Dispatcher'));
+        notary.setTrustedLedgerRole(rootKeyId, 2, trustEventLog, keyOracle, true, stringToBytes32('Key Oracle Dispatcher'));
 
         // return the trustID and the rootKeyId
         return (trustId, rootKeyId, keyIDs);
