@@ -449,6 +449,31 @@ TrustTestFixtures = (function() {
         owner, root, second, third};
     },
     //////////////////////////////////////////////////////////
+    // Added Inbox 
+    //
+    // On top of everything else, creates a virtual address for 
+    // the initial root key.
+    //////////////////////////////////////////////////////////
+    addedInbox: async function() {
+      const {keyVault, locksmith,
+        notary, ledger, vault, tokenVault, coin,
+        events, trustee, keyOracle, alarmClock, creator,
+        owner, root, second, third} =
+        await TrustTestFixtures.addedCreator();
+
+      // deploy the inbox 
+      const VirtualAddress = await ethers.getContractFactory("VirtualKeyAddress");
+      const inbox = await upgrades.deployProxy(VirtualAddress, [
+        locksmith.address, notary.address, vault.address, 0, 0
+      ]);
+      await inbox.deployed();
+
+      return {keyVault, locksmith,
+        notary, ledger, vault, tokenVault, coin, inbox,
+        events, trustee, keyOracle, alarmClock, creator,
+        owner, root, second, third};
+    },
+    //////////////////////////////////////////////////////////
     // Deployed Hardhat Testing
     //
     // This is a fixture we use to help test the frontend

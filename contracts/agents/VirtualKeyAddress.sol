@@ -31,6 +31,10 @@ import '../interfaces/ILocksmith.sol';
 import '../interfaces/INotary.sol';
 import '../interfaces/IEtherCollateralProvider.sol';
 import '../interfaces/ITokenCollateralProvider.sol';
+
+// TODO: Remove
+import 'hardhat/console.sol';
+
 ///////////////////////////////////////////////////////////
 
 /**
@@ -66,8 +70,9 @@ contract VirtualKeyAddress is IVirtualAddress, ERC1155Holder, Initializable, UUP
     uint256 public keyId;          // the virtual address "identity"
     bool    public keyInitialized; // separates operation from key ID 0 by default
 
-    // virtual address configuration
+    // Collateral provider configuration 
     IEtherCollateralProvider public defaultEthDepositProvider; 
+    bool    public ethDepositHatch; // this is used to prevent withdrawals from trigger deposits
 
     // Platform references required
     ILocksmith public locksmith;
@@ -95,16 +100,18 @@ contract VirtualKeyAddress is IVirtualAddress, ERC1155Holder, Initializable, UUP
      *
      * @param _Locksmith the address of the locksmith contract
      * @param _Notary the address of the notary
+     * @param _ethProvider the default ethereum provider that will store the funds for receive() calls.
      * @param _ownerKeyId the key ID you want to own this virtual address
      * @param _keyId the key ID you want the virtual address to apply to
      */
-    function initialize(address _Locksmith, address _Notary, uint256 _ownerKeyId, uint256 _keyId) initializer public {
+    function initialize(address _Locksmith, address _Notary, address _ethProvider, uint256 _ownerKeyId, uint256 _keyId) initializer public {
         __UUPSUpgradeable_init();
         locksmith = ILocksmith(_Locksmith);
         notary = INotary(_Notary);
         ownerKeyId = _ownerKeyId;
         keyId = _keyId;
         keyInitialized = true;
+        defaultEthDepositProvider = IEtherCollateralProvider(_ethProvider);
 
         ethArn = AssetResourceName.AssetType({
             contractAddress: AssetResourceName.GAS_TOKEN_CONTRACT,
@@ -205,9 +212,16 @@ contract VirtualKeyAddress is IVirtualAddress, ERC1155Holder, Initializable, UUP
         // cater the withdrawal allowance as to not be perterbed afterwards
         notary.setWithdrawalAllowance(p.getTrustedLedger(), provider, keyId, ethArn, 
             notary.withdrawalAllowances(p.getTrustedLedger(), keyId, provider, ethArn) + amount);
+   
+        // disable deposits for ether. the money coming back will be used
+        // to send as a withdrawal from the trust account
+        ethDepositHatch = true;
 
         // withdrawal the amount into this contract
         p.withdrawal(keyId, amount);
+
+        // re-enable deposits on ether
+        ethDepositHatch = false; 
 
         // and send it from here, to ... to. 
         (bool sent,) = to.call{value: amount}("");
@@ -235,9 +249,13 @@ contract VirtualKeyAddress is IVirtualAddress, ERC1155Holder, Initializable, UUP
      * this interface to have a receive function for ether.
      */
     receive() external payable {
+        // don't deposit the money if this is a result
+        // of a withdrawal.
+        if (ethDepositHatch) { return; }
+
         // deposit the amount to default collateral provider
         defaultEthDepositProvider.deposit{value: msg.value}(keyId);
-
+            
         // add the transaction to the history
         transactions.push(Transaction({
             transactionType: TxType.RECEIVE,
