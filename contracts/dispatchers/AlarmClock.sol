@@ -170,27 +170,21 @@ contract AlarmClock is IAlarmClock, Initializable, OwnableUpgradeable, UUPSUpgra
             require(rootValid && keyValid && rootTrustId == keyTrustId, 'INVALID_SNOOZE_KEY');
         }
 
-        // build the event hash. It's a hash of the contract's address,
-        // the root and oracle key combination, as well as the event description.
-        // It should be robust enough to avoid accidential
-        // collisions, and salted enough to prevent malicious attacks.
-        bytes32 eventHash = keccak256(
-            abi.encode(address(this), rootKeyId, description, alarmTime, 
-                snoozeInterval, snoozeKeyId));
-
         // register it in the event log first. If the event hash is a duplicate,
         // it will fail here and the entire transaction will revert.
-        trustEventLog.registerTrustEvent(rootTrustId, eventHash, description);
+        bytes32 finalHash = trustEventLog.registerTrustEvent(rootTrustId, 
+            keccak256(abi.encode(rootKeyId, description, alarmTime, snoozeInterval, snoozeKeyId)), 
+            description);
 
         // if we get this far, we know its not a duplicate. Store it
         // here for introspection.
-        alarms[eventHash] = Alarm(eventHash, alarmTime, snoozeInterval, snoozeKeyId); 
+        alarms[finalHash] = Alarm(finalHash, alarmTime, snoozeInterval, snoozeKeyId); 
         
         // emit the oracle creation event
         emit alarmClockRegistered(msg.sender, rootTrustId, rootKeyId, 
-            alarmTime, snoozeInterval, snoozeKeyId, eventHash);
+            alarmTime, snoozeInterval, snoozeKeyId, finalHash);
 
-        return eventHash;
+        return finalHash;
     }
 
     /**

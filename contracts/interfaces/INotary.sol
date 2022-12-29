@@ -48,6 +48,22 @@ interface INotary {
         address ledger, address actor, bool trustLevel, uint role);
 
     /**
+     * withdrawalAllowanceAssigned
+     *
+     * This event fires when a hey holder approves a collateral provider
+     * for a specific amount to withdrawal.
+     *
+     * @param keyHolder address of the key holder
+     * @param keyId     key ID to approve withdraws for
+     * @param ledger    the ledger to approve the notarization for
+     * @param provider  collateral provider address to approve
+     * @param arn       asset you want to approve withdrawal for
+     * @param amount    amount of asset to approve
+     */
+    event withdrawalAllowanceAssigned(address keyHolder, uint256 keyId,
+        address ledger, address provider, bytes32 arn, uint256 amount);
+
+    /**
      * notaryDepositApproval 
      *
      * This event fires when a deposit onto a ledger for a collateral
@@ -98,7 +114,7 @@ interface INotary {
     event notaryDistributionApproval(address ledger, address provider, address scribe,
         bytes32 arn, uint256 trustId, uint256 rootKeyId,
         uint256[] keys, uint256[] amounts);
-
+ 
     /**
      * notaryEventRegistrationApproval
      *
@@ -112,6 +128,56 @@ interface INotary {
      */
     event notaryEventRegistrationApproval(address dispatcher, uint256 trustId, 
         bytes32 eventHash, bytes32 description);
+
+    ////////////////////////////////////////////////////////
+    // Permission Methods 
+    //
+    // Because the role between the collateral provider,
+    // ledger, and key holder are generally determined -
+    // the interface requires the ability to manage withdrawal
+    // allowances.
+    ////////////////////////////////////////////////////////
+    
+    /**
+     * setWithdrawalAllowance
+     *
+     * A collateral provider can't simply withdrawal funds from the trust
+     * ledger any time they want. The root key holder may have allowed
+     * the collateral provider to *deposit* into the root key whenever,
+     * but every key holder needs to approve a withdrawal amount before
+     * the collateral provider can do-so on their behalf.
+     *
+     * The caller must be holding the key at time of call. This can be a
+     * proxy to the key holder, but the true key holder must trust the proxy
+     * to give the key back.
+     *
+     * The semantics of this call are to *override* the approved withdrawal
+     * amounts. So if it is set to 10, and then called again with 5, the
+     * approved amount is 5, not 15.
+     *
+     * Upon withdrawal from the collateral provider, this amount is reduced
+     * by the amount that was withdrawn.
+     *
+     * @param ledger   address of the ledger to enable withdrawals from
+     * @param provider collateral provider address to approve
+     * @param keyId    key ID to approve withdraws for
+     * @param arn      asset you want to approve withdrawal for
+     * @param amount   amount of asset to approve
+     */
+    function setWithdrawalAllowance(address ledger, address provider, uint256 keyId, bytes32 arn, uint256 amount) external;
+
+    /**
+     * withdrawalAllowances
+     *
+     * Providers introspection into the key holder's permissions.
+     *
+     * @param ledger    the ledger that is in consideration
+     * @param keyId     the key to set the withdrawal limits for
+     * @param provider  the address of the collateral provider
+     * @param arn       the asset you wish to set the allowance for
+     * @return the approved amount for that key slot.
+     */
+    function withdrawalAllowances(address ledger, uint256 keyId, address provider, bytes32 arn) external returns (uint256);
 
     ////////////////////////////////////////////////////////
     // Ledger Methods

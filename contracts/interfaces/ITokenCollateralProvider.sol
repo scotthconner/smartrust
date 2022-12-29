@@ -1,13 +1,16 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.16;
 
+// We are extending the interface for ERC-20 tokens 
+import './ICollateralProvider.sol';
+
 /**
  * ITokenCollateralProvider
  *
  * Interface that enables users to deposit and withdrawal
  * ERC20 funds from their trust.
  */ 
-interface ITokenCollateralProvider {
+interface ITokenCollateralProvider is ICollateralProvider {
     /**
      * deposit
      *

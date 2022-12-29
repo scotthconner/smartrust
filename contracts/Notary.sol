@@ -46,29 +46,6 @@ using EnumerableSet for EnumerableSet.AddressSet;
  * a root key holder has approved the scribe moving the funds.
  */
 contract Notary is INotary, Initializable, OwnableUpgradeable, UUPSUpgradeable {
-    ////////////////////////////////////////////////////////
-    // Events
-    //
-    // This is going to help indexers and web applications
-    // watch and respond to blocks that contain trust transactions.
-    ////////////////////////////////////////////////////////
-
-    /**
-     * withdrawalAllowanceAssigned 
-     *
-     * This event fires when a hey holder approves a collateral provider
-     * for a specific amount to withdrawal.
-     *
-     * @param keyHolder address of the key holder
-     * @param keyId     key ID to approve withdraws for
-     * @param ledger    the ledger to approve the notarization for
-     * @param provider  collateral provider address to approve
-     * @param arn       asset you want to approve withdrawal for
-     * @param amount    amount of asset to approve
-     */
-    event withdrawalAllowanceAssigned(address keyHolder, uint256 keyId,
-        address ledger, address provider, bytes32 arn, uint256 amount);
-
     ///////////////////////////////////////////////////////
     // Storage
     ///////////////////////////////////////////////////////

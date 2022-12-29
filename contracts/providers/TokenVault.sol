@@ -124,6 +124,15 @@ contract TokenVault is ITokenCollateralProvider, Initializable, OwnableUpgradeab
     ////////////////////////////////////////////////////////
 
     /**
+     * getTrustedLedger
+     *
+     * @return address reference that the vault uses to trust for key permissions.
+     */
+    function getTrustedLedger() external view returns (address) {
+        return address(ledger);
+    }
+
+    /**
      * deposit
      *
      * This method will enable root key holders to deposit eth into
@@ -135,9 +144,8 @@ contract TokenVault is ITokenCollateralProvider, Initializable, OwnableUpgradeab
      * @param amount the amount to deposit
      */
     function deposit(uint256 keyId, address token, uint256 amount) external {
-        // we have removed the requirement that the caller be holding the key
-        // for deposit. this is because we want to enable anyone to deposit
-        // funds on behalf of the key owner.
+        // stop right now if the message sender doesn't hold the key
+        require(IKeyVault(locksmith.getKeyVault()).keyBalanceOf(msg.sender, keyId, false) > 0, 'KEY_NOT_HELD');
 
         // generate the token arn
         bytes32 tokenArn = AssetResourceName.AssetType({
@@ -263,7 +271,7 @@ contract TokenVault is ITokenCollateralProvider, Initializable, OwnableUpgradeab
         // jam the vault if the ledger's balance doesn't
         // match the vault balance after withdrawal
         assert(tokenBalances[token] == finalLedgerBalance);
-
+        
         // We trust that the ledger didn't overdraft so
         // send at the end to prevent re-entrancy.
         IERC20(token).transfer(msg.sender, amount);

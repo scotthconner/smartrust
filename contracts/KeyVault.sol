@@ -131,7 +131,7 @@ contract KeyVault is IKeyVault, ERC1155Upgradeable, UUPSUpgradeable {
      * keyBalanceOf
      *
      * We want to expose a generic ERC1155 interface here, but we are
-     * going to layer it through a key vault interface..
+     * going to layer it through a key vault interface.
      *
      * @param account   the wallet address you want the balance for
      * @param id        the key Id you want the balance of.

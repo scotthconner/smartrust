@@ -108,9 +108,9 @@ describe("KeyOracle", function () {
         await loadFixture(TrustTestFixtures.addedKeyOracle);
 
       // calculate hash
-      var hash = ethers.utils.keccak256(ethers.utils.defaultAbiCoder.encode(
-        ['address','uint256','uint256','bytes32'],
-        [keyOracle.address, 0, 1, stb('dead')]));
+      var hash = expectedEventHash(keyOracle.address, ethers.utils.keccak256(ethers.utils.defaultAbiCoder.encode(
+        ['uint256','uint256','bytes32'],
+        [0, 1, stb('dead')])));
 
       // pre-assert conditions
       expect(await keyOracle.getOracleKeyEvents(1)).eql([]);
@@ -138,9 +138,9 @@ describe("KeyOracle", function () {
         await loadFixture(TrustTestFixtures.addedKeyOracle);
 
       // calculate hash
-      var hash = ethers.utils.keccak256(ethers.utils.defaultAbiCoder.encode(
-        ['address','uint256','uint256','bytes32'],
-        [keyOracle.address, 0, 1, stb('dead')]));
+      var hash = expectedEventHash(keyOracle.address, ethers.utils.keccak256(ethers.utils.defaultAbiCoder.encode(
+        ['uint256','uint256','bytes32'],
+        [0, 1, stb('dead')])));
 
       // pre-assert conditions
       expect(await keyOracle.getOracleKeyEvents(1)).eql([]);
@@ -192,9 +192,9 @@ describe("KeyOracle", function () {
         await loadFixture(TrustTestFixtures.addedKeyOracle);
 
       // calculate hash
-      var hash = ethers.utils.keccak256(ethers.utils.defaultAbiCoder.encode(
-        ['address','uint256','uint256','bytes32'],
-        [keyOracle.address, 0, 1, stb('dead')]));
+      var hash = expectedEventHash(keyOracle.address, ethers.utils.keccak256(ethers.utils.defaultAbiCoder.encode(
+        ['uint256','uint256','bytes32'],
+        [0, 1, stb('dead')])));
 
       // register the event
       await expect(await keyOracle.connect(root).createKeyOracle(0, 1, stb('dead')))

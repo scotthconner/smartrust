@@ -1,13 +1,16 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.16;
 
+// We are extending the interface for ether
+import './ICollateralProvider.sol';
+
 /**
  * IEtherCollateralProvider 
  *
  * Interface that enables users to deposit and withdrawal 
  * Ether funds from their trust.
  */
-interface IEtherCollateralProvider {
+interface IEtherCollateralProvider is ICollateralProvider {
     /**
      * deposit
      *

@@ -87,7 +87,7 @@ describe("EtherVault", function () {
       const { owner, keyVault, locksmith,
         notary, ledger, vault,
         root, second, third
-      } = await loadFixture(TrustTestFixtures.freshEtherVault);
+      } = await loadFixture(TrustTestFixtures.freshEtherVault); 
 
       // create a second trust with a different owner, set collateral provider
       await locksmith.connect(second).createTrustAndRootKey(stb("Second Trust"), second.address);
@@ -119,18 +119,20 @@ describe("EtherVault", function () {
         .to.emit(ledger, "depositOccurred")
         .withArgs(vault.address, 0, 0, ethArn(), depositAmount, eth(20), eth(20), eth(33)); 
       expect(await ethers.provider.getBalance(vault.address)).to.equal(eth(33));
+
+      // check the ledger reference
+      await expect(await vault.getTrustedLedger()).eql(ledger.address);
     });
 
-    it("Can deposit without holding key", async function() {
+    it("Can not deposit without holding key", async function() {
       const { owner, keyVault, locksmith,
         notary, ledger, vault,
         root, second, third
       } = await loadFixture(TrustTestFixtures.freshEtherVault);
 
       // try to deposit with a key not held
-      await expect(await vault.connect(second).deposit(0, {value: eth(10)}))
-        .to.emit(ledger, "depositOccurred")
-        .withArgs(vault.address, 0, 0, ethArn(), eth(10), eth(10), eth(10), eth(10));
+      await expect(vault.connect(second).deposit(0, {value: eth(10)}))
+        .to.be.revertedWith('KEY_NOT_HELD');
     });
 
     it("Can deposit on non-root", async function() {

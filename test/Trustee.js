@@ -429,15 +429,17 @@ describe("Trustee", function () {
       await notary.connect(root).setTrustedLedgerRole(0, DISPATCHER(), events.address,
         third.address, true, stb('third'));
 
+      var hash = expectedEventHash(third.address, stb('death'));
+
       // register the event
       await expect(await events.connect(third).registerTrustEvent(0, stb('death'), stb('The owner dies')))
         .to.emit(events, 'trustEventRegistered')
-        .withArgs(third.address, 0, stb('death'), stb('The owner dies'));
+        .withArgs(third.address, 0, hash, stb('The owner dies'));
 
       // set the policy
-      await expect(await trustee.connect(root).setPolicy(0, 1, [1,2,3], [stb('death')]))
+      await expect(await trustee.connect(root).setPolicy(0, 1, [1,2,3], [hash]))
         .to.emit(trustee, 'trusteePolicySet')
-        .withArgs(root.address, 0, 1, [1,2,3], [stb('death')]);
+        .withArgs(root.address, 0, 1, [1,2,3], [hash]);
 
       // attempt to execute the distrbution
       await expect(trustee.connect(owner).distribute(1, vault.address, ethArn(),
@@ -447,9 +449,9 @@ describe("Trustee", function () {
       expect(response[0]).to.equal(false);
       
       // now fire the event
-      await expect(await events.connect(third).logTrustEvent(stb('death')))
+      await expect(await events.connect(third).logTrustEvent(hash))
         .to.emit(events, 'trustEventLogged')
-        .withArgs(third.address, stb('death'));
+        .withArgs(third.address, hash);
      
       // before we attempt to distribute, the policy should come back as enabled
       var response = await trustee.getPolicy(1);
@@ -487,49 +489,53 @@ describe("Trustee", function () {
       await notary.connect(root).setTrustedLedgerRole(0, DISPATCHER(), events.address,
         third.address, true, stb('owner'));
 
+      var hash = expectedEventHash(third.address, stb('death'));
+      var tenHash = expectedEventHash(third.address, stb('10 years'));
+      var momHash = expectedEventHash(third.address, stb('momApproves'));
+
       // register the event
       await expect(await events.connect(third).registerTrustEvent(0, stb('death'), stb('The owner dies')))
         .to.emit(events, 'trustEventRegistered')
-        .withArgs(third.address, 0, stb('death'), stb('The owner dies'));
+        .withArgs(third.address, 0, hash, stb('The owner dies'));
       await expect(await events.connect(third).registerTrustEvent(0, stb('10 years'), stb('2032')))
         .to.emit(events, 'trustEventRegistered')
-        .withArgs(third.address, 0, stb('10 years'), stb('2032'));
+        .withArgs(third.address, 0, tenHash, stb('2032'));
       await expect(await events.connect(third).registerTrustEvent(0, stb('momApproves'), stb('Call Home')))
         .to.emit(events, 'trustEventRegistered')
-        .withArgs(third.address, 0, stb('momApproves'), stb('Call Home'));
+        .withArgs(third.address, 0, momHash, stb('Call Home'));
 
       // set the policy
       await expect(await trustee.connect(root).setPolicy(0, 1, [1,2,3], [
-        stb('death'), stb('10 years'), stb('momApproves')]))
+        hash, tenHash, momHash]))
         .to.emit(trustee, 'trusteePolicySet')
-        .withArgs(root.address, 0, 1, [1,2,3], [stb('death')]);
+        .withArgs(root.address, 0, 1, [1,2,3], [hash, tenHash, momHash]);
 
       // attempt to execute the distrbution
       await expect(trustee.connect(owner).distribute(1, vault.address, ethArn(),
         [1,2,3], [eth(1), eth(1), eth(1)])).to.be.revertedWith('MISSING_EVENT');
 
       // now fire the event
-      await expect(await events.connect(third).logTrustEvent(stb('death')))
+      await expect(await events.connect(third).logTrustEvent(hash))
         .to.emit(events, 'trustEventLogged')
-        .withArgs(third.address, stb('death'));
+        .withArgs(third.address, hash);
       
       // we still have two more events 
       await expect(trustee.connect(owner).distribute(1, vault.address, ethArn(),
         [1,2,3], [eth(1), eth(1), eth(1)])).to.be.revertedWith('MISSING_EVENT');
      
       // its been 10 years
-      await expect(await events.connect(third).logTrustEvent(stb('10 years')))
+      await expect(await events.connect(third).logTrustEvent(tenHash))
         .to.emit(events, 'trustEventLogged')
-        .withArgs(third.address, stb('10 years'));
+        .withArgs(third.address, tenHash);
       
       // we still have to call mom
       await expect(trustee.connect(owner).distribute(1, vault.address, ethArn(),
         [1,2,3], [eth(1), eth(1), eth(1)])).to.be.revertedWith('MISSING_EVENT');
 
       // fine, call mom
-      await expect(await events.connect(third).logTrustEvent(stb('momApproves')))
+      await expect(await events.connect(third).logTrustEvent(momHash))
         .to.emit(events, 'trustEventLogged')
-        .withArgs(third.address, stb('momApproves'));
+        .withArgs(third.address, momHash);
 
       // this should finally work
       await expect(await trustee.connect(owner).distribute(1, vault.address, ethArn(),

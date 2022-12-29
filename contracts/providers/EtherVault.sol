@@ -124,6 +124,15 @@ contract EtherVault is IEtherCollateralProvider, Initializable, OwnableUpgradeab
     ////////////////////////////////////////////////////////
 
     /**
+     * getTrustedLedger
+     *
+     * @return address reference that the vault uses to trust for key permissions.
+     */
+    function getTrustedLedger() external view returns (address) {
+        return address(ledger);
+    }
+
+    /**
      * deposit
      *
      * This method will enable users to deposit eth into
@@ -133,8 +142,9 @@ contract EtherVault is IEtherCollateralProvider, Initializable, OwnableUpgradeab
      * @param keyId the ID of the key that the depositor is using.
      */
     function deposit(uint256 keyId) payable external {
-        // we used to make sure that the caller held the key, but we have since
-        // removed this restriction to allow the trust to behave more like a wallet
+        // Make sure the depositor is holding the key in question
+        require(IKeyVault(locksmith.getKeyVault()).keyBalanceOf(msg.sender, keyId, false) > 0, 
+            'KEY_NOT_HELD');
 
         // track the deposit on the ledger
         // this could revert for a few reasons:

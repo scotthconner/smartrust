@@ -274,9 +274,9 @@ describe("TrustCreator", function () {
         await loadFixture(TrustTestFixtures.addedCreator);
 
       const alarmTime = (await now()) + 100;
-      const eventHash = ethers.utils.keccak256(ethers.utils.defaultAbiCoder.encode(
-        ['address','uint256','bytes32','uint256','uint256','uint256'],
-        [alarmClock.address, bn(4), stb('Deadman\'s Switch'), alarmTime, bn(60 * 60 * 24), bn(4)]))
+      const eventHash = expectedEventHash(alarmClock.address, ethers.utils.keccak256(ethers.utils.defaultAbiCoder.encode(
+        ['uint256','bytes32','uint256','uint256','uint256'],
+        [bn(4), stb('Deadman\'s Switch'), alarmTime, bn(60 * 60 * 24), bn(4)])));
 
       await expect(await creator.connect(root).createDeadSimpleTrust(stb('Conner Trust'),
         [owner.address, second.address], [stb('Trustee'), stb('Benny')], [false, true],

@@ -113,11 +113,15 @@ interface ITrustEventLog {
      * Key holders cannot call this method unless they will also
      * act as the event dispatcher.
      *
+     * The returned hash might be predicted, but should be 
+     * only be able to be registered once, by the dispatcher.  
+     *
      * @param trustId     the trust to associate the event with
      * @param eventHash   the event hash to register
      * @param description a small description of the event
+     * @return the final event hash that should be considered the valid one
      */
-    function registerTrustEvent(uint256 trustId, bytes32 eventHash, bytes32 description) external;
+    function registerTrustEvent(uint256 trustId, bytes32 eventHash, bytes32 description) external returns(bytes32);
 
     /**
      * logTrustEvent 

@@ -108,15 +108,14 @@ describe("TokenVault", function () {
         .eql([eth(3)]);
     });
 
-    it("Does not need to hold key used for deposit", async function() {
+    it("Require to hold key used for deposit", async function() {
       const { keyVault, locksmith, 
         notary, ledger, tokenVault, coin,
         owner, root, second, third } = await loadFixture(TrustTestFixtures.freshTokenVault);
 
       // try to deposit without a key 
-      await expect(await tokenVault.connect(second).deposit(0, coin.address, eth(3))) 
-        .to.emit(ledger, "depositOccurred")
-        .withArgs(tokenVault.address, 0, 0, tokenArn(coin.address), eth(3), eth(3), eth(3), eth(3));
+      await expect(tokenVault.connect(second).deposit(0, coin.address, eth(3))) 
+        .to.be.revertedWith('KEY_NOT_HELD');
     });
 
     it("Does not have deposit permission", async function() {
@@ -132,6 +131,9 @@ describe("TokenVault", function () {
       await expect(tokenVault.connect(second)
         .deposit(1, coin.address, eth(3))) 
         .to.be.revertedWith("UNTRUSTED_ACTOR");
+
+      // check the ledger reference
+      await expect(await tokenVault.getTrustedLedger()).eql(ledger.address);
     });
 
     it("Does not have enough ERC20 to deposit", async function() {

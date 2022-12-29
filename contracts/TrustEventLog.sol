@@ -159,31 +159,40 @@ contract TrustEventLog is ITrustEventLog, Initializable, OwnableUpgradeable, UUP
      * @param trustId     the trust to associate the event with
      * @param eventHash   the event hash to register
      * @param description a small description of the event
+     * @return the final event hash that needs to be used
      */
-    function registerTrustEvent(uint256 trustId, bytes32 eventHash, bytes32 description) external {
+    function registerTrustEvent(uint256 trustId, bytes32 eventHash, bytes32 description) external returns (bytes32) {
+        // generate the counterfactual registration hash, this is
+        // to prevent other dispatchers from registering the same hash, ever.
+        // we will enable duplicate hashes from within a dispatcher,
+        // because that's up to the dispatcher to salt to prevent hash collisions. 
+        bytes32 finalHash = keccak256(abi.encode(msg.sender, eventHash));
+
         // we want to tell the notary about this to prevent
         // unauthorized event spam. this will revert if
         // the trust owner hasn't approved it.
-        INotary(notary).notarizeEventRegistration(msg.sender, trustId, eventHash, description);
+        INotary(notary).notarizeEventRegistration(msg.sender, trustId, finalHash, description);
 
         // make sure the hash isn't already registered
-        require(address(0) == eventDispatchers[eventHash], 
+        require(address(0) == eventDispatchers[finalHash], 
             "DUPLICATE_REGISTRATION");
         
         // invariant: make sure the event hasn't fired 
-        assert(!firedEvents[eventHash]);
+        assert(!firedEvents[finalHash]);
 
         // register the event
-        eventDispatchers[eventHash] = msg.sender;
-        eventDescriptions[eventHash] = description;
+        eventDispatchers[finalHash] = msg.sender;
+        eventDescriptions[finalHash] = description;
 
         // the event is really bound to dispatchers, but
         // we want to keep track of a trust ID for introspection
-        trustEventRegistry[trustId].push(eventHash);
-        trustDispatcherEvents[trustId][msg.sender].push(eventHash);
+        trustEventRegistry[trustId].push(finalHash);
+        trustDispatcherEvents[trustId][msg.sender].push(finalHash);
 
         // emit the event
-        emit trustEventRegistered(msg.sender, trustId, eventHash, description);
+        emit trustEventRegistered(msg.sender, trustId, finalHash, description);
+
+        return finalHash;
     }
 
     /**

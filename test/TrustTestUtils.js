@@ -60,6 +60,13 @@ now = async function() {
   ).timestamp;
 }
 
+expectedEventHash = function(dispatcher, preHash) {
+  return ethers.utils.keccak256(ethers.utils.defaultAbiCoder.encode(
+    ['address','bytes32'],
+    [dispatcher, preHash] 
+  ));
+}
+
 doTransaction = async function(promise) {
   const _tx = (await promise); 
       

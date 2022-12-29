@@ -97,9 +97,9 @@ describe("AlarmClock", function () {
         await loadFixture(TrustTestFixtures.addedAlarmClock);
 
       const time = await now();
-      const hash = ethers.utils.keccak256(ethers.utils.defaultAbiCoder.encode(
-        ['address','uint256','bytes32','uint256','uint256','uint256'],
-        [alarmClock.address, bn(0), stb('proof-of-life'), time, bn(0), bn(99)]));
+      const hash = expectedEventHash(alarmClock.address, ethers.utils.keccak256(ethers.utils.defaultAbiCoder.encode(
+        ['uint256','bytes32','uint256','uint256','uint256'],
+        [bn(0), stb('proof-of-life'), time, bn(0), bn(99)])));
 
       await expect(await alarmClock.connect(root).createAlarm(0, stb("proof-of-life"), time, 0, 99))
         .to.emit(alarmClock, 'alarmClockRegistered')
@@ -118,9 +118,9 @@ describe("AlarmClock", function () {
         await loadFixture(TrustTestFixtures.addedAlarmClock);
 
       const time = await now();
-      const hash = ethers.utils.keccak256(ethers.utils.defaultAbiCoder.encode(
-        ['address','uint256','bytes32','uint256','uint256','uint256'],
-        [alarmClock.address, bn(0), stb('proof-of-life'), time, bn(100), bn(1)]));
+      const hash = expectedEventHash(alarmClock.address, ethers.utils.keccak256(ethers.utils.defaultAbiCoder.encode(
+        ['uint256','bytes32','uint256','uint256','uint256'],
+        [bn(0), stb('proof-of-life'), time, bn(100), bn(1)])));
 
       await expect(await alarmClock.connect(root).createAlarm(0, stb("proof-of-life"), time, 100, 1))
         .to.emit(alarmClock, 'alarmClockRegistered')
@@ -139,9 +139,9 @@ describe("AlarmClock", function () {
         await loadFixture(TrustTestFixtures.addedAlarmClock);
 
       const time = await now();
-      const hash = ethers.utils.keccak256(ethers.utils.defaultAbiCoder.encode(
-        ['address','uint256','bytes32','uint256','uint256','uint256'],
-        [alarmClock.address, bn(0), stb('proof-of-life'), time, bn(100), bn(1)]));
+      const hash = expectedEventHash(alarmClock.address, ethers.utils.keccak256(ethers.utils.defaultAbiCoder.encode(
+        ['uint256','bytes32','uint256','uint256','uint256'],
+        [bn(0), stb('proof-of-life'), time, bn(100), bn(1)])));
 
       await expect(await alarmClock.connect(root).createAlarm(0, stb("proof-of-life"), time, 100, 1))
         .to.emit(alarmClock, 'alarmClockRegistered')
@@ -170,9 +170,9 @@ describe("AlarmClock", function () {
         await loadFixture(TrustTestFixtures.addedAlarmClock);
 
       const time = (await now()) + 60*60*24*100; // 100 days in the future
-      const hash = ethers.utils.keccak256(ethers.utils.defaultAbiCoder.encode(
-        ['address','uint256','bytes32','uint256','uint256','uint256'],
-        [alarmClock.address, bn(0), stb('proof-of-life'), time, bn(100), bn(1)]));
+      const hash = expectedEventHash(alarmClock.address, ethers.utils.keccak256(ethers.utils.defaultAbiCoder.encode(
+        ['uint256','bytes32','uint256','uint256','uint256'],
+        [bn(0), stb('proof-of-life'), time, bn(100), bn(1)])));
 
       await expect(await alarmClock.connect(root).createAlarm(0, stb("proof-of-life"), time, 100, 1))
         .to.emit(alarmClock, 'alarmClockRegistered')
@@ -187,9 +187,9 @@ describe("AlarmClock", function () {
         await loadFixture(TrustTestFixtures.addedAlarmClock);
 
       const time = (await now()) + 60*60*24*100; // 100 days in the future 
-      const hash = ethers.utils.keccak256(ethers.utils.defaultAbiCoder.encode(
-        ['address','uint256','bytes32','uint256','uint256','uint256'],
-        [alarmClock.address, bn(0), stb('proof-of-life'), time, bn(100), bn(1)]));
+      const hash = expectedEventHash(alarmClock.address, ethers.utils.keccak256(ethers.utils.defaultAbiCoder.encode(
+        ['uint256','bytes32','uint256','uint256','uint256'],
+        [bn(0), stb('proof-of-life'), time, bn(100), bn(1)])));
 
       await expect(await alarmClock.connect(root).createAlarm(0, stb("proof-of-life"), time, 100, 1))
         .to.emit(alarmClock, 'alarmClockRegistered')
@@ -229,9 +229,9 @@ describe("AlarmClock", function () {
         await loadFixture(TrustTestFixtures.addedAlarmClock);
 
       const time = await now();
-      const hash = ethers.utils.keccak256(ethers.utils.defaultAbiCoder.encode(
-        ['address','uint256','bytes32','uint256','uint256','uint256'],
-        [alarmClock.address, bn(0), stb('proof-of-life'), time, bn(0), bn(1)]));
+      const hash = expectedEventHash(alarmClock.address, ethers.utils.keccak256(ethers.utils.defaultAbiCoder.encode(
+        ['uint256','bytes32','uint256','uint256','uint256'],
+        [bn(0), stb('proof-of-life'), time, bn(0), bn(1)])));
 
       await expect(await alarmClock.connect(root).createAlarm(0, stb("proof-of-life"), time, 0, 1))
         .to.emit(alarmClock, 'alarmClockRegistered')
@@ -246,9 +246,9 @@ describe("AlarmClock", function () {
         await loadFixture(TrustTestFixtures.addedAlarmClock);
 
       const time = await now();
-      const hash = ethers.utils.keccak256(ethers.utils.defaultAbiCoder.encode(
-        ['address','uint256','bytes32','uint256','uint256','uint256'],
-        [alarmClock.address, bn(0), stb('proof-of-life'), time, bn(100), bn(1)]));
+      const hash = expectedEventHash(alarmClock.address, ethers.utils.keccak256(ethers.utils.defaultAbiCoder.encode(
+        ['uint256','bytes32','uint256','uint256','uint256'],
+        [bn(0), stb('proof-of-life'), time, bn(100), bn(1)])));
 
       await expect(await alarmClock.connect(root).createAlarm(0, stb("proof-of-life"), time, 100, 1))
         .to.emit(alarmClock, 'alarmClockRegistered')
@@ -263,9 +263,9 @@ describe("AlarmClock", function () {
         await loadFixture(TrustTestFixtures.addedAlarmClock);
 
       const time = await now();
-      const hash = ethers.utils.keccak256(ethers.utils.defaultAbiCoder.encode(
-        ['address','uint256','bytes32','uint256','uint256','uint256'],
-        [alarmClock.address, bn(0), stb('proof-of-life'), time, bn(100), bn(1)]));
+      const hash = expectedEventHash(alarmClock.address, ethers.utils.keccak256(ethers.utils.defaultAbiCoder.encode(
+        ['uint256','bytes32','uint256','uint256','uint256'],
+        [bn(0), stb('proof-of-life'), time, bn(100), bn(1)])));
 
       await expect(await alarmClock.connect(root).createAlarm(0, stb("proof-of-life"), time, 100, 1))
         .to.emit(alarmClock, 'alarmClockRegistered')
@@ -280,9 +280,9 @@ describe("AlarmClock", function () {
         await loadFixture(TrustTestFixtures.addedAlarmClock);
 
       const time = (await now()) + 60*60*24*100; // 100 days in the future
-      const hash = ethers.utils.keccak256(ethers.utils.defaultAbiCoder.encode(
-        ['address','uint256','bytes32','uint256','uint256','uint256'],
-        [alarmClock.address, bn(0), stb('proof-of-life'), time, bn(100), bn(1)]));
+      const hash = expectedEventHash(alarmClock.address, ethers.utils.keccak256(ethers.utils.defaultAbiCoder.encode(
+        ['uint256','bytes32','uint256','uint256','uint256'],
+        [bn(0), stb('proof-of-life'), time, bn(100), bn(1)])));
 
       await expect(await alarmClock.connect(root).createAlarm(0, stb("proof-of-life"), time, 100, 1))
         .to.emit(alarmClock, 'alarmClockRegistered')
@@ -306,9 +306,9 @@ describe("AlarmClock", function () {
         await loadFixture(TrustTestFixtures.addedAlarmClock);
 
       const time = (await now()) + 60*60*24*100; // 100 days in the future
-      const hash = ethers.utils.keccak256(ethers.utils.defaultAbiCoder.encode(
-        ['address','uint256','bytes32','uint256','uint256','uint256'],
-        [alarmClock.address, bn(0), stb('proof-of-life'), time, bn(100), bn(1)]));
+      const hash = expectedEventHash(alarmClock.address, ethers.utils.keccak256(ethers.utils.defaultAbiCoder.encode(
+        ['uint256','bytes32','uint256','uint256','uint256'],
+        [bn(0), stb('proof-of-life'), time, bn(100), bn(1)])));
 
       await expect(await alarmClock.connect(root).createAlarm(0, stb("proof-of-life"), time, 100, 1))
         .to.emit(alarmClock, 'alarmClockRegistered')
@@ -323,9 +323,9 @@ describe("AlarmClock", function () {
         await loadFixture(TrustTestFixtures.addedAlarmClock);
 
       const time = (await now()) + 60; // 60 seconds 
-      const hash = ethers.utils.keccak256(ethers.utils.defaultAbiCoder.encode(
-        ['address','uint256','bytes32','uint256','uint256','uint256'],
-        [alarmClock.address, bn(0), stb('proof-of-life'), time, bn(100), bn(1)]));
+      const hash = expectedEventHash(alarmClock.address, ethers.utils.keccak256(ethers.utils.defaultAbiCoder.encode(
+        ['uint256','bytes32','uint256','uint256','uint256'],
+        [bn(0), stb('proof-of-life'), time, bn(100), bn(1)])));
 
       await expect(await alarmClock.connect(root).createAlarm(0, stb("proof-of-life"), time, 100, 1))
         .to.emit(alarmClock, 'alarmClockRegistered')
@@ -341,9 +341,9 @@ describe("AlarmClock", function () {
         await loadFixture(TrustTestFixtures.addedAlarmClock);
 
       const time = (await now()) + 60; // 60 seconds
-      const hash = ethers.utils.keccak256(ethers.utils.defaultAbiCoder.encode(
-        ['address','uint256','bytes32','uint256','uint256','uint256'],
-        [alarmClock.address, bn(0), stb('proof-of-life'), time, bn(100), bn(1)]));
+      const hash = expectedEventHash(alarmClock.address, ethers.utils.keccak256(ethers.utils.defaultAbiCoder.encode(
+        ['uint256','bytes32','uint256','uint256','uint256'],
+        [bn(0), stb('proof-of-life'), time, bn(100), bn(1)])));
 
       await expect(await alarmClock.connect(root).createAlarm(0, stb("proof-of-life"), time, 100, 1))
         .to.emit(alarmClock, 'alarmClockRegistered')

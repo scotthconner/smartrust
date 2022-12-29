@@ -170,24 +170,18 @@ contract KeyOracle is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         (bool keyValid,, uint256 keyTrustId,,) = locksmith.inspectKey(keyId);
         require(rootValid && keyValid && rootTrustId == keyTrustId, 'INVALID_ORACLE_KEY');
 
-        // build the event hash. It's a hash of the contract's address,
-        // the root and oracle key combination, as well as the event description.
-        // It should be robust enough to avoid accidential
-        // collisions, and salted enough to prevent malicious attacks.
-        bytes32 eventHash = keccak256(
-            abi.encode(address(this), rootKeyId, keyId, description));
-
         // register it in the event log first. If the event hash is a duplicate,
         // it will fail here and the entire transaction will revert.
-        trustEventLog.registerTrustEvent(rootTrustId, eventHash, description);
+        bytes32 finalHash = trustEventLog.registerTrustEvent(rootTrustId, 
+            keccak256(abi.encode(rootKeyId, keyId, description)), description);
 
         // if we get this far, we know its not a duplicate. Store it
         // here for introspection.
-        oracleKeyEvents[keyId].add(eventHash);
-        eventKeys[eventHash] = keyId;
+        oracleKeyEvents[keyId].add(finalHash);
+        eventKeys[finalHash] = keyId;
 
         // emit the oracle creation event
-        emit keyOracleRegistered(msg.sender, rootTrustId, rootKeyId, keyId, eventHash);
+        emit keyOracleRegistered(msg.sender, rootTrustId, rootKeyId, keyId, finalHash);
     }
     
     ////////////////////////////////////////////////////////
