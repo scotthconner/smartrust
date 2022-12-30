@@ -176,6 +176,45 @@ contract EtherVault is IEtherCollateralProvider, Initializable, OwnableUpgradeab
      * @param amount the amount of ether, in gwei, to withdrawal from the balance.
      */
     function withdrawal(uint256 keyId, uint256 amount) external {
+        _withdrawal(keyId, amount);
+    }
+
+    /**
+     * arnWithdrawal
+     *
+     * Functions exactly like #withdrawal, but takes an ARN. For this
+     * provider, it will revert if the arn isn't ethereum.
+     *
+     * @param keyId  the key you want to use to withdrawal with/from
+     * @param arn    the asset resource name to withdrawal
+     * @param amount the amount of ether, in gwei, to withdrawal from the balance.
+     */
+    function arnWithdrawal(uint256 keyId, bytes32 arn, uint256 amount) external {
+        // ensure that the arn is the ethereum arn
+        require(arn == ethArn, 'INVALID_ARN');
+
+        // use a standard withdrawal
+        _withdrawal(keyId, amount);
+    }
+
+    ////////////////////////////////////////////////////////
+    // Internal Methods
+    ////////////////////////////////////////////////////////
+    
+    /**
+     * _withdrawal
+     *
+     * Given a key, attempt to withdrawal ether from the vault. This will only
+     * succeed if the key is held by the user, the key has the permission to
+     * withdrawal, the rules of the trust are satisified (whatever those may be),
+     * and there is sufficient balance. If any of those fail, the entire
+     * transaction will revert and fail.
+     *
+     * @param keyId  the keyId that identifies both the permissioned 'actor'
+     *               and implicitly the associated trust
+     * @param amount the amount of ether, in gwei, to withdrawal from the balance.
+     */
+    function _withdrawal(uint256 keyId, uint256 amount) internal {
         // stop right now if the message sender doesn't hold the key
         require(IKeyVault(locksmith.getKeyVault()).keyBalanceOf(msg.sender, keyId, false) > 0,
             'KEY_NOT_HELD');

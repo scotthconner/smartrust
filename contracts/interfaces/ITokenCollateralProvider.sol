@@ -40,19 +40,6 @@ interface ITokenCollateralProvider is ICollateralProvider {
     function withdrawal(uint256 keyId, address token, uint256 amount) external;
     
     /**
-     * arnWithdrawal
-     *
-     * Functions exactly like #withdrawal, but takes an ARN and does
-     * the internal conversion to contract address. This vault will fail
-     * the withdrawal if it was never deposited as it wont recognize the arn.
-     *
-     * @param keyId  the key you want to use to withdrawal with/from
-     * @param arn    the asset resource name to withdrawal 
-     * @param amount the amount of ether, in gwei, to withdrawal from the balance.
-     */
-    function arnWithdrawal(uint256 keyId, bytes32 arn, uint256 amount) external;
-
-    /**
      * getTokenTypes
      *
      * Given a specific key, will return the contract addresses for all

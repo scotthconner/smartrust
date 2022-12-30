@@ -67,7 +67,7 @@ contract TokenVault is ITokenCollateralProvider, Initializable, OwnableUpgradeab
     // witnessed token addresses
     // trust => [registered addresses] 
     mapping(uint256 => EnumerableSet.AddressSet) private witnessedTokenAddresses;
-    mapping(bytes32 => address) private arnContracts;
+    mapping(bytes32 => address) public arnContracts;
 
     // we need to keep track of the deposit balances safely
     mapping(address => uint256) tokenBalances;

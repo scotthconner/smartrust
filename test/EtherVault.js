@@ -174,7 +174,7 @@ describe("EtherVault", function () {
 
       // approve the withdrawal with the ledger this time
       await notary.connect(root).setWithdrawalAllowance(vault.ledger(),
-        vault.address, 0, ethArn(), eth(2));
+        vault.address, 0, ethArn(), eth(4));
 
       let rootBalance = await ethers.provider.getBalance(root.address);
       
@@ -187,14 +187,24 @@ describe("EtherVault", function () {
       expect(await ethers.provider.getBalance(vault.address)).to.equal(eth(38));
       expect(await ethers.provider.getBalance(root.address))
         .to.equal(rootBalance.sub(tx.gasCost).add(eth(2)));
-    });
 
-    it("Non-root withdrawal happy case", async function() {
-      // TODO: Functionally this is the same thing
-      // as root, but its good to cover. However, I need
-      // a scribe to move the funds and I haven't gotten
-      // that far yet.
-      expect(true); 
+      // withdrawal some eth using the arn interface, but fail because
+      // its the wrong arn
+      await expect(vault.connect(root).arnWithdrawal(0, stb('not-eth'), eth(1)))
+        .to.be.revertedWith('INVALID_ARN');
+
+      rootBalance = await ethers.provider.getBalance(root.address);
+      
+      // do it again successfully
+      // withdrawal some eth and ensure the right events are emitted
+      const tx2 = await doTransaction(vault.connect(root).arnWithdrawal(0, ethArn(), eth(2)));
+      await expect(tx2.transaction).to.emit(ledger, "withdrawalOccurred")
+        .withArgs(vault.address, 0, 0, ethArn(), eth(2), eth(36), eth(36), eth(36));
+
+      // check balances
+      expect(await ethers.provider.getBalance(vault.address)).to.equal(eth(36));
+      expect(await ethers.provider.getBalance(root.address))
+        .to.equal(rootBalance.sub(tx2.gasCost).add(eth(2)));  
     });
 
     it("Can't withdrawal more than balance", async function() {
