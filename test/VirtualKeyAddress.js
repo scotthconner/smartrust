@@ -163,6 +163,16 @@ describe("VirtualKeyAddress", function () {
       await expect(await ethers.provider.getBalance(vault.address)).eql(vaultBalance.sub(eth(1)));
       await expect(await ledger.getContextArnBalances(KEY(), 0, vault.address, [ethArn()]))
         .eql([rootBalance.sub(eth(1))]);
+
+      // check the transaction history
+      await expect(await inbox.transactionCount()).eql(bn(1));
+      const tx = await inbox.transactions(0);
+      expect(tx[0]).eql(1); // SEND
+      expect(tx[2]).eql(root.address);  // sender
+      expect(tx[3]).eql(third.address); // receiver
+      expect(tx[4]).eql(vault.address); // provider
+      expect(tx[5]).eql(ethArn());      // asset
+      expect(tx[6]).eql(eth(1));        // amount
     });
   });
 
@@ -259,6 +269,16 @@ describe("VirtualKeyAddress", function () {
 
       // we do this logic because there is also some gas involved
       expect(ownerBalance.sub(eth(1))).gt(await ethers.provider.getBalance(owner.address));
+
+      // check the transaction history
+      await expect(await inbox.transactionCount()).eql(bn(1));
+      const tx = await inbox.transactions(0);
+      expect(tx[0]).eql(2); // RECEIVE 
+      expect(tx[2]).eql(owner.address);  // sender
+      expect(tx[3]).eql(inbox.address);  // receiver
+      expect(tx[4]).eql(vault.address);  // provider
+      expect(tx[5]).eql(ethArn());       // asset
+      expect(tx[6]).eql(eth(1));         // amount
     });
   });
 
@@ -360,11 +380,21 @@ describe("VirtualKeyAddress", function () {
         .to.emit(inbox, 'assetSent')
         .withArgs(root.address, inbox.address, 0, tokenVault.address, tokenArn(coin.address), eth(1), third.address);
 
-      // assert the ether ended up at third and check the vault and ledger balance
+      // assert the coin ended up at third and check the vault and ledger balance
       await expect(await coin.balanceOf(third.address)).eql(thirdBalance.add(eth(1)));
       await expect(await coin.balanceOf(tokenVault.address)).eql(vaultBalance.sub(eth(1)));
       await expect(await ledger.getContextArnBalances(KEY(), 0, tokenVault.address, [tokenArn(coin.address)]))
         .eql([rootBalance.sub(eth(1))]);
+
+      // check the transaction history
+      await expect(await inbox.transactionCount()).eql(bn(1));
+      const tx = await inbox.transactions(0);
+      expect(tx[0]).eql(1);                      // SEND
+      expect(tx[2]).eql(root.address);           // sender
+      expect(tx[3]).eql(third.address);          // receiver
+      expect(tx[4]).eql(tokenVault.address);     // provider
+      expect(tx[5]).eql(tokenArn(coin.address)); // asset
+      expect(tx[6]).eql(eth(1));                 // amount
     });
   });
 
@@ -466,11 +496,21 @@ describe("VirtualKeyAddress", function () {
         .to.emit(inbox, 'assetReceived')
         .withArgs(root.address, inbox.address, 0, tokenVault.address, tokenArn(coin.address), eth(1));
 
-      // assert the ether ended up at third and check the vault and ledger balance
+      // assert the token ended up at third and check the vault and ledger balance
       await expect(await coin.balanceOf(tokenVault.address)).eql(vaultBalance.add(eth(1)));
       await expect(await ledger.getContextArnBalances(KEY(), 0, tokenVault.address, [tokenArn(coin.address)]))
         .eql([rootBalance.add(eth(1))]);
       expect(ownerBalance.sub(eth(1))).eq(await coin.balanceOf(second.address));
+
+      // check the transaction history
+      await expect(await inbox.transactionCount()).eql(bn(1));
+      const tx = await inbox.transactions(0);
+      expect(tx[0]).eql(2);                      // RECEIVE 
+      expect(tx[2]).eql(root.address);           // sender
+      expect(tx[3]).eql(inbox.address);          // receiver
+      expect(tx[4]).eql(tokenVault.address);     // provider
+      expect(tx[5]).eql(tokenArn(coin.address)); // asset
+      expect(tx[6]).eql(eth(1));                 // amount
     });
   });
 }); 

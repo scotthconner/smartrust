@@ -69,7 +69,34 @@ interface IVirtualAddress {
      * @return the address of the default IEtherCollateralProvider used for receiving ether payments
      */
     function getDefaultEthDepositProvider() external view returns (address);
-    
+   
+    /**
+     * transactions 
+     *
+     * The virtual transactions do not correspond with 1:1 send-receives
+     * on the blockchain. Because of this, we want to expose the logical
+     * fund movements. 
+     *
+     * @param index the index of the transaction you're looking for.
+     * @return a mapping of the transaction information 
+     */
+    function transactions(uint256 index) external view returns (
+        TxType,
+        uint256,
+        address,
+        address,
+        address,
+        bytes32,
+        uint256
+    );
+
+    /**
+     * transactionCount
+     *
+     * @return the number of transactions recorded on the virtual address.
+     */
+    function transactionCount() external view returns (uint256);
+
     ////////////////////////////////////////////////////////
     // MANAGEMENT FUNCTIONS 
     //

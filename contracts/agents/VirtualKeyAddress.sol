@@ -79,7 +79,8 @@ contract VirtualKeyAddress is IVirtualAddress, ERC1155Holder, Initializable, UUP
     INotary    public notary;
 
     // chain storage for transaction history
-    Transaction[] private transactions;
+    Transaction[] public transactions;
+    uint256 public transactionCount;
 
     ///////////////////////////////////////////////////////
     // Constructor and Upgrade Methods
@@ -237,6 +238,7 @@ contract VirtualKeyAddress is IVirtualAddress, ERC1155Holder, Initializable, UUP
             arn:       ethArn,
             amount:    amount
         }));
+        transactionCount += 1;
 
         // emit the proper event.
         emit assetSent(msg.sender, address(this), keyId, provider, ethArn, amount, to);
@@ -266,6 +268,7 @@ contract VirtualKeyAddress is IVirtualAddress, ERC1155Holder, Initializable, UUP
             arn:       ethArn,
             amount:    msg.value 
         }));
+        transactionCount += 1;
 
         // emit the proper event.
         emit assetReceived(msg.sender, address(this), keyId, address(defaultEthDepositProvider), ethArn, msg.value);
@@ -317,6 +320,7 @@ contract VirtualKeyAddress is IVirtualAddress, ERC1155Holder, Initializable, UUP
             arn:       arn,
             amount:    amount
         }));
+        transactionCount += 1;
 
         // emit the proper event.
         emit assetSent(msg.sender, address(this), keyId, provider, arn, amount, to);
@@ -370,6 +374,7 @@ contract VirtualKeyAddress is IVirtualAddress, ERC1155Holder, Initializable, UUP
             arn:       arn,
             amount:    tokenBalance 
         }));
+        transactionCount += 1;
 
         // emit the proper event.
         emit assetReceived(msg.sender, address(this), keyId, provider, arn, tokenBalance);
