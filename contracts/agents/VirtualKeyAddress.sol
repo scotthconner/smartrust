@@ -26,15 +26,11 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 // We will need some of the required ABIs 
 import '../interfaces/IVirtualAddress.sol';
-import '../interfaces/IKeyVault.sol';
 import '../interfaces/ILocksmith.sol';
+import '../interfaces/ILedger.sol';
 import '../interfaces/INotary.sol';
 import '../interfaces/IEtherCollateralProvider.sol';
 import '../interfaces/ITokenCollateralProvider.sol';
-
-// TODO: Remove
-import 'hardhat/console.sol';
-
 ///////////////////////////////////////////////////////////
 
 /**
@@ -76,7 +72,6 @@ contract VirtualKeyAddress is IVirtualAddress, ERC1155Holder, Initializable, UUP
 
     // Platform references required
     ILocksmith public locksmith;
-    INotary    public notary;
 
     // chain storage for transaction history
     Transaction[] public transactions;
@@ -100,15 +95,13 @@ contract VirtualKeyAddress is IVirtualAddress, ERC1155Holder, Initializable, UUP
      * Fundamentally replaces the constructor for an upgradeable contract.
      *
      * @param _Locksmith the address of the locksmith contract
-     * @param _Notary the address of the notary
      * @param _ethProvider the default ethereum provider that will store the funds for receive() calls.
      * @param _ownerKeyId the key ID you want to own this virtual address
      * @param _keyId the key ID you want the virtual address to apply to
      */
-    function initialize(address _Locksmith, address _Notary, address _ethProvider, uint256 _ownerKeyId, uint256 _keyId) initializer public {
+    function initialize(address _Locksmith, address _ethProvider, uint256 _ownerKeyId, uint256 _keyId) initializer public {
         __UUPSUpgradeable_init();
         locksmith = ILocksmith(_Locksmith);
-        notary = INotary(_Notary);
         ownerKeyId = _ownerKeyId;
         keyId = _keyId;
         keyInitialized = true;
@@ -209,10 +202,12 @@ contract VirtualKeyAddress is IVirtualAddress, ERC1155Holder, Initializable, UUP
      */
     function send(address provider, uint256 amount, address to) external requiresKey(keyId) {
         IEtherCollateralProvider p = IEtherCollateralProvider(provider);
+        address ledger = p.getTrustedLedger();
+        INotary notary = INotary(ILedger(ledger).notary());
 
         // cater the withdrawal allowance as to not be perterbed afterwards
-        notary.setWithdrawalAllowance(p.getTrustedLedger(), provider, keyId, ethArn, 
-            notary.withdrawalAllowances(p.getTrustedLedger(), keyId, provider, ethArn) + amount);
+        uint256 currentAllowance = notary.withdrawalAllowances(ledger, keyId, provider, ethArn); 
+        notary.setWithdrawalAllowance(ledger, provider, keyId, ethArn, currentAllowance + amount);
    
         // disable deposits for ether. the money coming back will be used
         // to send as a withdrawal from the trust account
@@ -292,6 +287,8 @@ contract VirtualKeyAddress is IVirtualAddress, ERC1155Holder, Initializable, UUP
      */
     function sendToken(address provider, address token, uint256 amount, address to) external requiresKey(keyId) {
         ITokenCollateralProvider p = ITokenCollateralProvider(provider);
+        address ledger = p.getTrustedLedger();
+        INotary notary = INotary(ILedger(ledger).notary());
 
         // calculate the arn for the token
         bytes32 arn = AssetResourceName.AssetType({
@@ -301,8 +298,8 @@ contract VirtualKeyAddress is IVirtualAddress, ERC1155Holder, Initializable, UUP
         }).arn();
 
         // cater the withdrawal allowance as to not be perterbed afterwards
-        uint256 currentAllowance = notary.withdrawalAllowances(p.getTrustedLedger(), keyId, provider, arn);
-        notary.setWithdrawalAllowance(p.getTrustedLedger(), provider, keyId, arn, currentAllowance + amount);
+        uint256 currentAllowance = notary.withdrawalAllowances(ledger, keyId, provider, arn);
+        notary.setWithdrawalAllowance(ledger, provider, keyId, arn, currentAllowance + amount);
 
         // withdrawal the amount into this contract
         p.withdrawal(keyId, token, amount);

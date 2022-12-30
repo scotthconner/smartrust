@@ -99,6 +99,13 @@ interface ILedger {
     ////////////////////////////////////////////////////////
 
     /**
+     * notary
+     *
+     * @return the address of the notary in charge of transaction authorization
+     */
+    function notary() external view returns (address);
+
+    /**
      * getContextArnRegistry 
      *
      * Returns a full list of assets that are being held

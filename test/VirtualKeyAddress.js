@@ -26,7 +26,7 @@ describe("VirtualKeyAddress", function () {
         notary, ledger, vault, tokenVault, coin, inbox,
         events, trustee, keyOracle, alarmClock, creator,
         owner, root, second, third} = await loadFixture(TrustTestFixtures.addedInbox); 
-      await expect(inbox.initialize(locksmith.address, notary.address, vault.address, 0, 0))
+      await expect(inbox.initialize(locksmith.address, vault.address, 0, 0))
         .to.be.revertedWith("Initializable: contract is already initialized");
       expect(true);
     });
@@ -48,12 +48,12 @@ describe("VirtualKeyAddress", function () {
       // this will fail because owner doesn't hold the root key
       const contract = await ethers.getContractFactory("VirtualKeyAddress")
       await expect(upgrades.upgradeProxy(inbox.address, contract, 
-          [locksmith.address, notary.address, vault.address, 0, 0])).to.be.revertedWith('INVALID_OPERATOR');
+          [locksmith.address, vault.address, 0, 0])).to.be.revertedWith('INVALID_OPERATOR');
 
       // this will work because the caller is root 
       const success = await ethers.getContractFactory("VirtualKeyAddress", root)
       const v2 = await upgrades.upgradeProxy(inbox.address, success, 
-          [locksmith.address, notary.address, vault.address, 0, 0]);
+          [locksmith.address, vault.address, 0, 0]);
       await v2.deployed();
 
       expect(true);

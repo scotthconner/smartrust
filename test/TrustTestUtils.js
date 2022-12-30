@@ -464,7 +464,7 @@ TrustTestFixtures = (function() {
       // deploy the inbox 
       const VirtualAddress = await ethers.getContractFactory("VirtualKeyAddress");
       const inbox = await upgrades.deployProxy(VirtualAddress, [
-        locksmith.address, notary.address, vault.address, 0, 0
+        locksmith.address, vault.address, 0, 0
       ]);
       await inbox.deployed();
 
