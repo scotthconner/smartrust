@@ -17,47 +17,30 @@ pragma solidity ^0.8.16;
  * 
  */
 interface IVirtualAddress {
+    ////////////////////////////////////////////////////////
+    // Data Structures 
+    ////////////////////////////////////////////////////////
+    enum TxType { INVALID, SEND, RECEIVE, ABI }
+    
     ///////////////////////////////////////////////////////
     // Events
     ///////////////////////////////////////////////////////
 
     /**
-     * assetSent 
+     * addressTransaction
      *
-     * This event fires when an asset has been sent from the virtual
-     * address to an outbound destination.
+     * This event fires when a transaction registers on the virtual
+     * wallet.
      *
-     * @param operator the message sender
-     * @param inbox    the virtual address itself
-     * @param keyId    the key used to withdrawal
-     * @param provider the address of the collateral provider
-     * @param arn      the asset arn that was moved
-     * @param amount   the amount of asset that has been sent
-     * @param to       the receipient's address
+     * @param txType   the type of transaction
+     * @param operator the operating message sender
+     * @param target   the target address of the funds transfer
+     * @param provider the collateral provider involved in the transaction
+     * @param arn      the asset resource name of the asset moved
+     * @param amount   the amount of asset moved
      */
-    event assetSent(address operator, address inbox, uint256 keyId, 
-        address provider, bytes32 arn, uint256 amount, address to);
-
-    /**
-     * assetReceived
-     *
-     * When the virtual wallet deposits funds into a collateral provider,
-     * record the entry as a deposit.
-     *
-     * @param operator the message sender
-     * @param inbox    the virtual address itself
-     * @param keyId    the key the funds were deposited to
-     * @param provider the provider the funds were deposited into
-     * @param arn      the asset arn of the deposited asset
-     * @param amount   the amount of funds that were deposited
-     */
-    event assetReceived(address operator, address inbox, uint256 keyId,
-        address provider, bytes32 arn, uint256 amount);
-    
-    ////////////////////////////////////////////////////////
-    // Data Structures 
-    ////////////////////////////////////////////////////////
-    enum TxType { INVALID, SEND, RECEIVE, ABI }
+    event addressTransaction(TxType txType, address operator, address target, address provider,
+        bytes32 arn, uint256 amount);
 
     ////////////////////////////////////////////////////////
     // Introspection

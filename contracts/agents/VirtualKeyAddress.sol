@@ -201,20 +201,16 @@ contract VirtualKeyAddress is IVirtualAddress, ERC1155Holder, Initializable, UUP
      * @param to       the destination address where to send the funds
      */
     function send(address provider, uint256 amount, address to) external requiresKey(keyId) {
-        IEtherCollateralProvider p = IEtherCollateralProvider(provider);
-        address ledger = p.getTrustedLedger();
-        INotary notary = INotary(ILedger(ledger).notary());
+        // make sure we have enough allowance for the transaction,
+        // and leave the allowance as it was before.
+        prepareWithdrawalAllowance(provider, ethArn, amount);
 
-        // cater the withdrawal allowance as to not be perterbed afterwards
-        uint256 currentAllowance = notary.withdrawalAllowances(ledger, keyId, provider, ethArn); 
-        notary.setWithdrawalAllowance(ledger, provider, keyId, ethArn, currentAllowance + amount);
-   
         // disable deposits for ether. the money coming back will be used
         // to send as a withdrawal from the trust account
         ethDepositHatch = true;
 
         // withdrawal the amount into this contract
-        p.withdrawal(keyId, amount);
+        ICollateralProvider(provider).arnWithdrawal(keyId, ethArn, amount);
 
         // re-enable deposits on ether
         ethDepositHatch = false; 
@@ -223,20 +219,8 @@ contract VirtualKeyAddress is IVirtualAddress, ERC1155Holder, Initializable, UUP
         (bool sent,) = to.call{value: amount}("");
         assert(sent); // failed to send ether.
 
-        // add the transaction to the history
-        transactions.push(Transaction({
-            transactionType: TxType.SEND,
-            blockTime: block.timestamp,
-            operator:  msg.sender,
-            target:    to,
-            provider:  provider,
-            arn:       ethArn,
-            amount:    amount
-        }));
-        transactionCount += 1;
-
-        // emit the proper event.
-        emit assetSent(msg.sender, address(this), keyId, provider, ethArn, amount, to);
+        // record and emit entry
+        logTransaction(TxType.SEND, to, provider, ethArn, amount);
     }
 
     /**
@@ -253,20 +237,9 @@ contract VirtualKeyAddress is IVirtualAddress, ERC1155Holder, Initializable, UUP
         // deposit the amount to default collateral provider
         defaultEthDepositProvider.deposit{value: msg.value}(keyId);
             
-        // add the transaction to the history
-        transactions.push(Transaction({
-            transactionType: TxType.RECEIVE,
-            blockTime: block.timestamp,
-            operator:  msg.sender,
-            target:    address(this),
-            provider:  address(defaultEthDepositProvider),
-            arn:       ethArn,
-            amount:    msg.value 
-        }));
-        transactionCount += 1;
-
-        // emit the proper event.
-        emit assetReceived(msg.sender, address(this), keyId, address(defaultEthDepositProvider), ethArn, msg.value);
+        // record and emit entry 
+        logTransaction(TxType.RECEIVE, address(this), 
+            address(defaultEthDepositProvider), ethArn, msg.value);
     }
 
     ////////////////////////////////////////////////////////
@@ -286,10 +259,6 @@ contract VirtualKeyAddress is IVirtualAddress, ERC1155Holder, Initializable, UUP
      * @param to       the destination address of the receiver
      */
     function sendToken(address provider, address token, uint256 amount, address to) external requiresKey(keyId) {
-        ITokenCollateralProvider p = ITokenCollateralProvider(provider);
-        address ledger = p.getTrustedLedger();
-        INotary notary = INotary(ILedger(ledger).notary());
-
         // calculate the arn for the token
         bytes32 arn = AssetResourceName.AssetType({
             contractAddress: token,
@@ -297,30 +266,17 @@ contract VirtualKeyAddress is IVirtualAddress, ERC1155Holder, Initializable, UUP
             id: 0
         }).arn();
 
-        // cater the withdrawal allowance as to not be perterbed afterwards
-        uint256 currentAllowance = notary.withdrawalAllowances(ledger, keyId, provider, arn);
-        notary.setWithdrawalAllowance(ledger, provider, keyId, arn, currentAllowance + amount);
+        // make sure the allowance is unperterbed by this motion
+        prepareWithdrawalAllowance(provider, arn, amount);
 
         // withdrawal the amount into this contract
-        p.withdrawal(keyId, token, amount);
+        ICollateralProvider(provider).arnWithdrawal(keyId, arn, amount);
 
         // and send it from here, to ... to.
         IERC20(token).transfer(to, amount);
 
-        // add the transaction to the history
-        transactions.push(Transaction({
-            transactionType: TxType.SEND,
-            blockTime: block.timestamp,
-            operator:  msg.sender,
-            target:    to,
-            provider:  provider,
-            arn:       arn,
-            amount:    amount
-        }));
-        transactionCount += 1;
-
-        // emit the proper event.
-        emit assetSent(msg.sender, address(this), keyId, provider, arn, amount, to);
+        // record and emit entry 
+        logTransaction(TxType.SEND, to, provider, arn, amount);
     }
 
     /**
@@ -361,25 +317,67 @@ contract VirtualKeyAddress is IVirtualAddress, ERC1155Holder, Initializable, UUP
         // invariant control, we shouldn't have any tokens left
         assert(IERC20(token).balanceOf(address(this)) == 0);
 
-        // add the transaction to the history
-        transactions.push(Transaction({
-            transactionType: TxType.RECEIVE,
-            blockTime: block.timestamp,
-            operator:  msg.sender, // this isn't exactly true, but staying on chain it not possible.
-            target:    address(this),
-            provider:  provider,
-            arn:       arn,
-            amount:    tokenBalance 
-        }));
-        transactionCount += 1;
+        // record and emit entry
+        // note: this will record the "operator" as the key-holder
+        //       and not the person sending it. It's not entirely
+        //       accurate but solving this problem requires off-chain.
+        logTransaction(TxType.RECEIVE, address(this), provider, arn, tokenBalance);
 
-        // emit the proper event.
-        emit assetReceived(msg.sender, address(this), keyId, provider, arn, tokenBalance);
-
+        // return the swept balance to the caller
         return tokenBalance;
     }
 
     ///////////////////////////////////////////////////////
     // Internal methods 
     ///////////////////////////////////////////////////////
+
+    /**
+     * prepareWithdrawalAllowance
+     *
+     * For the requested provider, add the amount to the arn's
+     * withdrawal limit for the given key for the provider's
+     * associated notary.
+     *
+     * @param provider the address of the collateral provider
+     * @param arn      asset resource name to set the limit for
+     * @param amount   increase the allowance by this amount
+     */
+    function prepareWithdrawalAllowance(address provider, bytes32 arn, uint256 amount) internal {
+        ICollateralProvider p = ICollateralProvider(provider);
+        address ledger = p.getTrustedLedger();
+        INotary notary = INotary(ILedger(ledger).notary());
+
+        // cater the withdrawal allowance as to not be perterbed afterwards
+        uint256 currentAllowance = notary.withdrawalAllowances(ledger, keyId, provider, arn);
+        notary.setWithdrawalAllowance(ledger, provider, keyId, arn, currentAllowance + amount);
+    }
+
+    /**
+     * logTransaction
+     *
+     * Internal function that will store a virtual transaction entry on this
+     * inbox as well as emit the proper event.
+     *
+     * @param txType   the transacton type as moded by the IVirtualAddress interface
+     * @param to       the receiving address of the funds in question
+     * @param provider the collateral provider involved in the transaction
+     * @param arn      asset resource name of the asset being moved
+     * @param amount   the amount of funds moved.
+     */
+    function logTransaction(TxType txType, address to, address provider, bytes32 arn, uint256 amount) internal {
+        // add the transaction to the history
+        transactions.push(Transaction({
+            transactionType: txType,
+            blockTime: block.timestamp,
+            operator:  msg.sender,
+            target:    to,
+            provider:  provider,
+            arn:       arn,
+            amount:    amount
+        }));
+        transactionCount += 1;
+
+        // emit the proper event.
+        emit addressTransaction(txType, msg.sender, to, provider, arn, amount);
+    }
 }

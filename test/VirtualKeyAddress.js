@@ -155,8 +155,8 @@ describe("VirtualKeyAddress", function () {
 
       // this will work! 
       await expect(inbox.connect(root).send(vault.address, eth(1), third.address))
-        .to.emit(inbox, 'assetSent')
-        .withArgs(root.address, inbox.address, 0, vault.address, ethArn(), eth(1), third.address);
+        .to.emit(inbox, 'addressTransaction')
+        .withArgs(1, root.address, third.address, vault.address, ethArn(), eth(1));
 
       // assert the ether ended up at third and check the vault and ledger balance
       await expect(await ethers.provider.getBalance(third.address)).eql(thirdBalance.add(eth(1)));
@@ -256,11 +256,9 @@ describe("VirtualKeyAddress", function () {
       var rootBalance = (await ledger.getContextArnBalances(KEY(), 0, vault.address, [ethArn()]))[0];
 
       // send an ether
-      await expect(owner.sendTransaction({
-          to: inbox.address,
-          value: eth(1)
-        })).to.emit(inbox, 'assetReceived')
-      .withArgs(owner.address, inbox.address, 0, vault.address, ethArn(), eth(1));
+      await expect(owner.sendTransaction({to: inbox.address, value: eth(1)}))
+        .to.emit(inbox, 'addressTransaction')
+        .withArgs(2, owner.address, inbox.address, vault.address, ethArn(), eth(1));
 
       // assert the ether ended up at third and check the vault and ledger balance
       await expect(await ethers.provider.getBalance(vault.address)).eql(vaultBalance.add(eth(1)));
@@ -377,8 +375,8 @@ describe("VirtualKeyAddress", function () {
 
       // this will work! 
       await expect(inbox.connect(root).sendToken(tokenVault.address, coin.address, eth(1), third.address))
-        .to.emit(inbox, 'assetSent')
-        .withArgs(root.address, inbox.address, 0, tokenVault.address, tokenArn(coin.address), eth(1), third.address);
+        .to.emit(inbox, 'addressTransaction')
+        .withArgs(1, root.address, third.address, tokenVault.address, tokenArn(coin.address), eth(1));
 
       // assert the coin ended up at third and check the vault and ledger balance
       await expect(await coin.balanceOf(third.address)).eql(thirdBalance.add(eth(1)));
@@ -493,8 +491,9 @@ describe("VirtualKeyAddress", function () {
       await coin.connect(second).transfer(inbox.address, eth(1));
 
       await expect(await inbox.connect(root).acceptToken(coin.address, tokenVault.address))
-        .to.emit(inbox, 'assetReceived')
-        .withArgs(root.address, inbox.address, 0, tokenVault.address, tokenArn(coin.address), eth(1));
+        .to.emit(inbox, 'addressTransaction')
+        .withArgs(2, root.address, inbox.address, tokenVault.address, tokenArn(coin.address), eth(1));
+
 
       // assert the token ended up at third and check the vault and ledger balance
       await expect(await coin.balanceOf(tokenVault.address)).eql(vaultBalance.add(eth(1)));
