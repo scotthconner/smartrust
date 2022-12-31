@@ -20,6 +20,7 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 // We will need these platform interfaces.
 import './interfaces/IVirtualAddress.sol';
 import './interfaces/IKeyVault.sol';
+import './interfaces/ILocksmith.sol';
 import './interfaces/IPostOffice.sol';
 
 
@@ -41,7 +42,7 @@ contract PostOffice is IPostOffice, Initializable, OwnableUpgradeable, UUPSUpgra
     ////////////////////////////////////////////////////////
     // Storage 
     ////////////////////////////////////////////////////////
-    IKeyVault public keyVault;
+    address public locksmith; 
 
     // is an inbox address registered already? 
     mapping(address => bool) private inboxes;
@@ -71,12 +72,16 @@ contract PostOffice is IPostOffice, Initializable, OwnableUpgradeable, UUPSUpgra
      *
      * Fundamentally replaces the constructor for an upgradeable contract.
      *
-     * @param _IKeyVault the address for the locksmith
+     * While we could get the locksmith from any ERC1155 transfer, we need
+     * to ensure that the keyIds are all registered with the *SAME* locksmith
+     * for security reasons.
+     *
+     * @param _Locksmith the locksmith we consider as the source of truth
      */
-    function initialize(address _IKeyVault) initializer public {
+    function initialize(address _Locksmith) initializer public {
         __Ownable_init();
         __UUPSUpgradeable_init();
-        keyVault = IKeyVault(_IKeyVault);
+        locksmith = _Locksmith;
     }
 
     /**
@@ -127,7 +132,8 @@ contract PostOffice is IPostOffice, Initializable, OwnableUpgradeable, UUPSUpgra
         uint256 ownerKey = IVirtualAddress(inbox).ownerKeyId();
 
         // ensure that the message sender is holding that key
-        require(keyVault.keyBalanceOf(msg.sender, ownerKey, false) > 0, 'KEY_NOT_HELD');
+        require(IKeyVault(ILocksmith(locksmith).getKeyVault()).keyBalanceOf(msg.sender, ownerKey, false) > 0,
+            'KEY_NOT_HELD');
 
         // register the inbox
         inboxes[inbox] = true;
@@ -150,6 +156,10 @@ contract PostOffice is IPostOffice, Initializable, OwnableUpgradeable, UUPSUpgra
         // fail if the inbox isn't registered
         require(inboxes[inbox], 'MISSING_REGISTRATION');
 
+        // fail if the message sender isn't holding the key
+        require(IKeyVault(ILocksmith(locksmith).getKeyVault()).keyBalanceOf(msg.sender, ownerKeyId, false) > 0,
+            'KEY_NOT_HELD');
+
         // we don't actually care if they still own the inbox on-chain,
         // just that they want to de-register a valid entry for *them* 
         require(keyInboxes[ownerKeyId].remove(inbox), 'REGISTRATION_NOT_YOURS');
@@ -157,6 +167,6 @@ contract PostOffice is IPostOffice, Initializable, OwnableUpgradeable, UUPSUpgra
         // clean up the bit table
         inboxes[inbox] = false; 
 
-        emit addressRegistrationEvent(InboxEventType.ADD, msg.sender, ownerKeyId, inbox);
+        emit addressRegistrationEvent(InboxEventType.REMOVE, msg.sender, ownerKeyId, inbox);
     }
 } 

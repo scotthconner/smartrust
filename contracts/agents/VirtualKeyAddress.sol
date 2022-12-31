@@ -71,7 +71,7 @@ contract VirtualKeyAddress is IVirtualAddress, ERC1155Holder, Initializable, UUP
     bool    public ethDepositHatch; // this is used to prevent withdrawals from trigger deposits
 
     // Platform references required
-    ILocksmith public locksmith;
+    address public locksmith;
 
     // chain storage for transaction history
     Transaction[] public transactions;
@@ -101,7 +101,7 @@ contract VirtualKeyAddress is IVirtualAddress, ERC1155Holder, Initializable, UUP
      */
     function initialize(address _Locksmith, address _ethProvider, uint256 _ownerKeyId, uint256 _keyId) initializer public {
         __UUPSUpgradeable_init();
-        locksmith = ILocksmith(_Locksmith);
+        locksmith = _Locksmith;
         ownerKeyId = _ownerKeyId;
         keyId = _keyId;
         keyInitialized = true;
@@ -122,7 +122,7 @@ contract VirtualKeyAddress is IVirtualAddress, ERC1155Holder, Initializable, UUP
      */
     modifier requiresKey(uint256 key) {
         assert(keyInitialized);
-        require(IERC1155(locksmith.getKeyVault()).balanceOf(msg.sender, key) > 0,
+        require(IERC1155(ILocksmith(locksmith).getKeyVault()).balanceOf(msg.sender, key) > 0,
             'INVALID_OPERATOR');
         _;
     }

@@ -40,7 +40,16 @@ interface IKeyVault {
     ////////////////////////////////////////////////////////
     // Introspection
     ////////////////////////////////////////////////////////
-   
+  
+    /**
+     * locksmith
+     *
+     * The key vault will only respect a single locksmith.
+     *
+     * @return the address of the Locksmith the vault respects.
+     */
+    function locksmith() external view returns(address);
+
     /**
      * getKeys
      *

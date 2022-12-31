@@ -47,6 +47,13 @@ interface IVirtualAddress {
     ////////////////////////////////////////////////////////
 
     /**
+     * locksmith
+     *
+     * @return the locksmith that is used for key inspection
+     */
+    function locksmith() external view returns(address);
+
+    /**
      * ownerKeyId
      *
      * Each address is fully owned by a key ID.
