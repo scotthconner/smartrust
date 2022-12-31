@@ -45,7 +45,16 @@ interface IVirtualAddress {
     ////////////////////////////////////////////////////////
     // Introspection
     ////////////////////////////////////////////////////////
-    
+
+    /**
+     * ownerKeyId
+     *
+     * Each address is fully owned by a key ID.
+     *
+     * @return the owning key ID of this virtual address
+     */
+    function ownerKeyId() external view returns(uint256);
+
     /**
      * getDefaultEthDepositProvider
      *
@@ -59,6 +68,16 @@ interface IVirtualAddress {
      * The virtual transactions do not correspond with 1:1 send-receives
      * on the blockchain. Because of this, we want to expose the logical
      * fund movements. 
+     *
+     * struct Transaction {
+     *   TxType transactionType; // what type of transaction is it?
+     *   uint256 blockTime;      // when did this transaction happen?
+     *   address operator;       // who is exercising the address?
+     *   address target;         // who is the target of the action?
+     *   address provider;       // what provider is involved?
+     *   bytes32 arn;            // what asset is involved?
+     *   uint256 amount;         // how much of that asset was involved?
+     * }
      *
      * @param index the index of the transaction you're looking for.
      * @return a mapping of the transaction information 
