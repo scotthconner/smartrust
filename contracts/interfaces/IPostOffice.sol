@@ -40,6 +40,13 @@ interface IPostOffice {
     ////////////////////////////////////////////////////////
     
     /**
+     * locksmith
+     *
+     * @return the locksmith that is used for key inspection
+     */
+    function locksmith() external view returns(address); 
+    
+    /**
      * getInboxesForKey
      *
      * Returns all of the inbox addresses owned by a specific key.

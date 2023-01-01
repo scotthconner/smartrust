@@ -111,7 +111,7 @@ TrustTestFixtures = (function() {
       // generate a key vault for the locksmith to use, using a beacon
       const KeyVault = await ethers.getContractFactory("KeyVault");
       const keyVault = await upgrades.deployProxy(KeyVault, []);
-      await keyVault .deployed();
+      await keyVault.deployed();
 
       // create the locksmith, providing the key vault 
       const Locksmith = await ethers.getContractFactory("Locksmith");
@@ -494,6 +494,28 @@ TrustTestFixtures = (function() {
       return {keyVault, locksmith,
         notary, ledger, vault, tokenVault, coin, inbox, postOffice,
         events, trustee, keyOracle, alarmClock, creator,
+        owner, root, second, third};
+    },
+    //////////////////////////////////////////////////////////
+    // Added Key Address Factory 
+    //
+    // On top of everything else, creates a virtual address factory. 
+    //////////////////////////////////////////////////////////
+    addedKeyAddressFactory: async function() {
+      const {keyVault, locksmith,
+        notary, ledger, vault, tokenVault, coin, inbox, postOffice,
+        events, trustee, keyOracle, alarmClock, creator,
+        owner, root, second, third} =
+        await TrustTestFixtures.addedPostOffice();
+
+      // deploy the inbox
+      const KeyAddressFactory = await ethers.getContractFactory("KeyAddressFactory");
+      const addressFactory = await upgrades.deployProxy(KeyAddressFactory, [postOffice.address]);
+      await addressFactory.deployed();
+
+      return {keyVault, locksmith,
+        notary, ledger, vault, tokenVault, coin, inbox, postOffice,
+        events, trustee, keyOracle, alarmClock, creator, addressFactory,
         owner, root, second, third};
     },
     //////////////////////////////////////////////////////////

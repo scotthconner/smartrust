@@ -109,30 +109,32 @@ contract KeyAddressFactory is ERC1155Holder, Initializable, OwnableUpgradeable, 
         
         // make sure the count is exactly 1 of whatever it is.
         require(count == 1, 'IMPROPER_KEY_INPUT');
-        
+     
         // recover the dependencies 
         IKeyVault keyVault = IKeyVault(msg.sender);
         address locksmith = keyVault.locksmith();
-        
+     
+        // make sure the locksmith's between the Post Office
+        // and the key sent in are the same
+        require(locksmith == postOffice.locksmith(), 'LOCKSMITH_MISMATCH');
+
         // grab the encoded information
         InboxRequest memory request = abi.decode(data, (InboxRequest)); 
 
         // make sure the key given was a root key, and that the virtual key id
-        // belongs to the smae trust
+        // belongs to the same trust
         checkKeys(locksmith, keyId, request.virtualKeyId);
 
         // deploy the implementation
         address inbox = address(new VirtualKeyAddress());    
 
         // deploy the proxy, and call the initialize method through it
-        ERC1967Proxy proxy = new ERC1967Proxy(inbox, "");
-        bytes memory initData = abi.encodeWithSignature('initialize(address,address,uint256,uint256)', 
-            locksmith, request.defaultEthDepositProvider, keyId, request.virtualKeyId); 
-        (bool success,) = address(proxy).delegatecall(initData);
-        assert(success);
+        ERC1967Proxy proxy = new ERC1967Proxy(inbox, 
+            abi.encodeWithSignature('initialize(address,address,uint256,uint256)', 
+                locksmith, request.defaultEthDepositProvider, keyId, request.virtualKeyId)); 
 
         // mint a soul-bound key into the new proxy
-        ILocksmith(locksmith).copyKey(keyId, request.virtualKeyId, inbox, true);
+        ILocksmith(locksmith).copyKey(keyId, request.virtualKeyId, address(proxy), true);
 
         // add the proxy to the registry
         postOffice.registerInbox(payable(proxy));
