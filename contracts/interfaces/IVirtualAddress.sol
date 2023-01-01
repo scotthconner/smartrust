@@ -138,6 +138,28 @@ interface IVirtualAddress {
     ////////////////////////////////////////////////////////
 
     ////////////////////////////////////////////////////////
+    // ABI  
+    ////////////////////////////////////////////////////////
+   
+    /**
+     * multicall
+     *
+     * Will prime the virtual address with a specific number of
+     * assets from given providers, and then call multiple selectors, values, etc.
+     *
+     * This entire operation is atomic.
+     *
+     * @param providers the list of providers you want to use to fund your transactions
+     * @param arns      the list of assets you want to use to fund your transactions
+     * @param amounts   the amounts of assets you want to use to fund your transactions
+     * @param targets   the target addresses of functions that will be called.
+     * @param callData  the data to pass to target#call, including the function selector
+     * @param msgValues the message values to pass in for each target selector.
+     */
+    function multicall(address[] calldata providers, bytes32[] calldata arns, uint256[] calldata amounts,
+        address[] calldata targets, bytes4[] calldata callData, uint256[] calldata msgValues) external;
+
+    ////////////////////////////////////////////////////////
     // Ethereum 
     ////////////////////////////////////////////////////////
 
@@ -198,10 +220,10 @@ interface IVirtualAddress {
     function acceptToken(address token, address provider) external returns (uint256);
 
     ////////////////////////////////////////////////////////
-    // ERC-1155
+    // ERC-721 
     ////////////////////////////////////////////////////////
     
     ////////////////////////////////////////////////////////
-    // ERC-721 
+    // ERC-1155
     ////////////////////////////////////////////////////////
 }
