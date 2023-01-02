@@ -68,7 +68,7 @@ contract VirtualKeyAddress is IVirtualAddress, ERC1155Holder, Initializable, UUP
 
     // Collateral provider configuration 
     IEtherCollateralProvider public defaultEthDepositProvider; 
-    bool    public ethDepositHatch; // this is used to prevent withdrawals from trigger deposits
+    bool    public depositHatch; // this is used to prevent withdrawals from trigger deposits
 
     // Platform references required
     address public locksmith;
@@ -197,8 +197,9 @@ contract VirtualKeyAddress is IVirtualAddress, ERC1155Holder, Initializable, UUP
         // transaction if there were residuals but that
         // feels like making it more difficult to get it to
         // go through
-        ethDepositHatch = true;
+        depositHatch = true;
         for(uint256 x = 0; x < assets.length; x++) {
+            prepareWithdrawalAllowance(assets[x].provider, assets[x].arn, assets[x].amount);
             ICollateralProvider(assets[x].provider)
                 .arnWithdrawal(keyId, assets[x].arn, assets[x].amount);
             
@@ -206,7 +207,7 @@ contract VirtualKeyAddress is IVirtualAddress, ERC1155Holder, Initializable, UUP
             logTransaction(TxType.ABI, address(this), 
                 assets[x].provider, assets[x].arn, assets[x].amount);
         }
-        ethDepositHatch = false;
+        depositHatch = false;
 
         // generate each target call, and go!
         for(uint y = 0; y < calls.length; y++) {
@@ -248,13 +249,13 @@ contract VirtualKeyAddress is IVirtualAddress, ERC1155Holder, Initializable, UUP
 
         // disable deposits for ether. the money coming back will be used
         // to send as a withdrawal from the trust account
-        ethDepositHatch = true;
+        depositHatch = true;
 
         // withdrawal the amount into this contract
         ICollateralProvider(provider).arnWithdrawal(keyId, ethArn, amount);
 
         // re-enable deposits on ether
-        ethDepositHatch = false; 
+        depositHatch = false; 
 
         // and send it from here, to ... to. 
         (bool sent,) = to.call{value: amount}("");
@@ -273,7 +274,7 @@ contract VirtualKeyAddress is IVirtualAddress, ERC1155Holder, Initializable, UUP
     receive() external payable {
         // don't deposit the money if this is a result
         // of a withdrawal.
-        if (ethDepositHatch) { return; }
+        if (depositHatch) { return; }
 
         // deposit the entire contract balance to default collateral provider
         defaultEthDepositProvider.deposit{value: msg.value}(keyId);

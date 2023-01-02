@@ -448,10 +448,10 @@ describe("VirtualKeyAddress", function () {
     });
 
     it("Accepting tokens requires the provider to be trusted", async function() {
-       const {keyVault, locksmith,
+       const { keyVault, locksmith,
         notary, ledger, vault, tokenVault, coin, inbox,
         events, trustee, keyOracle, alarmClock, creator,
-        owner, root, second, third} = await loadFixture(TrustTestFixtures.addedInbox);
+        owner, root, second, third } = await loadFixture(TrustTestFixtures.addedInbox);
 
       // rug the trust from the vault
       await expect(notary.connect(root).setTrustedLedgerRole(0, COLLATERAL_PROVIDER(), ledger.address,
@@ -510,6 +510,229 @@ describe("VirtualKeyAddress", function () {
       expect(tx[4]).eql(tokenVault.address);     // provider
       expect(tx[5]).eql(tokenArn(coin.address)); // asset
       expect(tx[6]).eql(eth(1));                 // amount
+    });
+  });
+
+  ////////////////////////////////////////////////////////////
+  // Multi-call Testing 
+  ////////////////////////////////////////////////////////////
+  describe("Multi-call testing", function () {
+    it("Multi-call requires caller has proper key", async function() {
+      const { keyVault, locksmith,
+        notary, ledger, vault, tokenVault, coin, inbox,
+        events, trustee, keyOracle, alarmClock, creator,
+        owner, root, second, third } = await loadFixture(TrustTestFixtures.addedInbox);
+
+      await expect(inbox.connect(owner).multicall([],[]))
+        .to.be.revertedWith('INVALID_OPERATOR');
+    });
+
+    it("Multi-call can send ether to destination", async function() {
+      const { keyVault, locksmith,
+        notary, ledger, vault, tokenVault, coin, inbox,
+        events, trustee, keyOracle, alarmClock, creator,
+        owner, root, second, third } = await loadFixture(TrustTestFixtures.addedInbox);
+
+      // use the locksmith to soulbind a key to the virtual inbox
+      await expect(locksmith.connect(root).copyKey(0, 0, inbox.address, true))
+        .to.emit(locksmith, 'keyMinted')
+        .withArgs(root.address, 0, 0, stb('root'), inbox.address);
+      
+      // starting balances
+      var thirdBalance = await ethers.provider.getBalance(third.address);
+      var vaultBalance = await ethers.provider.getBalance(vault.address);
+      var rootBalance = (await ledger.getContextArnBalances(KEY(), 0, vault.address, [ethArn()]))[0];
+
+      await expect(await inbox.connect(root).multicall([{
+        provider: vault.address,
+        arn: ethArn(),
+        amount: eth(1)
+      }],[{
+        target: third.address,
+        callData: stb(''),
+        msgValue: eth(1)
+      }])).to.emit(ledger, 'withdrawalOccurred')
+        .withArgs(vault.address, 0, 0, ethArn(), eth(1), eth(39), eth(39), eth(39))
+        .to.emit(inbox, 'addressTransaction')
+        .withArgs(3, root.address, inbox.address, vault.address, ethArn(), eth(1));
+
+      // assert the ether ended up at third and check the vault and ledger balance
+      await expect(await ethers.provider.getBalance(third.address)).eql(thirdBalance.add(eth(1)));
+      await expect(await ethers.provider.getBalance(vault.address)).eql(vaultBalance.sub(eth(1)));
+      await expect(await ledger.getContextArnBalances(KEY(), 0, vault.address, [ethArn()]))
+        .eql([rootBalance.sub(eth(1))]);
+
+      // check the transaction history
+      await expect(await inbox.transactionCount()).eql(bn(1));
+      const tx = await inbox.transactions(0);
+      expect(tx[0]).eql(3); // ABI 
+      expect(tx[2]).eql(root.address);  // sender
+      expect(tx[3]).eql(inbox.address); // receiver (inbox)
+      expect(tx[4]).eql(vault.address); // provider
+      expect(tx[5]).eql(ethArn());      // asset
+      expect(tx[6]).eql(eth(1));        // amount
+    });
+
+    it("Multi-call requires sufficient balance for funding preparation", async function() {
+      const { keyVault, locksmith,
+        notary, ledger, vault, tokenVault, coin, inbox,
+        events, trustee, keyOracle, alarmClock, creator,
+        owner, root, second, third } = await loadFixture(TrustTestFixtures.addedInbox);
+
+      // use the locksmith to soulbind a key to the virtual inbox
+      await expect(locksmith.connect(root).copyKey(0, 0, inbox.address, true))
+        .to.emit(locksmith, 'keyMinted')
+        .withArgs(root.address, 0, 0, stb('root'), inbox.address);
+
+      // starting balances
+      var thirdBalance = await ethers.provider.getBalance(third.address);
+      var vaultBalance = await ethers.provider.getBalance(vault.address);
+      var rootBalance = (await ledger.getContextArnBalances(KEY(), 0, vault.address, [ethArn()]))[0];
+
+      await expect(inbox.connect(root).multicall([{
+        provider: vault.address,
+        arn: ethArn(),
+        amount: eth(100000)
+      }],[{
+        target: third.address,
+        callData: stb(''),
+        msgValue: eth(1)
+      }])).to.be.revertedWith('OVERDRAFT');
+    });
+
+    it("Multi-call can send erc-20s to destination", async function() {
+      const { keyVault, locksmith,
+        notary, ledger, vault, tokenVault, coin, inbox,
+        events, trustee, keyOracle, alarmClock, creator,
+        owner, root, second, third } = await loadFixture(TrustTestFixtures.addedInbox);
+
+      // use the locksmith to soulbind a key to the virtual inbox
+      await expect(locksmith.connect(root).copyKey(0, 0, inbox.address, true))
+        .to.emit(locksmith, 'keyMinted')
+        .withArgs(root.address, 0, 0, stb('root'), inbox.address);
+
+      // get the balance of third
+      var thirdBalance = await coin.balanceOf(third.address);
+
+      // get the start balance of the root key
+      var vaultBalance = await coin.balanceOf(tokenVault.address);
+      expect(vaultBalance).eql(eth(5));
+      var rootBalance = (await ledger.getContextArnBalances(KEY(), 0, tokenVault.address, [tokenArn(coin.address)]))[0];
+
+      await expect(await inbox.connect(root).multicall([{
+        provider: tokenVault.address,
+        arn: tokenArn(coin.address),
+        amount: eth(1)
+      }],[{
+        target: coin.address,
+        callData: coin.interface.encodeFunctionData("transfer", [third.address, eth(1)]), 
+        msgValue: eth(0)
+      }])).to.emit(ledger, 'withdrawalOccurred')
+        .withArgs(tokenVault.address, 0, 0, tokenArn(coin.address), eth(1), eth(4), eth(4), eth(4))
+        .to.emit(inbox, 'addressTransaction')
+        .withArgs(3, root.address, inbox.address, tokenVault.address, tokenArn(coin.address), eth(1));
+
+      // assert the coin ended up at third and check the vault and ledger balance
+      await expect(await coin.balanceOf(third.address)).eql(thirdBalance.add(eth(1)));
+      await expect(await coin.balanceOf(tokenVault.address)).eql(vaultBalance.sub(eth(1)));
+      await expect(await ledger.getContextArnBalances(KEY(), 0, tokenVault.address, [tokenArn(coin.address)]))
+        .eql([rootBalance.sub(eth(1))]);
+
+      // check the transaction history
+      await expect(await inbox.transactionCount()).eql(bn(1));
+      const tx = await inbox.transactions(0);
+      expect(tx[0]).eql(3);                      // ABI 
+      expect(tx[2]).eql(root.address);           // sender
+      expect(tx[3]).eql(inbox.address);          // receiver
+      expect(tx[4]).eql(tokenVault.address);     // provider
+      expect(tx[5]).eql(tokenArn(coin.address)); // asset
+      expect(tx[6]).eql(eth(1));                 // amount
+    });
+
+    it("Multi-call can send both ether and erc-20s in the same transaction", async function() {
+      const { keyVault, locksmith,
+        notary, ledger, vault, tokenVault, coin, inbox,
+        events, trustee, keyOracle, alarmClock, creator,
+        owner, root, second, third } = await loadFixture(TrustTestFixtures.addedInbox);
+
+      // use the locksmith to soulbind a key to the virtual inbox
+      await expect(locksmith.connect(root).copyKey(0, 0, inbox.address, true))
+        .to.emit(locksmith, 'keyMinted')
+        .withArgs(root.address, 0, 0, stb('root'), inbox.address);
+
+      // starting balances
+      var thirdBalanceEth = await ethers.provider.getBalance(third.address);
+      var vaultBalanceEth = await ethers.provider.getBalance(vault.address);
+      var rootBalanceEth  = (await ledger.getContextArnBalances(KEY(), 0, vault.address, [ethArn()]))[0];
+      var thirdBalanceCoin = await coin.balanceOf(third.address);
+      var vaultBalanceCoin = await coin.balanceOf(tokenVault.address);
+      var rootBalanceCoin = (await ledger.getContextArnBalances(KEY(), 0, tokenVault.address, [tokenArn(coin.address)]))[0];
+
+      await expect(await inbox.connect(root).multicall([{
+        provider: tokenVault.address,
+        arn: tokenArn(coin.address),
+        amount: eth(1)
+      },{
+        provider: vault.address,
+        arn: ethArn(),
+        amount: eth(2)
+      }],[{
+        target: coin.address,
+        callData: coin.interface.encodeFunctionData("transfer", [third.address, eth(1)]),
+        msgValue: eth(0)
+      }, {
+        target: third.address,
+        callData: stb(''),
+        msgValue: eth(2)
+      }])).to.emit(ledger, 'withdrawalOccurred')
+        .withArgs(tokenVault.address, 0, 0, tokenArn(coin.address), eth(1), eth(4), eth(4), eth(4))
+        .to.emit(inbox, 'addressTransaction')
+        .withArgs(3, root.address, inbox.address, tokenVault.address, tokenArn(coin.address), eth(1))
+        .to.emit(ledger, 'withdrawalOccurred')
+        .withArgs(vault.address, 0, 0, ethArn(), eth(2), eth(38), eth(38), eth(38))
+        .to.emit(inbox, 'addressTransaction')
+        .withArgs(3, root.address, inbox.address, vault.address, ethArn(), eth(2));
+
+      // assert the coin ended up at third and check the vault and ledger balance
+      await expect(await coin.balanceOf(third.address)).eql(thirdBalanceCoin.add(eth(1)));
+      await expect(await coin.balanceOf(tokenVault.address)).eql(vaultBalanceCoin.sub(eth(1)));
+      await expect(await ledger.getContextArnBalances(KEY(), 0, tokenVault.address, [tokenArn(coin.address)]))
+        .eql([rootBalanceCoin.sub(eth(1))]);
+
+      // assert the ether ended up at third and check the vault and ledger balance
+      await expect(await ethers.provider.getBalance(third.address)).eql(thirdBalanceEth.add(eth(2)));
+      await expect(await ethers.provider.getBalance(vault.address)).eql(vaultBalanceEth.sub(eth(2)));
+      await expect(await ledger.getContextArnBalances(KEY(), 0, vault.address, [ethArn()]))
+        .eql([rootBalanceEth.sub(eth(2))]);
+
+      // check the transaction history
+      await expect(await inbox.transactionCount()).eql(bn(2));
+      var tx = await inbox.transactions(0);
+      expect(tx[0]).eql(3);                      // ABI
+      expect(tx[2]).eql(root.address);           // sender
+      expect(tx[3]).eql(inbox.address);          // receiver
+      expect(tx[4]).eql(tokenVault.address);     // provider
+      expect(tx[5]).eql(tokenArn(coin.address)); // asset
+      expect(tx[6]).eql(eth(1));                 // amount
+      var tx = await inbox.transactions(1);
+      expect(tx[0]).eql(3);                      // ABI
+      expect(tx[2]).eql(root.address);           // sender
+      expect(tx[3]).eql(inbox.address);          // receiver
+      expect(tx[4]).eql(vault.address);          // provider
+      expect(tx[5]).eql(ethArn());               // asset
+      expect(tx[6]).eql(eth(2));                 // amount
+    });
+
+    it("Left-over funds are sweepable with given APIs", async function() {
+
+    });
+
+    it("Multi-call can act as key holder for contract call.", async function() {
+
+    });
+
+    it("multi-call requries valid calls to complete successfully", async function() {
+
     });
   });
 }); 
