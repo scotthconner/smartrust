@@ -21,7 +21,35 @@ interface IVirtualAddress {
     // Data Structures 
     ////////////////////////////////////////////////////////
     enum TxType { INVALID, SEND, RECEIVE, ABI }
-    
+  
+    /**
+     * FundingPreparation
+     *
+     * A funding preparation is a signal to the virtual address
+     * that your multi-call set will likely require funds to be 
+     * in the Virtual address to successfully complete.
+     *
+     * The wallet should use this to help prep the contract balance
+     * for the rest of the calls.
+     */
+    struct FundingPreparation {
+        address provider;       // the address of the provider to use funds from.
+        bytes32 arn;            // the asset resource name of the asset in question
+        uint256 amount;         // the amount of the asset needed for the multi-call
+    }
+
+    /**
+     * Call
+     *
+     * A call is simply a smart contract or send call you want to instruct
+     * the virtual address to complete on behalf of the key-holder.
+     */
+    struct Call {
+        address target;         // the address you want to operate on
+        bytes   callData;       // Fully encoded call structure including function selector
+        uint256 msgValue;       // the message value to use when calling
+    }
+
     ///////////////////////////////////////////////////////
     // Events
     ///////////////////////////////////////////////////////
@@ -149,15 +177,10 @@ interface IVirtualAddress {
      *
      * This entire operation is atomic.
      *
-     * @param providers the list of providers you want to use to fund your transactions
-     * @param arns      the list of assets you want to use to fund your transactions
-     * @param amounts   the amounts of assets you want to use to fund your transactions
-     * @param targets   the target addresses of functions that will be called.
-     * @param callData  the data to pass to target#call, including the function selector
-     * @param msgValues the message values to pass in for each target selector.
+     * @param assets    the assets you want to use for the multi-call
+     * @param calls     the calls you want to make
      */
-    function multicall(address[] calldata providers, bytes32[] calldata arns, uint256[] calldata amounts,
-        address[] calldata targets, bytes4[] calldata callData, uint256[] calldata msgValues) external;
+    function multicall(FundingPreparation[] calldata assets, Call[] calldata calls) payable external;
 
     ////////////////////////////////////////////////////////
     // Ethereum 

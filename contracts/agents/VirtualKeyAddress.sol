@@ -186,16 +186,33 @@ contract VirtualKeyAddress is IVirtualAddress, ERC1155Holder, Initializable, UUP
      *
      * This entire operation is atomic.
      *
-     * @param providers the list of providers you want to use to fund your transactions
-     * @param arns      the list of assets you want to use to fund your transactions
-     * @param amounts   the amounts of assets you want to use to fund your transactions
-     * @param targets   the target addresses of functions that will be called.
-     * @param callData  the data to pass to target#call, including the function selector 
-     * @param msgValues the message values to pass in for each target selector.
+     * @param assets    the assets you want to use for the multi-call
+     * @param calls     the calls you want to make 
      */
-    function multicall(address[] calldata providers, bytes32[] calldata arns, uint256[] calldata amounts,
-        address[] calldata targets, bytes4[] calldata callData, uint256[] calldata msgValues) external {
+    function multicall(FundingPreparation[] calldata assets, Call[] calldata calls) payable requiresKey(keyId) external {
+        // go through each funding preparation and
+        // dump the funds into this contract as needed.
+        // Design choice: Residual funds will be left and can be swept 
+        // purposefully later. I could have reverted the
+        // transaction if there were residuals but that
+        // feels like making it more difficult to get it to
+        // go through
+        ethDepositHatch = true;
+        for(uint256 x = 0; x < assets.length; x++) {
+            ICollateralProvider(assets[x].provider)
+                .arnWithdrawal(keyId, assets[x].arn, assets[x].amount);
+            
+            // record and emit entry
+            logTransaction(TxType.ABI, address(this), 
+                assets[x].provider, assets[x].arn, assets[x].amount);
+        }
+        ethDepositHatch = false;
 
+        // generate each target call, and go!
+        for(uint y = 0; y < calls.length; y++) {
+            (bool success,) = payable(calls[y].target).call{value: calls[y].msgValue}(calls[y].callData);
+            assert(success);
+        }
     }
 
     ////////////////////////////////////////////////////////
@@ -258,7 +275,7 @@ contract VirtualKeyAddress is IVirtualAddress, ERC1155Holder, Initializable, UUP
         // of a withdrawal.
         if (ethDepositHatch) { return; }
 
-        // deposit the amount to default collateral provider
+        // deposit the entire contract balance to default collateral provider
         defaultEthDepositProvider.deposit{value: msg.value}(keyId);
             
         // record and emit entry 

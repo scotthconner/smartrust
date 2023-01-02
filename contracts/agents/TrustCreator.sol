@@ -29,6 +29,8 @@ import '../interfaces/INotary.sol';
 import '../interfaces/ILedger.sol';
 import '../interfaces/IAlarmClock.sol';
 import '../interfaces/ITrustee.sol';
+import '../interfaces/IVirtualAddress.sol';
+
 ///////////////////////////////////////////////////////////
 
 /**
@@ -52,13 +54,6 @@ import '../interfaces/ITrustee.sol';
  * its best to generate the entire trust set up with a single signed transaction.
  */
 contract TrustCreator is ERC1155Holder, Initializable, OwnableUpgradeable, UUPSUpgradeable {
-    ////////////////////////////////////////////////////////
-    // Events
-    //
-    // This is going to help indexers and web applications
-    // watch and respond to blocks that contain trust transactions.
-    ////////////////////////////////////////////////////////
-
     ///////////////////////////////////////////////////////
     // Storage
     ///////////////////////////////////////////////////////
@@ -68,6 +63,7 @@ contract TrustCreator is ERC1155Holder, Initializable, OwnableUpgradeable, UUPSU
     address     public keyOracle;
     address     public trustee;
     address     public trustEventLog;
+    address     public keyAddressFactory;
 
     // permission registry: add these to the notary
     // upon trust creation using the new ROOT key.
@@ -99,7 +95,8 @@ contract TrustCreator is ERC1155Holder, Initializable, OwnableUpgradeable, UUPSU
      * @param _Ledger    the address of the assumed ledger
      */
     function initialize(address _KeyVault, address _Locksmith, address _Notary, address _Ledger, 
-        address _EtherVault, address _TokenVault, address _Trustee, address _AlarmClock, address _KeyOracle, address _TrustEventLog) initializer public {
+        address _EtherVault, address _TokenVault, address _Trustee, address _AlarmClock, address _KeyOracle, address _TrustEventLog,
+        address _KeyAddressFactory) initializer public {
         __Ownable_init();
         __UUPSUpgradeable_init();
         keyVault = _KeyVault;
@@ -112,6 +109,7 @@ contract TrustCreator is ERC1155Holder, Initializable, OwnableUpgradeable, UUPSU
         etherVault = _EtherVault;
         tokenVault = _TokenVault;
         trustEventLog = _TrustEventLog;
+        keyAddressFactory = _KeyAddressFactory;
     }
 
     /**
@@ -276,6 +274,11 @@ contract TrustCreator is ERC1155Holder, Initializable, OwnableUpgradeable, UUPSU
         notary.setTrustedLedgerRole(rootKeyId, 1, ledger, trustee, true, stringToBytes32('Trustee Program'));
         notary.setTrustedLedgerRole(rootKeyId, 2, trustEventLog, alarmClock, true, stringToBytes32('Alarm Clock Dispatcher'));
         notary.setTrustedLedgerRole(rootKeyId, 2, trustEventLog, keyOracle, true, stringToBytes32('Key Oracle Dispatcher'));
+
+        // create the virtual inbox by giving the root key
+        // to the factory agent
+        IERC1155(keyVault).safeTransferFrom(address(this), keyAddressFactory, rootKeyId, 1, 
+            abi.encode(rootKeyId, etherVault));
 
         // return the trustID and the rootKeyId
         return (trustId, rootKeyId, keyIDs);

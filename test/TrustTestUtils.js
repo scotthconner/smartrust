@@ -416,37 +416,10 @@ TrustTestFixtures = (function() {
       // trust the alarm clock to register events
       await notary.connect(root).setTrustedLedgerRole(0, DISPATCHER(), events.address, alarmClock.address, true, stb('alarm-clock'));
 
-      return {keyVault, locksmith,
+      return { keyVault, locksmith,
         notary, ledger, vault, tokenVault, coin,
         events, trustee, keyOracle, alarmClock,
-        owner, root, second, third};
-    },
-    //////////////////////////////////////////////////////////
-    // Added creator 
-    //
-    // Adds a contract that feeds an orchestration of 
-    // a default trust.
-    //////////////////////////////////////////////////////////
-    addedCreator: async function() {
-      const {keyVault, locksmith,
-        notary, ledger, vault, tokenVault, coin,
-        events, trustee, keyOracle, alarmClock,
-        owner, root, second, third} = 
-        await TrustTestFixtures.addedAlarmClock();
-
-      // deploy the creator 
-      const Creator = await ethers.getContractFactory("TrustCreator");
-      const creator= await upgrades.deployProxy(Creator, [
-        keyVault.address, locksmith.address, notary.address,
-        ledger.address, vault.address, tokenVault.address, trustee.address,
-        alarmClock.address, keyOracle.address, events.address
-      ]);
-      await creator.deployed();
-     
-      return {keyVault, locksmith,
-        notary, ledger, vault, tokenVault, coin,
-        events, trustee, keyOracle, alarmClock, creator,
-        owner, root, second, third};
+        owner, root, second, third };
     },
     //////////////////////////////////////////////////////////
     // Added Inbox 
@@ -459,7 +432,7 @@ TrustTestFixtures = (function() {
         notary, ledger, vault, tokenVault, coin,
         events, trustee, keyOracle, alarmClock, creator,
         owner, root, second, third} =
-        await TrustTestFixtures.addedCreator();
+        await TrustTestFixtures.addedAlarmClock();
 
       // deploy the inbox 
       const VirtualAddress = await ethers.getContractFactory("VirtualKeyAddress");
@@ -470,7 +443,7 @@ TrustTestFixtures = (function() {
 
       return {keyVault, locksmith,
         notary, ledger, vault, tokenVault, coin, inbox,
-        events, trustee, keyOracle, alarmClock, creator,
+        events, trustee, keyOracle, alarmClock,
         owner, root, second, third};
     },
     //////////////////////////////////////////////////////////
@@ -482,9 +455,8 @@ TrustTestFixtures = (function() {
     addedPostOffice: async function() {
       const {keyVault, locksmith,
         notary, ledger, vault, tokenVault, coin, inbox,
-        events, trustee, keyOracle, alarmClock, creator,
-        owner, root, second, third} =
-        await TrustTestFixtures.addedInbox();
+        events, trustee, keyOracle, alarmClock,
+        owner, root, second, third} = await TrustTestFixtures.addedInbox();
 
       // deploy the inbox
       const PostOffice = await ethers.getContractFactory("PostOffice");
@@ -493,7 +465,7 @@ TrustTestFixtures = (function() {
 
       return {keyVault, locksmith,
         notary, ledger, vault, tokenVault, coin, inbox, postOffice,
-        events, trustee, keyOracle, alarmClock, creator,
+        events, trustee, keyOracle, alarmClock, 
         owner, root, second, third};
     },
     //////////////////////////////////////////////////////////
@@ -504,7 +476,7 @@ TrustTestFixtures = (function() {
     addedKeyAddressFactory: async function() {
       const {keyVault, locksmith,
         notary, ledger, vault, tokenVault, coin, inbox, postOffice,
-        events, trustee, keyOracle, alarmClock, creator,
+        events, trustee, keyOracle, alarmClock, 
         owner, root, second, third} =
         await TrustTestFixtures.addedPostOffice();
 
@@ -515,8 +487,34 @@ TrustTestFixtures = (function() {
 
       return {keyVault, locksmith,
         notary, ledger, vault, tokenVault, coin, inbox, postOffice,
-        events, trustee, keyOracle, alarmClock, creator, addressFactory,
+        events, trustee, keyOracle, alarmClock, addressFactory,
         owner, root, second, third};
+    },
+    //////////////////////////////////////////////////////////
+    // Added creator
+    //
+    // Adds a contract that feeds an orchestration of
+    // a default trust.
+    //////////////////////////////////////////////////////////
+    addedCreator: async function() {
+      const { keyVault, locksmith,
+        notary, ledger, vault, tokenVault, coin, inbox, postOffice,
+        events, trustee, keyOracle, alarmClock, addressFactory,
+        owner, root, second, third } = await TrustTestFixtures.addedKeyAddressFactory();
+
+      // deploy the creator
+      const Creator = await ethers.getContractFactory("TrustCreator");
+      const creator= await upgrades.deployProxy(Creator, [
+        keyVault.address, locksmith.address, notary.address,
+        ledger.address, vault.address, tokenVault.address, trustee.address,
+        alarmClock.address, keyOracle.address, events.address, addressFactory.address,
+      ]);
+      await creator.deployed();
+
+      return { keyVault, locksmith, creator,
+        notary, ledger, vault, tokenVault, coin, inbox, postOffice,
+        events, trustee, keyOracle, alarmClock, addressFactory,
+        owner, root, second, third };
     },
     //////////////////////////////////////////////////////////
     // Deployed Hardhat Testing

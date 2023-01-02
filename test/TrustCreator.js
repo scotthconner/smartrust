@@ -23,10 +23,11 @@ describe("TrustCreator", function () {
   describe("Contract deployment", function () {
     it("Should not fail the deployment", async function () {
       const { keyVault, locksmith, notary, ledger, alarmClock, events, 
-        vault, tokenVault, keyOracle, trustee, creator } = await loadFixture(TrustTestFixtures.addedCreator);
+        vault, tokenVault, keyOracle, trustee, creator, addressFactory } = await loadFixture(TrustTestFixtures.addedCreator);
       
       await expect(creator.initialize(keyVault.address, locksmith.address, notary.address,
-        ledger.address, vault.address, tokenVault.address, trustee.address, alarmClock.address, keyOracle.address, events.address))
+        ledger.address, vault.address, tokenVault.address, trustee.address, alarmClock.address, keyOracle.address, events.address,
+        addressFactory.address))
         .to.be.revertedWith("Initializable: contract is already initialized");
       expect(true);
     });
@@ -41,12 +42,13 @@ describe("TrustCreator", function () {
   describe("Contract upgrade", function() {
     it("Should be able to upgrade", async function() {
       const { keyVault, locksmith, notary, creator, keyOracle, events,
-        ledger, vault, tokenVault, trustee, root } = await loadFixture(TrustTestFixtures.addedCreator);
+        ledger, vault, tokenVault, trustee, addressFactory, root } = await loadFixture(TrustTestFixtures.addedCreator);
 
       const contract = await ethers.getContractFactory("TrustCreator")
       const v2 = await upgrades.upgradeProxy(creator.address, contract, 
           [keyVault.address, locksmith.address, notary.address,
-          ledger.address, vault.address, tokenVault.address, trustee.address, keyOracle.address, events.address]);
+          ledger.address, vault.address, tokenVault.address, trustee.address, keyOracle.address, 
+          events.address, addressFactory.address]);
       await v2.deployed();
 
       // try to upgrade if you're not the owner
@@ -133,7 +135,7 @@ describe("TrustCreator", function () {
     });
 
     it("Successfully creates a trust with multiple keys", async function() {
-      const {keyVault, locksmith, notary, creator,
+      const {keyVault, locksmith, notary, creator, postOffice,
         ledger, vault, tokenVault, trustee, owner, root, second, third } =
         await loadFixture(TrustTestFixtures.addedCreator);
 
@@ -160,7 +162,8 @@ describe("TrustCreator", function () {
           .withArgs(creator.address, 1, 4, ledger.address, tokenVault.address, true, 0)
           .to.emit(notary, 'trustedRoleChange')
           .withArgs(creator.address, 1, 4, ledger.address, vault.address, true, 0)
-          .to.emit(notary, 'trustedRoleChange');
+          .to.emit(postOffice, 'addressRegistrationEvent');
+          
 
       // make sure the contract doesn't have one still
       // Note: this is obviously where the caller has to trust this contract.
@@ -191,6 +194,10 @@ describe("TrustCreator", function () {
         .eql([vault.address, tokenVault.address]);
       expect(await notary.getTrustedActors(ledger.address, 1, 1))
         .eql([trustee.address]);
+
+      // check the post office for a virtual key address
+      var inboxes = await postOffice.getInboxesForKey(4);
+      expect(inboxes).to.have.length(1);
     });
   });
 
