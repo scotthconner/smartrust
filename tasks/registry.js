@@ -12,6 +12,8 @@ LocksmithRegistry = (function() {
     'KeyOracle',
     'AlarmClock',
     'Trustee',
+    'PostOffice',
+    'KeyAddressFactory',
     'TrustCreator',
   ];
 
