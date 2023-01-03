@@ -44,8 +44,8 @@ import '../interfaces/ITokenCollateralProvider.sol';
 contract VirtualKeyAddress is IVirtualAddress, ERC1155Holder, Initializable, UUPSUpgradeable {
     ////////////////////////////////////////////////////////
     // Data Structures 
-    // 
     ////////////////////////////////////////////////////////
+    
     struct Transaction {
         TxType transactionType; // what type of transaction is it?
         uint256 blockTime;      // when did this transaction happen?
@@ -186,6 +186,11 @@ contract VirtualKeyAddress is IVirtualAddress, ERC1155Holder, Initializable, UUP
      *
      * This entire operation is atomic.
      *
+     * WARNING: The calls will operate as a key holder for KeyID. The transaction
+     *          does require it is signed by someone in the possession of the same,
+     *          but this doesn't mean that signing a bad message isn't an 
+     *          inherent security risk.
+     *
      * @param assets    the assets you want to use for the multi-call
      * @param calls     the calls you want to make 
      */
@@ -210,6 +215,7 @@ contract VirtualKeyAddress is IVirtualAddress, ERC1155Holder, Initializable, UUP
         depositHatch = false;
 
         // generate each target call, and go!
+        // Warning: This is re-entrant!!!!
         for(uint y = 0; y < calls.length; y++) {
             (bool success,) = payable(calls[y].target).call{value: calls[y].msgValue}(calls[y].callData);
             assert(success);

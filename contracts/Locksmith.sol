@@ -73,8 +73,8 @@ contract Locksmith is ILocksmith, Initializable, OwnableUpgradeable, UUPSUpgrade
     // a reverse mapping that keeps a top level association
     // between a key and it's trust. This enables O(1) key
     // to trust resolution
-    mapping(uint256 => uint256) public keyTrustAssociations;
-    uint256 public keyCount; // the total number of keys
+    mapping(uint256 => uint256) private keyTrustAssociations;
+    uint256 private keyCount; // the total number of keys
 
     ///////////////////////////////////////////////////////
     // Constructor and Upgrade Methods
@@ -141,7 +141,6 @@ contract Locksmith is ILocksmith, Initializable, OwnableUpgradeable, UUPSUpgrade
      * @return array of key Ids within the trust.
      */
     function getKeys(uint256 trustId) public view returns (uint256[] memory) {
-        // punish the user for requesting an invalid trust.
         // an invalid trust's keys are always empty, RIGHT?!
         assert(trustRegistry[trustId].keys.length != 0);
 

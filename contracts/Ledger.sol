@@ -247,8 +247,9 @@ contract Ledger is ILedger, Initializable, OwnableUpgradeable, UUPSUpgradeable {
      * Collateral providers will call deposit to update the ledger when a key
      * deposits the funds to a trust.
      *
-     * All deposits must be done to the root key. And all deposits
-     * must happen from approved collateral providers.
+     * All deposits must happen from approved collateral providers.
+     * The root key holder trusts the collateral provider to only
+     * make honest deposits.
      *
      * @param rootKeyId the root key to deposit the funds into
      * @param arn       asset resource hash of the deposited asset

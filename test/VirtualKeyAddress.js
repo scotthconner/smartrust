@@ -494,7 +494,6 @@ describe("VirtualKeyAddress", function () {
         .to.emit(inbox, 'addressTransaction')
         .withArgs(2, root.address, inbox.address, tokenVault.address, tokenArn(coin.address), eth(1));
 
-
       // assert the token ended up at third and check the vault and ledger balance
       await expect(await coin.balanceOf(tokenVault.address)).eql(vaultBalance.add(eth(1)));
       await expect(await ledger.getContextArnBalances(KEY(), 0, tokenVault.address, [tokenArn(coin.address)]))
@@ -724,15 +723,66 @@ describe("VirtualKeyAddress", function () {
     });
 
     it("Left-over funds are sweepable with given APIs", async function() {
+      const { keyVault, locksmith,
+        notary, ledger, vault, tokenVault, coin, inbox,
+        events, trustee, keyOracle, alarmClock, creator,
+        owner, root, second, third } = await loadFixture(TrustTestFixtures.addedInbox);
 
-    });
+      // use the locksmith to soulbind a key to the virtual inbox
+      await expect(locksmith.connect(root).copyKey(0, 0, inbox.address, true))
+        .to.emit(locksmith, 'keyMinted')
+        .withArgs(root.address, 0, 0, stb('root'), inbox.address);
 
-    it("Multi-call can act as key holder for contract call.", async function() {
+      // prepare more funds than are used
+      await expect(await inbox.connect(root).multicall([{
+        provider: tokenVault.address,
+        arn: tokenArn(coin.address),
+        amount: eth(2)
+      },{
+        provider: vault.address,
+        arn: ethArn(),
+        amount: eth(3)
+      }],[{
+        target: coin.address,
+        callData: coin.interface.encodeFunctionData("transfer", [third.address, eth(1)]),
+        msgValue: eth(0)
+      }, {
+        target: third.address,
+        callData: stb(''),
+        msgValue: eth(1)
+      }])).to.emit(ledger, 'withdrawalOccurred')
+        .withArgs(tokenVault.address, 0, 0, tokenArn(coin.address), eth(2), eth(3), eth(3), eth(3))
+        .to.emit(inbox, 'addressTransaction')
+        .withArgs(3, root.address, inbox.address, tokenVault.address, tokenArn(coin.address), eth(2))
+        .to.emit(ledger, 'withdrawalOccurred')
+        .withArgs(vault.address, 0, 0, ethArn(), eth(3), eth(37), eth(37), eth(37))
+        .to.emit(inbox, 'addressTransaction')
+        .withArgs(3, root.address, inbox.address, vault.address, ethArn(), eth(3));
 
-    });
+      // check the contract balance of the inbox
+      await expect(await ethers.provider.getBalance(inbox.address)).eql(eth(2));
+      await expect(await coin.balanceOf(inbox.address)).eql(eth(1));
 
-    it("multi-call requries valid calls to complete successfully", async function() {
+      // accept the token back, check it.
+      await expect(await inbox.connect(root).acceptToken(coin.address, tokenVault.address))
+        .to.emit(inbox, 'addressTransaction')
+        .withArgs(2, root.address, inbox.address, tokenVault.address, tokenArn(coin.address), eth(1));
+      await expect(await coin.balanceOf(inbox.address)).eql(eth(0));
 
+      // here we can actually trick the multi-call into running a deposit 
+      // directly against a preferred provider! This will work
+      // because the caller is holding the proper key.
+      await expect(await inbox.connect(root).multicall([],
+        [{ target: vault.address,
+           callData: vault.interface.encodeFunctionData('deposit',[0]),
+           msgValue: eth(2)
+         }]))
+          .to.emit(ledger, 'depositOccurred')
+          .withArgs(vault.address, 0, 0, ethArn(), eth(2), eth(39), eth(39), eth(39));
+      
+      // the ether is gone, and in the vault
+      await expect(await ethers.provider.getBalance(inbox.address)).eql(eth(0));
+      await expect(await ethers.provider.getBalance(vault.address)).eql(eth(39));
     });
   });
 }); 

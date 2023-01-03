@@ -67,6 +67,7 @@ describe("Locksmith", function () {
 
       const vaultv2 = await ethers.getContractFactory("KeyVault")
       const vaultAgain = await upgrades.upgradeProxy(keyVault.address, vaultv2);
+      await vaultAgain.deployed();
 
       // can't upgrade the key vault if you are not the owner!
       const vaultHack = await ethers.getContractFactory("KeyVault", root)
