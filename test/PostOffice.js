@@ -96,14 +96,28 @@ describe("PostOffice", function () {
         .withArgs(0, root.address, 0, inbox.address);
 
       await expect(await postOffice.getInboxesForKey(0)).eql([inbox.address]);
+      await expect(await postOffice.getKeyInbox(0)).eql(inbox.address);
 
       // try to duplicate the same thing, and it will fail
       await expect(postOffice.connect(root).registerInbox(inbox.address))
-        .to.be.revertedWith('DUPLICATE_REGISTRATION');
+        .to.be.revertedWith('DUPLICATE_ADDRESS_REGISTRATION');
 
       // try to duplicate the same thing with someone else, and it will still fail
       await expect(postOffice.connect(second).registerInbox(inbox.address))
-        .to.be.revertedWith('DUPLICATE_REGISTRATION');
+        .to.be.revertedWith('DUPLICATE_ADDRESS_REGISTRATION');
+
+      // generate a completely new inbox address, that is still for the key 0,
+      // registering that with post office should also fail
+      // deploy the inbox
+      const VirtualAddress = await ethers.getContractFactory("VirtualKeyAddress");
+      const ib = await upgrades.deployProxy(VirtualAddress, [
+        locksmith.address, vault.address, 0, 0
+      ]);
+      await ib.deployed();
+
+      // try to duplicate for key ID = 0, will fail 
+      await expect(postOffice.connect(root).registerInbox(ib.address))
+        .to.be.revertedWith('DUPLICATE_KEY_REGISTRATION');
     });
   });
 
@@ -150,6 +164,40 @@ describe("PostOffice", function () {
         .to.be.revertedWith('REGISTRATION_NOT_YOURS');
     });
 
+    it("Identity Corruption Protection", async function() {
+      const {keyVault, locksmith, postOffice,
+        notary, ledger, vault, tokenVault, coin, inbox,
+        events, trustee, keyOracle, alarmClock, creator,
+        owner, root, second, third} = await loadFixture(TrustTestFixtures.addedPostOffice);
+
+      // success
+      await expect(await postOffice.connect(root).registerInbox(inbox.address))
+        .to.emit(postOffice, 'addressRegistrationEvent')
+        .withArgs(0, root.address, 0, inbox.address);
+
+      await expect(await postOffice.getInboxesForKey(0)).eql([inbox.address]);
+      await expect(await postOffice.getKeyInbox(0)).eql(inbox.address);
+
+      // upgrade the inbox and change the Key identity of the address
+      // this will work because the caller is root
+      const success = await ethers.getContractFactory("StubKeyAddress", root)
+      const v2 = await upgrades.upgradeProxy(inbox.address, success, []);
+      await v2.deployed();
+
+      // do some funny business
+      await v2.connect(root).setKeyId(1);
+
+      // make sure we've changed the identities
+      await expect(await v2.keyId()).eql(bn(1));
+
+      // removal failure 
+      await expect(postOffice.connect(root).deregisterInbox(0, v2.address))
+        .to.be.revertedWith('CORRUPT_IDENTITY');
+
+      await expect(await postOffice.getInboxesForKey(0)).eql([inbox.address]);
+      await expect(await postOffice.getKeyInbox(0)).eql(inbox.address);
+    });
+
     it("Successful de-registration", async function() {
       const {keyVault, locksmith, postOffice,
         notary, ledger, vault, tokenVault, coin, inbox,
@@ -162,6 +210,7 @@ describe("PostOffice", function () {
         .withArgs(0, root.address, 0, inbox.address);
 
       await expect(await postOffice.getInboxesForKey(0)).eql([inbox.address]);
+      await expect(await postOffice.getKeyInbox(0)).eql(inbox.address);
 
       // removal success
       await expect(postOffice.connect(root).deregisterInbox(0, inbox.address))
@@ -169,6 +218,7 @@ describe("PostOffice", function () {
         .withArgs(1, root.address, 0, inbox.address);
       
       await expect(await postOffice.getInboxesForKey(0)).eql([]);
+      await expect(await postOffice.getKeyInbox(0)).eql(ethers.constants.AddressZero);
     });
   });
 });

@@ -91,6 +91,15 @@ interface IVirtualAddress {
     function ownerKeyId() external view returns(uint256);
 
     /**
+     * keyId
+     *
+     * Each address represents a single key identity.
+     *
+     * @return the key ID that the address acts as.
+     */
+    function keyId() external view returns (uint256);
+
+    /**
      * getDefaultEthDepositProvider
      *
      * @return the address of the default IEtherCollateralProvider used for receiving ether payments

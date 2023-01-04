@@ -35,7 +35,10 @@ using EnumerableSet for EnumerableSet.AddressSet;
  * have some form of registration.
  * 
  * The Post Office is the addressable collection of "inboxes"
- * and post addresses for all trusts.
+ * and post addresses for all trusts. While many virtual key addresses
+ * can exist with unbounded implementations, the post office
+ * requires a specific interface and only allows one registered
+ * inbox per key.
  * 
  */
 contract PostOffice is IPostOffice, Initializable, OwnableUpgradeable, UUPSUpgradeable {
@@ -46,14 +49,16 @@ contract PostOffice is IPostOffice, Initializable, OwnableUpgradeable, UUPSUpgra
 
     // is an inbox address registered already? 
     mapping(address => bool) private inboxes;
-    
+ 
+    // which address, if any, is the virtual inbox for a specific key ID? 
+    mapping(uint256 => address) private keyIdentityInboxes; 
+
     // what are all the inboxes a key holder claims to own?
     // ownership could easily rug on the factoried contract and
     // leave this stale, but that would be a bug that could
     // also be detected and explained as to how that happened.
-    //
     // keyId => [inbox]
-    mapping(uint256 => EnumerableSet.AddressSet) private keyInboxes;
+    mapping(uint256 => EnumerableSet.AddressSet) private ownerKeyInboxes;
 
     ///////////////////////////////////////////////////////
     // Constructor and Upgrade Methods
@@ -109,8 +114,20 @@ contract PostOffice is IPostOffice, Initializable, OwnableUpgradeable, UUPSUpgra
      * @return a list of registered inbox addresses owned by ownerKeyId
      */
     function getInboxesForKey(uint256 ownerKeyId) external view returns(address[] memory) {
-        return keyInboxes[ownerKeyId].values();
+        return ownerKeyInboxes[ownerKeyId].values();
 	}
+
+    /**
+     * getKeyInbox
+     *
+     * Will return the inbox address for a particular key identity. Will
+     * either be an address if valid, or address(0) if unknown or un-assigned.
+     *
+     * @return the address of the inbox that represents that key's identity.
+     */
+    function getKeyInbox(uint256 keyId) external view returns(address) {
+        return keyIdentityInboxes[keyId];
+    }
 
     ////////////////////////////////////////////////////////
     // Permission Methods 
@@ -126,18 +143,23 @@ contract PostOffice is IPostOffice, Initializable, OwnableUpgradeable, UUPSUpgra
      */
     function registerInbox(address payable inbox) external {
         // make sure the inbox isn't already registered
-        require(!inboxes[inbox], 'DUPLICATE_REGISTRATION');
+        require(!inboxes[inbox], 'DUPLICATE_ADDRESS_REGISTRATION');
 
         // determine what key the inbox thinks its owned by
         uint256 ownerKey = IVirtualAddress(inbox).ownerKeyId();
+        uint256 keyId = IVirtualAddress(inbox).keyId();
 
-        // ensure that the message sender is holding that key
+        // ensure that the message sender is holding the owner key
         require(IKeyVault(ILocksmith(locksmith).getKeyVault()).keyBalanceOf(msg.sender, ownerKey, false) > 0,
             'KEY_NOT_HELD');
+        
+        // make sure the key isn't already registered
+        require(keyIdentityInboxes[keyId] == address(0), 'DUPLICATE_KEY_REGISTRATION');
 
         // register the inbox
         inboxes[inbox] = true;
-        keyInboxes[ownerKey].add(inbox);
+        ownerKeyInboxes[ownerKey].add(inbox);
+        keyIdentityInboxes[keyId] = inbox;
 
         emit addressRegistrationEvent(InboxEventType.ADD, msg.sender, ownerKey, inbox);
     }
@@ -156,17 +178,21 @@ contract PostOffice is IPostOffice, Initializable, OwnableUpgradeable, UUPSUpgra
         // fail if the inbox isn't registered
         require(inboxes[inbox], 'MISSING_REGISTRATION');
 
+        // fail if the inbox's keyID doesn't match the registraton
+        uint256 keyId = IVirtualAddress(inbox).keyId();
+        require(keyIdentityInboxes[keyId] == inbox, 'CORRUPT_IDENTITY');
+
         // fail if the message sender isn't holding the key
         require(IKeyVault(ILocksmith(locksmith).getKeyVault()).keyBalanceOf(msg.sender, ownerKeyId, false) > 0,
             'KEY_NOT_HELD');
 
         // we don't actually care if they still own the inbox on-chain,
         // just that they want to de-register a valid entry for *them* 
-        require(keyInboxes[ownerKeyId].remove(inbox), 'REGISTRATION_NOT_YOURS');
+        require(ownerKeyInboxes[ownerKeyId].remove(inbox), 'REGISTRATION_NOT_YOURS');
        
         // clean up the bit table
         inboxes[inbox] = false; 
-
+        keyIdentityInboxes[keyId] = address(0);
         emit addressRegistrationEvent(InboxEventType.REMOVE, msg.sender, ownerKeyId, inbox);
     }
 } 

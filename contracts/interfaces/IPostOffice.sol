@@ -56,6 +56,16 @@ interface IPostOffice {
      */
     function getInboxesForKey(uint256 ownerKeyId) external view returns(address[] memory);
 
+    /**
+     * getKeyInbox
+     *
+     * Will return the inbox address for a particular key identity. Will
+     * either be an address if valid, or address(0) if unknown or un-assigned.
+     *
+     * @return the address of the inbox that represents that key's identity.
+     */
+    function getKeyInbox(uint256 keyId) external view returns(address);
+
     ////////////////////////////////////////////////////////
     // Permission Methods 
     ////////////////////////////////////////////////////////
