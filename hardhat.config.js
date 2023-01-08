@@ -33,9 +33,13 @@ module.exports = {
       url: `${process.env.ALCHEMY_GOERLI_URL}`,
       accounts: [`${process.env.MY_PRIVATE_KEY}`],
     },
+    mumbai: {
+      url: `${process.env.ALCHEMY_MUMBAI_URL}`,
+      accounts: [`${process.env.MY_PRIVATE_KEY}`],
+    },
     mainnet: {
       url: `${process.env.ALCHEMY_MAINNET_URL}`,
-      accounts: [`${process.env.MY_PRIVATE_KEY}`],
+      accounts: [`${process.env.MY_MAINNET_PRIVATE_KEY}`],
     },
     wallaby: {
       url: 'https://wallaby.node.glif.io/rpc/v0',

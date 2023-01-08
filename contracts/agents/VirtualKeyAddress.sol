@@ -217,6 +217,12 @@ contract VirtualKeyAddress is IVirtualAddress, ERC1155Holder, Initializable, UUP
         // generate each target call, and go!
         // Warning: This is re-entrant!!!!
         for(uint y = 0; y < calls.length; y++) {
+            // let's make sure the target is not the locksmith.
+            // we don't want to enable automating permissions at root
+            // mid-transaction. the call interface should prevent
+            // callData from delegating with the keyholder being the caller.
+            require(locksmith != calls[y].target, 'INVARIANT_CONTROL');
+
             (bool success,) = payable(calls[y].target).call{value: calls[y].msgValue}(calls[y].callData);
             assert(success);
         }

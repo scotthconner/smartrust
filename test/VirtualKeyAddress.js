@@ -784,5 +784,25 @@ describe("VirtualKeyAddress", function () {
       await expect(await ethers.provider.getBalance(inbox.address)).eql(eth(0));
       await expect(await ethers.provider.getBalance(vault.address)).eql(eth(39));
     });
+
+    it("Multi-call can't call locksmith to change permissions", async function() {
+      const { keyVault, locksmith,
+        notary, ledger, vault, tokenVault, coin, inbox,
+        events, trustee, keyOracle, alarmClock, creator,
+        owner, root, second, third } = await loadFixture(TrustTestFixtures.addedInbox);
+
+      // use the locksmith to soulbind a key to the virtual inbox
+      await expect(locksmith.connect(root).copyKey(0, 0, inbox.address, true))
+        .to.emit(locksmith, 'keyMinted')
+        .withArgs(root.address, 0, 0, stb('root'), inbox.address);
+
+      // an attacker would trick the key holder to un-bind the key on the inbox
+      // but will fail.
+      await expect(inbox.connect(root).multicall([],[{
+        target: locksmith.address,
+        callData: locksmith.interface.encodeFunctionData("soulbindKey", [0,inbox.address,0,0]),
+        msgValue: eth(0)
+      }])).to.be.revertedWith('INVARIANT_CONTROL');
+    });
   });
 }); 
