@@ -209,7 +209,8 @@ task("deploy", "Deploy a specific contract generating a new address for it.")
       gasLimit:             ethers.utils.parseUnits('100000000', 'gwei'),
     };
     
-    if (chainId.toString() === '31415') {
+    // both wallaby, and local devnet for Filecoin use 31415(926).
+    if (chainId.toString().match(/31415/)) {
       // Wrap the provider so we can override fee data.
       const provider = new ethers.providers.FallbackProvider([ethers.provider], 1);
       provider.getFeeData = async () => FEE_DATA;
@@ -339,8 +340,24 @@ task("deploy", "Deploy a specific contract generating a new address for it.")
 
 task("respect", "Make the current registry's key vault respect the current locksmith.")
   .setAction(async (taskArgs) => {
-    const [owner] = await ethers.getSigners();
+    var [owner] = await ethers.getSigners();
     const chainId = await owner.getChainId();
+
+    const FEE_DATA = {
+      maxFeePerGas:         ethers.utils.parseUnits('10', 'gwei'),
+      maxPriorityFeePerGas: ethers.utils.parseUnits('10', 'gwei'),
+      gasLimit:             ethers.utils.parseUnits('100000000', 'gwei'),
+    };
+
+    // both wallaby, and local devnet for Filecoin use 31415(926).
+    if (chainId.toString().match(/31415/)) {
+      // Wrap the provider so we can override fee data.
+      const provider = new ethers.providers.FallbackProvider([ethers.provider], 1);
+      provider.getFeeData = async () => FEE_DATA;
+      // override the signer, connected to the provider with hardcoded fee data
+      owner = new ethers.Wallet(process.env.MY_PRIVATE_KEY, provider);
+    }
+
     console.log(greenText, '\n==== GENIE, RESPECT! ====\n');
     console.log(JSON.stringify(taskArgs, null, 2));
     console.log(greenText, "\n=== SIGNER INFO ===\n");
@@ -369,13 +386,18 @@ task("respect", "Make the current registry's key vault respect the current locks
       return 1;
     }
 
-    var response = await keyVaultContract
-      .attach(keyVaultAddress)
-      .connect(owner)
-      .setRespectedLocksmith(locksmithAddress);
+    try {
+      var response = await keyVaultContract
+        .attach(keyVaultAddress)
+        .connect(owner)
+        .setRespectedLocksmith(locksmithAddress);
 
-    console.log("\nIt seems it was successful!");
-    console.log("New respect address is: " + await keyVaultContract.attach(keyVaultAddress).locksmith());
+      console.log("\nIt seems it was successful!");
+      console.log("New respect address is: " + await keyVaultContract.attach(keyVaultAddress).locksmith());
+    } catch (e) {
+      console.log("ERROR!");
+      console.log(e.message);
+    }
   });
 
 task("assets", "Degenerately spam the network with ERC20s.")

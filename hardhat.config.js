@@ -41,6 +41,14 @@ module.exports = {
       url: `${process.env.ALCHEMY_MAINNET_URL}`,
       accounts: [`${process.env.MY_MAINNET_PRIVATE_KEY}`],
     },
+    devnet: {
+      url: 'http://127.0.0.1:1234/rpc/v0',
+      accounts: [`${process.env.MY_PRIVATE_KEY}`],
+      gasLimit: 10000000000,
+      maxFeePerGas: 100000000,
+      gasPrice: 5,
+      maxPriorityFeePerGas: 100000000,
+    },
     wallaby: {
       url: 'https://wallaby.node.glif.io/rpc/v0',
       accounts: [`${process.env.MY_PRIVATE_KEY}`],
