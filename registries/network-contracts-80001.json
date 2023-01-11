@@ -44,11 +44,11 @@
     "codeHash": "0xb0898d6403f0b7241a72ee4effa3c8863e47ba5764ddc66c8524bfaae86012d1"
   },
   "KeyAddressFactory": {
-    "address": "0xeE16B5579EdC570b4B21c850E52C90145E40e492",
-    "codeHash": "0x47b3c0b5cc2c1d161c77a0d923720aff56c216c3898db0454871c6185ee27438"
+    "address": "0x1B0983F9de9e8F1b674198E427Cd45B1Cf646b65",
+    "codeHash": "0x040efe16e44c5dbb43129f2085892094b4b0306c0cc20cbb8464abaa8fe6eb23"
   },
   "TrustCreator": {
-    "address": "0x309C1D48b7AeabfE03b53d6dB0700E4B8ECd91Aa",
+    "address": "0x5Ecb4F2B39806079b1C9e8DB91c76169A6cEAed2",
     "codeHash": "0x10224e103806beed596c8b6ad49e016abd51f5ac262dd853bdfe51cae2d6dcea"
   }
 }

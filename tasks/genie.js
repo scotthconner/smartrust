@@ -70,9 +70,34 @@ const sortDependencies = async function(alias) {
   return { dependencies, missing } 
 }
 
+
+///////////////////////////////////////////
+// patchOwner
+//
+// This is needed because hardhat doesn't always use EIP 1559
+// when using the default JsonRPCSigner, and doesn't necessarily
+// support the right over-rides in hardhat.config.js.
+//
+// https://github.com/NomicFoundation/hardhat/issues/3418
+///////////////////////////////////////////
+const patchOwner = async function() {
+  const [signer] = await ethers.getSigners();
+  
+  // for networks that absolutely require type 2 transactions, avoid
+  // the hardhat signer by creating a wallet.
+  if ((await signer.getChainId()).toString().match(/31415/)) {
+    return new ethers.Wallet(process.env.MY_PRIVATE_KEY, ethers.provider);
+  }
+
+  // for networks that are backwards compatible, allow
+  // hardhat to do unenveloped transactions at the potential
+  // of overpaying for gas
+  return signer; 
+}
+
 task("show", "Show the state of the current genie deployment")
   .setAction(async (taskArgs) => {
-    const [owner] = await ethers.getSigners();
+    const owner = await patchOwner(); 
     const chainId = await owner.getChainId();
     const balance = await owner.provider.getBalance(owner.address);
     const gasPrice = await owner.provider.getGasPrice();
@@ -199,24 +224,9 @@ task("deploy", "Deploy a specific contract generating a new address for it.")
     // this assumes that the signer has been loaded, either through
     // hardhat local defaults, or using alchemy and testnet or production
     // credentials via dotenv (.env) and hardhat.config.js
-    var [owner] = await ethers.getSigners();
+    const owner = await patchOwner();
     const chainId = await owner.getChainId();
     const balance = await owner.provider.getBalance(owner.address);
-
-    const FEE_DATA = {
-      maxFeePerGas:         ethers.utils.parseUnits('10', 'gwei'),
-      maxPriorityFeePerGas: ethers.utils.parseUnits('10', 'gwei'),
-      gasLimit:             ethers.utils.parseUnits('100000000', 'gwei'),
-    };
-    
-    // both wallaby, and local devnet for Filecoin use 31415(926).
-    if (chainId.toString().match(/31415/)) {
-      // Wrap the provider so we can override fee data.
-      const provider = new ethers.providers.FallbackProvider([ethers.provider], 1);
-      provider.getFeeData = async () => FEE_DATA;
-      // override the signer, connected to the provider with hardcoded fee data
-      owner = new ethers.Wallet(process.env.MY_PRIVATE_KEY, provider);
-    }
 
     // do a sanity check.
     if (taskArgs.force && taskArgs.upgrade) {
@@ -340,23 +350,8 @@ task("deploy", "Deploy a specific contract generating a new address for it.")
 
 task("respect", "Make the current registry's key vault respect the current locksmith.")
   .setAction(async (taskArgs) => {
-    var [owner] = await ethers.getSigners();
+    const owner = await patchOwner(); 
     const chainId = await owner.getChainId();
-
-    const FEE_DATA = {
-      maxFeePerGas:         ethers.utils.parseUnits('10', 'gwei'),
-      maxPriorityFeePerGas: ethers.utils.parseUnits('10', 'gwei'),
-      gasLimit:             ethers.utils.parseUnits('100000000', 'gwei'),
-    };
-
-    // both wallaby, and local devnet for Filecoin use 31415(926).
-    if (chainId.toString().match(/31415/)) {
-      // Wrap the provider so we can override fee data.
-      const provider = new ethers.providers.FallbackProvider([ethers.provider], 1);
-      provider.getFeeData = async () => FEE_DATA;
-      // override the signer, connected to the provider with hardcoded fee data
-      owner = new ethers.Wallet(process.env.MY_PRIVATE_KEY, provider);
-    }
 
     console.log(greenText, '\n==== GENIE, RESPECT! ====\n');
     console.log(JSON.stringify(taskArgs, null, 2));
