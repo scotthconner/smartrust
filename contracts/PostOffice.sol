@@ -149,6 +149,13 @@ contract PostOffice is IPostOffice, Initializable, OwnableUpgradeable, UUPSUpgra
         uint256 ownerKey = IVirtualAddress(inbox).ownerKeyId();
         uint256 keyId = IVirtualAddress(inbox).keyId();
 
+        // ensure that the owner key is a root key, and that
+        // the keyId is within the ring.
+        (bool ownerValid,, uint256 ownerTrustId, bool ownerIsRoot,) = ILocksmith(locksmith).inspectKey(ownerKey);
+        (bool targetValid,, uint256 targetTrustId,,) = ILocksmith(locksmith).inspectKey(keyId);
+        require(ownerValid && ownerIsRoot, 'OWNER_NOT_ROOT');
+        require(targetValid && (targetTrustId == ownerTrustId), 'INVALID_INBOX_KEY');
+
         // ensure that the message sender is holding the owner key
         require(IKeyVault(ILocksmith(locksmith).getKeyVault()).keyBalanceOf(msg.sender, ownerKey, false) > 0,
             'KEY_NOT_HELD');

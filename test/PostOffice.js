@@ -60,7 +60,7 @@ describe("PostOffice", function () {
   });
 
   ////////////////////////////////////////////////////////////
-  // Sending Ethereum tests 
+  // Registration tests 
   ////////////////////////////////////////////////////////////
   describe("Inbox Registration", function () {
     it("Inbox address must be valid IVirtualAddress", async function() {
@@ -82,6 +82,40 @@ describe("PostOffice", function () {
       // second doesn't hold the root key
       await expect(postOffice.connect(second).registerInbox(inbox.address))
         .to.be.revertedWith('KEY_NOT_HELD');
+    });
+
+    it("Owner Key must be a root key", async function() {
+      const {keyVault, locksmith, postOffice,
+        notary, ledger, vault, tokenVault, coin, inbox,
+        events, trustee, keyOracle, alarmClock, creator,
+        owner, root, second, third} = await loadFixture(TrustTestFixtures.addedPostOffice);
+
+      const VirtualAddress = await ethers.getContractFactory("VirtualKeyAddress");
+      const inbox2 = await upgrades.deployProxy(VirtualAddress, [
+        locksmith.address, vault.address, 1, 1]);
+      await inbox2.deployed();
+
+      // key one isn't root.
+      await expect(postOffice.connect(owner).registerInbox(inbox2.address))
+        .to.be.revertedWith('OWNER_NOT_ROOT');
+    });
+
+    it("Identity key must must be within the trust", async function() {
+      const {keyVault, locksmith, postOffice,
+        notary, ledger, vault, tokenVault, coin, inbox,
+        events, trustee, keyOracle, alarmClock, creator,
+        owner, root, second, third} = await loadFixture(TrustTestFixtures.addedPostOffice);
+
+      await locksmith.connect(third).createTrustAndRootKey(stb('second'), third.address);
+
+      const VirtualAddress = await ethers.getContractFactory("VirtualKeyAddress");
+      const inbox2 = await upgrades.deployProxy(VirtualAddress, [
+        locksmith.address, vault.address, 4, 1]);
+      await inbox2.deployed();
+
+      // key one isn't in the trust 
+      await expect(postOffice.connect(third).registerInbox(inbox2.address))
+        .to.be.revertedWith('INVALID_INBOX_KEY');
     });
 
     it("Success registration, duplicate protection.", async function() {

@@ -121,10 +121,6 @@ contract KeyAddressFactory is ERC1155Holder, Initializable, OwnableUpgradeable, 
         // grab the encoded information
         InboxRequest memory request = abi.decode(data, (InboxRequest)); 
 
-        // make sure the key given was a root key, and that the virtual key id
-        // belongs to the same trust
-        checkKeys(locksmith, keyId, request.virtualKeyId);
-
         // deploy the implementation
         address inbox = address(new VirtualKeyAddress());    
 
@@ -137,7 +133,8 @@ contract KeyAddressFactory is ERC1155Holder, Initializable, OwnableUpgradeable, 
         ILocksmith(locksmith).copyKey(keyId, request.virtualKeyId, address(proxy), true);
 
         // add the proxy to the registry - this will revert
-        // the transaction if its a duplicate.
+        // the transaction if its a duplicate. this will also revert
+        // if the key configuration is bad for some reason.
         postOffice.registerInbox(payable(proxy));
 
         // send the key back!
@@ -149,27 +146,4 @@ contract KeyAddressFactory is ERC1155Holder, Initializable, OwnableUpgradeable, 
     ////////////////////////////////////////////////////////
     // Internal Methods 
     ////////////////////////////////////////////////////////
-
-    /**
-     * checkKeys
-     *
-     * This logic produces a lot of variables on the stack, so
-     * we are moving it into its own function so we can clear
-     * the stack when we are done.
-     * 
-     * This function checks to make sure the keyId is root, and that
-     * the associated inbox key belongs to the same trust. The code
-     * panics if the checks fail.
-     *
-     * @param locksmith which locksmith are we going to use?
-     * @param root the supposed root key that was passed into the factory
-     * @param key  the virtual key ID that the inbox is getting set up for.
-     */
-    function checkKeys(address locksmith, uint256 root, uint256 key) internal view {
-        // make sure the key given was a root key
-        (bool ownerValid,, uint256 ownerTrustId, bool ownerIsRoot,) = ILocksmith(locksmith).inspectKey(root);
-        (bool targetValid,, uint256 targetTrustId,,) = ILocksmith(locksmith).inspectKey(key);
-        require(ownerValid && ownerIsRoot, 'KEY_NOT_ROOT');
-        require(targetValid && (targetTrustId == ownerTrustId), 'INVALID_INBOX_KEY');
-    }
 }

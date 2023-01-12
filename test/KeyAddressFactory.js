@@ -144,26 +144,27 @@ describe("KeyAddressFactory", function () {
         events, trustee, keyOracle, alarmClock, creator,
         owner, root, second, third} = await loadFixture(TrustTestFixtures.addedKeyAddressFactory);
 
-      // encode the data, invalid key
-      var data = ethers.utils.defaultAbiCoder.encode(
-        ['uint256','address'],
-        [99, vault.address]);
-
-      // owner doesn't hold the root key
-      await expect(keyVault.connect(root).safeTransferFrom(root.address, addressFactory.address, 0, 1, data))
-        .to.be.revertedWith('INVALID_INBOX_KEY');
-
       await locksmith.connect(second).createTrustAndRootKey(stb('Hello'), second.address);
       await expect(await keyVault.getHolders(4)).eql([second.address]);
 
-      // encode the data, invalid trust
+      // encode the data, invalid key
       var data = ethers.utils.defaultAbiCoder.encode(
         ['uint256','address'],
         [4, vault.address]);
 
-      // owner doesn't hold the root key
+      // outside trust, valid. instead of failing on the logic
+      // inside of the key factory itself, it will fail at the post office.
+      // because it violates trust security policy.
       await expect(keyVault.connect(root).safeTransferFrom(root.address, addressFactory.address, 0, 1, data))
-        .to.be.revertedWith('INVALID_INBOX_KEY');
+        .to.be.revertedWith('TRUST_KEY_NOT_FOUND');
+
+      // outside trust, invalid, fails for the same reason technically above -
+      // in that the key count minted for that trust is zero.
+      data = ethers.utils.defaultAbiCoder.encode(
+        ['uint256','address'],
+        [99, vault.address]);
+      await expect(keyVault.connect(root).safeTransferFrom(root.address, addressFactory.address, 0, 1, data))
+        .to.be.revertedWith('TRUST_KEY_NOT_FOUND');
     });
 
     it("Successful inbox factory, checking proxies too", async function() {
