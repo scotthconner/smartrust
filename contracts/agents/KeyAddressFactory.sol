@@ -136,7 +136,8 @@ contract KeyAddressFactory is ERC1155Holder, Initializable, OwnableUpgradeable, 
         // mint a soul-bound key into the new proxy
         ILocksmith(locksmith).copyKey(keyId, request.virtualKeyId, address(proxy), true);
 
-        // add the proxy to the registry
+        // add the proxy to the registry - this will revert
+        // the transaction if its a duplicate.
         postOffice.registerInbox(payable(proxy));
 
         // send the key back!

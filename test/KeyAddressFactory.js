@@ -246,6 +246,10 @@ describe("KeyAddressFactory", function () {
       // make sure the inbox has a copy of the root key
       await expect(await keyVault.keyBalanceOf(inboxes[0], 1, false)).eql(bn(1));
       await expect(await keyVault.keyBalanceOf(inboxes[0], 1, true)).eql(bn(1));
+
+      // should fail because it already exists for the key 
+      await expect(keyVault.connect(root).safeTransferFrom(root.address, addressFactory.address, 0, 1, data))
+        .to.be.revertedWith('DUPLICATE_KEY_REGISTRATION');
     });
   });
 });

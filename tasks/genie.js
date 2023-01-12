@@ -180,10 +180,10 @@ task("shadow", "Deploy a shadow ERC20 and fund the signer, mainly for localhost.
   .addParam('ticker', 'The alias you want to give this coin')
   .addOptionalParam('amount', 'The amount you want to fund into the wallet', 1000, types.int)
   .setAction(async (taskArgs) => {
-      const [owner] = await ethers.getSigners();
+      const owner = await patchOwner(); 
       const chainId = await owner.getChainId()
 
-      const ShadowCoin = await ethers.getContractFactory("ShadowERC");
+      const ShadowCoin = await ethers.getContractFactory("ShadowERC", owner);
 
       console.log(greenText, '\n==== GENIE, SHADOW! ====\n');
       console.log(JSON.stringify(taskArgs, null, 2));
