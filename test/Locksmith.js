@@ -92,6 +92,7 @@ describe("Locksmith", function () {
       
       // double check the harness respected the locksmith
       await expect(await keyVault.locksmith()).eql(locksmith.address);
+      await expect(await locksmith.getKeyVault()).eql(keyVault.address);
 
       // enforce the locksmith
       await expect(keyVault.connect(root).mint(root.address, 0, 1, stb("")))
@@ -557,8 +558,8 @@ describe("Locksmith", function () {
     it("Can't burn key if not a locksmith", async function() {
       const { keyVault, locksmith, owner, root, second, third} = 
         await loadFixture(TrustTestFixtures.singleRoot);
-      await expect(keyVault.connect(root).burn(root.address, 0, 1))
-        .to.be.revertedWith("NOT_LOCKSMITH");
+      await expect(keyVault.connect(root).burn(second.address, 0, 1))
+        .to.be.revertedWith("NOT_LOCKSMITH_OR_HOLDER");
     });
 
     it("Can't burn key without holding key used", async function() {
@@ -581,8 +582,49 @@ describe("Locksmith", function () {
       
       await expect(locksmith.connect(second).burnKey(1, 0, root.address, 1))
         .to.be.revertedWith('KEY_NOT_ROOT');
-    }); 
-    
+    });
+
+    it("User can optionally burn keys they hold directly with the vault", async function() {
+      const { keyVault, locksmith, owner, root, second, third} =
+        await loadFixture(TrustTestFixtures.singleRoot);
+
+      // mint a second key
+      await expect(await locksmith.connect(root)
+        .createKey(0, stb('second'), second.address, false ))
+        .to.emit(locksmith, "keyMinted")
+        .withArgs(root.address, 0, 1, stb('second'), second.address);
+
+      // this will fail because the holder isn't root
+      await expect(locksmith.connect(second).burnKey(1, 1, second.address, 1))
+        .to.be.revertedWith('KEY_NOT_ROOT');
+      
+      // this will actually work, humanely enough
+      await keyVault.connect(second).burn(second.address, 1, 1);
+
+      // check the balance
+      await expect(await keyVault.keyBalanceOf(second.address, 1, false)).eql(bn(0));
+    });
+   
+    it("User cannot burn a soulbound token out of their own wallet", async function() {
+      const { keyVault, locksmith, owner, root, second, third} =
+        await loadFixture(TrustTestFixtures.singleRoot);
+
+      // mint a second key that is soulbound
+      await expect(await locksmith.connect(root)
+        .createKey(0, stb('second'), second.address, true))
+        .to.emit(locksmith, "keyMinted")
+        .withArgs(root.address, 0, 1, stb('second'), second.address);
+
+      // this will fail for security reasons. We don't want griefers
+      // to trick people into signing transactions that burn their own
+      // key even if its soulbound.
+      await expect(keyVault.connect(second).burn(second.address, 1, 1))
+        .to.be.revertedWith('SOUL_BREACH');
+
+      // check the balance
+      await expect(await keyVault.keyBalanceOf(second.address, 1, false)).eql(bn(1));
+    });
+
     it("Can't burn key not held by target", async function() {
       const { keyVault, locksmith, owner, root, second, third} = 
         await loadFixture(TrustTestFixtures.singleRoot);

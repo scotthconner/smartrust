@@ -220,12 +220,14 @@ contract KeyVault is IKeyVault, ERC1155Upgradeable, UUPSUpgradeable {
      * "trusts" the locksmith, the locksmith will only call this method on behalf
      * of the root key holder.
      *
+     * We've also made the design decision to allow holders to burn keys they own.
+     *
      * @param holder     the address of the key holder you want to burn from
      * @param keyId      the ERC1155 NFT ID you want to burn
      * @param burnAmount the number of said keys you want to burn from the holder's possession.
      */
     function burn(address holder, uint256 keyId, uint256 burnAmount) external {
-        require(locksmith == msg.sender, "NOT_LOCKSMITH");
+        require(locksmith == msg.sender || holder == msg.sender, "NOT_LOCKSMITH_OR_HOLDER");
         keySupply[keyId] -= burnAmount;
         _burn(holder, keyId, burnAmount);
     }
