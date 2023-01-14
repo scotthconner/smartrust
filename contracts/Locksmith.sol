@@ -57,7 +57,6 @@ contract Locksmith is ILocksmith, Initializable, OwnableUpgradeable, UUPSUpgrade
         uint256 rootKeyId;
 
         // a list of keys that are associated with this trust
-        uint256 trustKeyCount;
         EnumerableSet.UintSet keys;
 
         // metadata about the individual keys
@@ -179,7 +178,6 @@ contract Locksmith is ILocksmith, Initializable, OwnableUpgradeable, UUPSUpgrade
         Trust storage t = trustRegistry[trustCount];
         t.id = trustCount++;
         t.rootKeyId = keyCount++;
-        t.trustKeyCount++;  
         t.name = trustName;
 
         // add the root key to the pool mapping, and associate
@@ -243,7 +241,6 @@ contract Locksmith is ILocksmith, Initializable, OwnableUpgradeable, UUPSUpgrade
 
         // push the latest key ID into the trust, and
         // keep track of the association at O(1), along
-        t.trustKeyCount++;
         t.keys.add(newKeyId);
         t.keyNames[newKeyId] = keyName;
         keyTrustAssociations[newKeyId] = t.id;
