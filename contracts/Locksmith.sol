@@ -22,8 +22,8 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "./interfaces/IKeyVault.sol";
 import "./interfaces/ILocksmith.sol";
 
-// some of the methods here could be subject to re-entrancy
-// so we are going to hire a guard when we access the keyVault
+import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
+using EnumerableSet for EnumerableSet.UintSet;
 ///////////////////////////////////////////////////////////
 
 /**
@@ -58,16 +58,14 @@ contract Locksmith is ILocksmith, Initializable, OwnableUpgradeable, UUPSUpgrade
 
         // a list of keys that are associated with this trust
         uint256 trustKeyCount;
-        uint256[] keys;
+        EnumerableSet.UintSet keys;
 
         // metadata about the individual keys
         mapping(uint256 => bytes32) keyNames;
-        mapping(uint256 => uint256) keyMintCounts;
-        mapping(uint256 => uint256) keyBurnCounts;
     }
 
     // the global trust registry
-    mapping(uint256 => Trust) public trustRegistry;
+    mapping(uint256 => Trust) private trustRegistry;
     uint256 private trustCount; // total number of trusts
 
     // a reverse mapping that keeps a top level association
@@ -132,6 +130,22 @@ contract Locksmith is ILocksmith, Initializable, OwnableUpgradeable, UUPSUpgrade
     }
 
     /**
+     * getTrustInfo
+     *
+     * Get's some basic display information about a trust.
+     *
+     * @param trustId the id of the trust you want the slug for
+     * @return the trust ID back as verification
+     * @return a bytes32 encoded human description
+     * @return the root key id of the trust
+     * @return the number of keys in the trust inclusive of the root
+     */
+    function getTrustInfo(uint256 trustId) public view returns(uint256, bytes32, uint256, uint256) {
+        Trust storage t = trustRegistry[trustId];
+        return (t.id, t.name, t.rootKeyId, t.keys.length());
+    }
+
+    /**
      * getKeys()
      *
      * This evil bytecode is necessary to return a list of keys
@@ -142,9 +156,9 @@ contract Locksmith is ILocksmith, Initializable, OwnableUpgradeable, UUPSUpgrade
      */
     function getKeys(uint256 trustId) public view returns (uint256[] memory) {
         // an invalid trust's keys are always empty, RIGHT?!
-        assert(trustRegistry[trustId].keys.length != 0);
+        assert(trustRegistry[trustId].keys.length() != 0);
 
-        return trustRegistry[trustId].keys;
+        return trustRegistry[trustId].keys.values();
     }
 
     /**
@@ -170,7 +184,7 @@ contract Locksmith is ILocksmith, Initializable, OwnableUpgradeable, UUPSUpgrade
 
         // add the root key to the pool mapping, and associate
         // the key with the trust
-        t.keys.push(t.rootKeyId);
+        t.keys.add(t.rootKeyId);
         t.keyNames[t.rootKeyId] = 'root';
         keyTrustAssociations[t.rootKeyId] = t.id;
 
@@ -195,8 +209,8 @@ contract Locksmith is ILocksmith, Initializable, OwnableUpgradeable, UUPSUpgrade
         return (keyId < keyCount) &&
         // the root key for the trust is the key in question
         (keyId == trustRegistry[keyTrustAssociations[keyId]].rootKeyId) &&
-        // the key has been minted at least once
-        (trustRegistry[keyTrustAssociations[keyId]].keyMintCounts[keyId] > 0);
+        // the key is on the ring list 
+        (trustRegistry[keyTrustAssociations[keyId]].keys.contains(keyId));
     }
     
     /**
@@ -230,7 +244,7 @@ contract Locksmith is ILocksmith, Initializable, OwnableUpgradeable, UUPSUpgrade
         // push the latest key ID into the trust, and
         // keep track of the association at O(1), along
         t.trustKeyCount++;
-        t.keys.push(newKeyId);
+        t.keys.add(newKeyId);
         t.keyNames[newKeyId] = keyName;
         keyTrustAssociations[newKeyId] = t.id;
 
@@ -263,7 +277,7 @@ contract Locksmith is ILocksmith, Initializable, OwnableUpgradeable, UUPSUpgrade
 
         // we can only copy a key that already exists within the
         // trust associated with the valid root key
-        require(t.keyMintCounts[keyId] > 0, 'TRUST_KEY_NOT_FOUND');
+        require(t.keys.contains(keyId), 'TRUST_KEY_NOT_FOUND');
 
         // the root key is valid, the message sender holds it,
         // and the key requested to be copied has already been
@@ -293,7 +307,7 @@ contract Locksmith is ILocksmith, Initializable, OwnableUpgradeable, UUPSUpgrade
         Trust storage t = trustRegistry[getTrustFromRootKey(rootKeyId)];
 
         // is keyId associated with the root key's trust?
-        require(t.keyMintCounts[keyId] > 0, 'TRUST_KEY_NOT_FOUND');
+        require(t.keys.contains(keyId), 'TRUST_KEY_NOT_FOUND');
 
         // the root key holder has permission, so bind it
         IKeyVault(keyVault).soulbind(keyHolder, keyId, amount);
@@ -315,14 +329,13 @@ contract Locksmith is ILocksmith, Initializable, OwnableUpgradeable, UUPSUpgrade
         Trust storage t = trustRegistry[getTrustFromRootKey(rootKeyId)];
        
         // is keyId associated with the root key's trust?
-        require(t.keyMintCounts[keyId] > 0, 'TRUST_KEY_NOT_FOUND');
+        require(t.keys.contains(keyId), 'TRUST_KEY_NOT_FOUND');
        
         // burn them, and count the burn for logging.
         // this call is re-entrant, but we do all of
         // the state mutation afterwards.
         IKeyVault(keyVault).burn(holder, keyId, amount);
 
-        t.keyBurnCounts[keyId] += amount;
         emit keyBurned(msg.sender, t.id, keyId, holder, amount);
     }
 
@@ -347,7 +360,7 @@ contract Locksmith is ILocksmith, Initializable, OwnableUpgradeable, UUPSUpgrade
             // the key is a root key 
             isRootKey(keyId),
             // the keys associated with the trust
-            trustRegistry[keyTrustAssociations[keyId]].keys);
+            trustRegistry[keyTrustAssociations[keyId]].keys.values());
     }
 
     /**
@@ -369,7 +382,7 @@ contract Locksmith is ILocksmith, Initializable, OwnableUpgradeable, UUPSUpgrade
         Trust storage t = trustRegistry[trustId];        
 
         // invariant: make sure the root key was minted once
-        assert(t.keyMintCounts[t.rootKeyId] > 0);
+        assert(t.keys.contains(t.rootKeyId));
 
         for(uint256 x = 0; x < keys.length; x++) {
             // make sure the key is a valid locksmith key. This
@@ -382,7 +395,7 @@ contract Locksmith is ILocksmith, Initializable, OwnableUpgradeable, UUPSUpgrade
 
             // make sure this valid key belongs to the same trust. this
             // call is only safe after checking that the key is valid.
-            require(t.keyMintCounts[keys[x]] > 0, "NON_TRUST_KEY");
+            require(t.keys.contains(keys[x]), "NON_TRUST_KEY");
         }
 
         // at this point, the trust is valid, the root has been minted
@@ -412,15 +425,13 @@ contract Locksmith is ILocksmith, Initializable, OwnableUpgradeable, UUPSUpgrade
      * @param bind      true if you want to bind it to the user
      */
     function mintKey(Trust storage trust, uint256 keyId, address receiver, bool bind) internal {
-        // keep track of the number of times we minted this key.
-        // this is good for reporting, and prevents key out of range
-        // attacks to the first trust in the contract.
-        trust.keyMintCounts[keyId]++;
+        // add the key id to the ring 
+        trust.keys.add(keyId);
       
         // we want to soulbind here
         if (bind) {
             // this is considered an additive soulbinding
-            // this shouldn't be re-entrant if its a view function?
+            // this shouldn't be re-entrant since we aren't sending anything 
             IKeyVault(keyVault).soulbind(receiver, keyId, 
                 IKeyVault(keyVault).keyBalanceOf(receiver, keyId, true) + 1); 
         }

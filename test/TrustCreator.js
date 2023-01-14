@@ -115,7 +115,7 @@ describe("TrustCreator", function () {
       expect(await keyVault.balanceOf(root.address, 5)).eql(bn(0)); // sanity
 
       // inspect the sanity of the trust created
-      expect(await locksmith.trustRegistry(1)).to.eql([
+      expect(await locksmith.getTrustInfo(1)).to.eql([
         bn(1), stb('Easy Trust'), bn(4), bn(1)
       ]);
 
@@ -185,7 +185,7 @@ describe("TrustCreator", function () {
       expect(await keyVault.keyBalanceOf(third.address, 7, false)).eql(bn(1));
 
       // inspect the sanity of the trust created
-      expect(await locksmith.trustRegistry(1)).to.eql([
+      expect(await locksmith.getTrustInfo(1)).to.eql([
         bn(1), stb('Multi-Trust'), bn(4), bn(4)
       ]);
 
@@ -317,7 +317,7 @@ describe("TrustCreator", function () {
       expect(await keyVault.keyBalanceOf(second.address, 6, true)).eql(bn(1));
 
       // inspect the sanity of the trust created
-      expect(await locksmith.trustRegistry(1)).to.eql([
+      expect(await locksmith.getTrustInfo(1)).to.eql([
         bn(1), stb('Conner Trust'), bn(4), bn(3)
       ]);
 

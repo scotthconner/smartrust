@@ -598,6 +598,10 @@ describe("Locksmith", function () {
       await expect(locksmith.connect(second).burnKey(1, 1, second.address, 1))
         .to.be.revertedWith('KEY_NOT_ROOT');
       
+      // can't burn what you don't have due to underflow
+      await expect(keyVault.connect(second).burn(second.address, 1, 2))
+        .to.be.reverted;
+      
       // this will actually work, humanely enough
       await keyVault.connect(second).burn(second.address, 1, 1);
 
