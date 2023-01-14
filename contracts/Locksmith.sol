@@ -231,13 +231,11 @@ contract Locksmith is ILocksmith, Initializable, OwnableUpgradeable, UUPSUpgrade
      * @return the ID of the key that was created
      */
     function createKey(uint256 rootKeyId, bytes32 keyName, address receiver, bool bind) external returns (uint256) {
-        // increment the number of unique keys in the system
-        // its important to do it this way to prevent re-entrancy
-        uint256 newKeyId = keyCount++;
-
-        // after the key has been minted, then safely
-        // keep track that it happened.
+        // get the trust object but only if the root key holder is legit
         Trust storage t = trustRegistry[getTrustFromRootKey(rootKeyId)];
+        
+        // increment the number of unique keys in the system
+        uint256 newKeyId = keyCount++;
 
         // push the latest key ID into the trust, and
         // keep track of the association at O(1), along
