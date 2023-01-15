@@ -316,19 +316,19 @@ contract Notary is INotary, Initializable, OwnableUpgradeable, UUPSUpgradeable {
      *
      * The caller must be the associated ledger.
      *
-     * @param scribe     the address of the scribe that is supposedly trusted
-     * @param provider   the address of the provider whose funds are to be moved
-     * @param arn        the arn of the asset being moved
-     * @param rootKeyId  the root key that the funds are moving from
-     * @param keys       array of keys to move the funds to
-     * @param amounts    array of amounts corresponding for each destination keys
+     * @param scribe      the address of the scribe that is supposedly trusted
+     * @param provider    the address of the provider whose funds are to be moved
+     * @param arn         the arn of the asset being moved
+     * @param sourceKeyId the root key that the funds are moving from
+     * @param keys        array of keys to move the funds to
+     * @param amounts     array of amounts corresponding for each destination keys
      * @return the trustID for the rootKey
      */
     function notarizeDistribution(address scribe, address provider, bytes32 arn, 
-        uint256 rootKeyId, uint256[] calldata keys, uint256[] calldata amounts) external returns (uint256) {
+        uint256 sourceKeyId, uint256[] calldata keys, uint256[] calldata amounts) external returns (uint256) {
         
         // the scribe needs to be trusted
-        uint256 trustId = requireTrustedActor(rootKeyId, scribe, SCRIBE);
+        uint256 trustId = requireTrustedActor(sourceKeyId, scribe, SCRIBE);
 
         // we also want to make sure the provider is trusted
         require(actorRegistry[msg.sender][trustId][COLLATERAL_PROVIDER].contains(provider), 
@@ -338,11 +338,10 @@ contract Notary is INotary, Initializable, OwnableUpgradeable, UUPSUpgradeable {
         require(keys.length == amounts.length, "KEY_AMOUNT_SIZE_MISMATCH");
 
         // this method will fully panic if its not valid.
-        // we should also panic if the root key is on the ring
-        locksmith.validateKeyRing(trustId, keys, false);
+        locksmith.validateKeyRing(trustId, keys, true);
 
         emit notaryDistributionApproval(msg.sender, provider, scribe,
-            arn, trustId, rootKeyId, keys, amounts);
+            arn, trustId, sourceKeyId, keys, amounts);
         return trustId;
     }
 

@@ -525,7 +525,7 @@ describe("Ledger", function () {
   // third: scribe
   // second: destination
   ////////////////////////////////////////////////////////////
-  describe("Scribe Distrbutions", function() {
+  describe("Scribe Distributions", function() {
     it("Fails for notarization", async function() {
       const { locksmith, ledger, owner, root, second, third } = 
         await loadFixture(TrustTestFixtures.fundedLedgerProxy); 
@@ -610,13 +610,13 @@ describe("Ledger", function () {
         .to.be.revertedWith('OVERDRAFT');
     });
 
-    it("Distributing back to the root key fails", async function() {
+    it("Distributing back to the root key does not fail", async function() {
       const { locksmith, ledger, owner, root, second, third } =
         await loadFixture(TrustTestFixtures.fundedLedgerProxy);
 
       // there is a bug - i shouldn't be able to successfully move 1 of nothing that isn't there
       await expect(ledger.connect(third).distribute(owner.address, stb('nothing'), 0, [0], [eth(1)]))
-        .to.be.revertedWith('ROOT_ON_RING');
+        .to.be.revertedWith('SELF_DISTRIBUTION');
     });
 
     it("Distibute Multiple Asset Types and Balances", async function() {
@@ -631,9 +631,9 @@ describe("Ledger", function () {
       await expect(await ledger.connect(owner).deposit(0, stb('link'), eth(2)));
 
       // move both assets in different directions
-      await expect(await ledger.connect(third).distribute(owner.address, stb('link'), 0, [1,2], [eth(1),eth(1)]))
+      await expect(await ledger.connect(third).distribute(owner.address, stb('link'), 0, [1,2], [eth(1),eth(0)]))
         .to.emit(ledger, 'ledgerTransferOccurred')
-        .withArgs(third.address, owner.address, stb('link'), 0, 0, [1,2], [eth(1),eth(1)], eth(0));
+        .withArgs(third.address, owner.address, stb('link'), 0, 0, [1,2], [eth(1),eth(0)], eth(1));
       await expect(await ledger.connect(third).distribute(owner.address, stb('ether'), 0, [1,2], [eth(2),eth(3)]))
         .to.emit(ledger, 'ledgerTransferOccurred')
         .withArgs(third.address, owner.address, stb('ether'), 0, 0, [1,2], [eth(2),eth(3)], eth(5));
@@ -644,9 +644,9 @@ describe("Ledger", function () {
       await expect(await ledger.getContextArnBalances(TRUST(), 0, owner.address, [stb('link')])).eql([eth(2)]);
       await expect(await ledger.getContextArnBalances(LEDGER(), 0, owner.address, [stb('ether')])).eql([eth(10)]);
       await expect(await ledger.getContextArnBalances(LEDGER(), 0, owner.address, [stb('link')])).eql([eth(2)]);
-      await expect(await ledger.getContextArnBalances(KEY(), 0, owner.address, [stb('ether'), stb('link')])).eql([eth(5), eth(0)]);
+      await expect(await ledger.getContextArnBalances(KEY(), 0, owner.address, [stb('ether'), stb('link')])).eql([eth(5), eth(1)]);
       await expect(await ledger.getContextArnBalances(KEY(), 1, owner.address, [stb('ether'), stb('link')])).eql([eth(2), eth(1)]);
-      await expect(await ledger.getContextArnBalances(KEY(), 2, owner.address, [stb('ether'), stb('link')])).eql([eth(3), eth(1)]);
+      await expect(await ledger.getContextArnBalances(KEY(), 2, owner.address, [stb('ether'), stb('link')])).eql([eth(3), eth(0)]);
     
       // check the balance sheet
       await expect(await ledger.getContextBalanceSheet(TRUST(), 0, owner.address)).eql(
@@ -654,11 +654,11 @@ describe("Ledger", function () {
       await expect(await ledger.getContextBalanceSheet(LEDGER(), 0, owner.address)).eql(
         [[stb('ether'), stb('link')], [eth(10), eth(2)]]);
       await expect(await ledger.getContextBalanceSheet(KEY(), 0, owner.address)).eql(
-        [[stb('ether')], [eth(5)]]);
+        [[stb('ether'), stb('link')], [eth(5), eth(1)]]);
       await expect(await ledger.getContextBalanceSheet(KEY(), 1, owner.address)).eql(
         [[stb('link'), stb('ether')], [eth(1), eth(2)]]);
       await expect(await ledger.getContextBalanceSheet(KEY(), 2, owner.address)).eql(
-        [[stb('link'), stb('ether')], [eth(1), eth(3)]]);
+        [[stb('ether')], [eth(3)]]);
     });
   });
 });

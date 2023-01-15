@@ -102,17 +102,17 @@ interface INotary {
      * This event fires when a trust distribution request from a ledger
      * is approved for a root key, ledger, and provider.
      *
-     * @param ledger    the ledger tracking fund balances
-     * @param provider  the collateral provider for the funds
-     * @param scribe    the scribe moving the funds
-     * @param arn       the asset being distributed
-     * @param trustId   the trust id associated with the root key
-     * @param rootKeyId the root key funds are moved from
-     * @param keys      array of in-trust destination keys
-     * @param amounts   array of amounts per key
+     * @param ledger      the ledger tracking fund balances
+     * @param provider    the collateral provider for the funds
+     * @param scribe      the scribe moving the funds
+     * @param arn         the asset being distributed
+     * @param trustId     the trust id associated with the root key
+     * @param sourceKeyId the source key funds are moved from
+     * @param keys        array of in-trust destination keys
+     * @param amounts     array of amounts per key
      */
     event notaryDistributionApproval(address ledger, address provider, address scribe,
-        bytes32 arn, uint256 trustId, uint256 rootKeyId,
+        bytes32 arn, uint256 trustId, uint256 sourceKeyId,
         uint256[] keys, uint256[] amounts);
  
     /**
@@ -243,16 +243,16 @@ interface INotary {
      *
      * The caller must be the associated ledger.
      *
-     * @param scribe     the address of the scribe that is supposedly trusted
-     * @param provider   the address of the provider whose funds are to be moved
-     * @param arn        the arn of the asset being moved
-     * @param rootKeyId  the root key that the funds are moving from
-     * @param keys       array of keys to move the funds to
-     * @param amounts    array of amounts corresponding for each destination keys
+     * @param scribe      the address of the scribe that is supposedly trusted
+     * @param provider    the address of the provider whose funds are to be moved
+     * @param arn         the arn of the asset being moved
+     * @param sourceKeyId the root key that the funds are moving from
+     * @param keys        array of keys to move the funds to
+     * @param amounts     array of amounts corresponding for each destination keys
      * @return the trustID for the rootKey
      */
     function notarizeDistribution(address scribe, address provider, bytes32 arn, 
-        uint256 rootKeyId, uint256[] calldata keys, uint256[] calldata amounts) external returns (uint256);
+        uint256 sourceKeyId, uint256[] calldata keys, uint256[] calldata amounts) external returns (uint256);
 
     /**
      * notarizeEventRegistration

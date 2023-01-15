@@ -248,13 +248,13 @@ interface ILedger {
      *
      * The caller must be the scribe moving the funds.
      *
-     * @param provider  the provider we are moving collateral for
-     * @param arn       the asset we are moving
-     * @param rootKeyId the root key we are moving funds from 
-     * @param keys      the destination keys we are moving funds to 
-     * @param amounts   the amounts we are moving into each key 
+     * @param provider    the provider we are moving collateral for
+     * @param arn         the asset we are moving
+     * @param sourceKeyId the source key we are moving funds from 
+     * @param keys        the destination keys we are moving funds to 
+     * @param amounts     the amounts we are moving into each key 
      * @return final resulting balance of that asset for the root key 
      */
-    function distribute(address provider, bytes32 arn, uint256 rootKeyId, uint256[] calldata keys, uint256[] calldata amounts) 
+    function distribute(address provider, bytes32 arn, uint256 sourceKeyId, uint256[] calldata keys, uint256[] calldata amounts) 
         external returns (uint256);
 }

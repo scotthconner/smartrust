@@ -590,10 +590,9 @@ describe("Notary", function () {
         stb('ether'), 0, [1, 2], [eth(1), eth(2)]))
         .to.be.revertedWith('INVALID_KEY_ON_RING');
 
-      // make sure we fail when we have root on the ring
+      // the distribution is logical, but eventually the ledger will block it. 
       await expect(notary.connect(owner).notarizeDistribution(second.address, third.address,
-        stb('ether'), 0, [0], [eth(1)]))
-        .to.be.revertedWith('ROOT_ON_RING');
+        stb('ether'), 0, [0], [eth(1)])).to.emit(notary, 'notaryDistributionApproval')
     });
 
     it("Distribution fails notary when valid destination key isn't within trust", async function() {

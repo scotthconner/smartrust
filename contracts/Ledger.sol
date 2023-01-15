@@ -318,18 +318,18 @@ contract Ledger is ILedger, Initializable, OwnableUpgradeable, UUPSUpgradeable {
      *
      * The caller must be the scribe moving the funds.
      *
-     * @param provider  the provider we are moving collateral for
-     * @param arn       the asset we are moving
-     * @param rootKeyId the root key we are moving funds from 
-     * @param keys      the destination keys we are moving funds to 
-     * @param amounts   the amounts we are moving into each key 
+     * @param provider    the provider we are moving collateral for
+     * @param arn         the asset we are moving
+     * @param sourceKeyId the source key we are moving funds from 
+     * @param keys        the destination keys we are moving funds to 
+     * @param amounts     the amounts we are moving into each key 
      * @return final resulting balance of that asset for the root key 
      */
-    function distribute(address provider, bytes32 arn, uint256 rootKeyId, uint256[] calldata keys, uint256[] calldata amounts) 
+    function distribute(address provider, bytes32 arn, uint256 sourceKeyId, uint256[] calldata keys, uint256[] calldata amounts) 
         external returns (uint256) {
 
         // notarize the distribution and obtain the trust ID
-        uint256 trustId = INotary(notary).notarizeDistribution(msg.sender, provider, arn, rootKeyId, keys, amounts);
+        uint256 trustId = INotary(notary).notarizeDistribution(msg.sender, provider, arn, sourceKeyId, keys, amounts);
 
         // now that it is notarized, for each key context make the deposits.
         // to save on gas, we aren't doing a withdrawal against the root for
@@ -337,25 +337,37 @@ contract Ledger is ILedger, Initializable, OwnableUpgradeable, UUPSUpgradeable {
         // end up with a re-entrancy attack.
         uint256 moveSum;
         for(uint256 x = 0; x < keys.length; x++) {
+            // you would expect the notary to check that the source and
+            // desintation key are different, but the notary
+            // only checks the trust model. It's the ledger
+            // that cares about ghost funds looking like they were
+            // moved but didn't. This is a side effect of saving gas
+            // by doing deposits first instead of withdrawals.
+            require(keys[x] != sourceKeyId, 'SELF_DISTRIBUTION');
+
             // the reason we aren't doing the ledger or trust context
             // is because logically we are only moving existing funds
             // between trust keys. The overal ledger or trust
             // balance or arn registration doesn't change. Any
             // invariants can be detected on withdrawal or deposit
-            // from a collateral provider.
-            keyContext[keys[x]].deposit(provider, arn, amounts[x]);
-            moveSum += amounts[x];
+            // from a collateral provider. We are also going
+            // to check to make sure the amount isn't zero, so we
+            // don't create empty entries.
+            if (amounts[x] > 0 ) {
+                keyContext[keys[x]].deposit(provider, arn, amounts[x]);
+                moveSum += amounts[x];
+            }
         }
 
         // finally, for the root key, do a single withdrawal on the sum.
         // if the root key doesn't have sufficient balance, the entire
         // transaction will revert with an overdraft. 
-        uint256 finalRootBalance = keyContext[rootKeyId].withdrawal(provider, arn, moveSum);
+        uint256 finalSourceBalance = keyContext[sourceKeyId].withdrawal(provider, arn, moveSum);
 
         emit ledgerTransferOccurred(msg.sender, provider, arn, trustId, 
-            rootKeyId, keys, amounts, finalRootBalance);
+            sourceKeyId, keys, amounts, finalSourceBalance);
 
-        return finalRootBalance;
+        return finalSourceBalance;
     }
     
     ////////////////////////////////////////////////////////
