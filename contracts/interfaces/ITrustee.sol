@@ -36,11 +36,12 @@ interface ITrustee {
      * @param actor         the address of the root key holder
      * @param rootKeyId     the root key to use to set up the trustee role
      * @param trusteeKeyId  the key Id to anoint as trustee
+     * @param sourceKeyId   the key Id the trustee can move funds from
      * @param beneficiaries the keys the trustee can move funds to
      * @param events        the list of events that must occur before activating the role
      */
     event trusteePolicySet(address actor, uint256 rootKeyId, uint256 trusteeKeyId,
-        uint256[] beneficiaries, bytes32[] events);
+        uint256 sourceKeyId, uint256[] beneficiaries, bytes32[] events);
 
     /**
      * trusteePolicyRemoved
@@ -73,11 +74,12 @@ interface ITrustee {
      *
      * @param keyId the key ID you want to get the policy for
      * @return if the policy is enabled
-     * @return the root key ID source of funds to distribute from
+     * @return the root key that was used to set up the policy
+     * @return the source key ID source of funds to distribute from
      * @return the beneficiaries
      * @return the requried events
      */
-    function getPolicy(uint256 keyId) external view returns (bool, uint256, uint256[] memory, bytes32[] memory); 
+    function getPolicy(uint256 keyId) external view returns (bool, uint256, uint256, uint256[] memory, bytes32[] memory); 
 
     /**
      * getTrustPolicyKeys
@@ -112,10 +114,11 @@ interface ITrustee {
      *
      * @param rootKeyId     the root key to use to set up the trustee role
      * @param trusteeKeyId  the key Id to anoint as trustee
+     * @param sourceKeyId   the key id to use as the source of all funds moved
      * @param beneficiaries the keys the trustee can move funds to
      * @param events        the list of events that must occur before activating the role
      */
-    function setPolicy(uint256 rootKeyId, uint256 trusteeKeyId, uint256[] calldata beneficiaries, bytes32[] calldata events) external;
+    function setPolicy(uint256 rootKeyId, uint256 trusteeKeyId, uint256 sourceKeyId, uint256[] calldata beneficiaries, bytes32[] calldata events) external;
 
     /**
      * removePolicy

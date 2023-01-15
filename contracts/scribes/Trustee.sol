@@ -69,7 +69,8 @@ contract Trustee is ITrustee, Initializable, OwnableUpgradeable, UUPSUpgradeable
         bool enabled;               // is this policy enabled 
         bytes32[] requiredEvents;   // the events needed to enable 
     
-        uint256 rootKeyId;          // where the funds can be moved from
+        uint256 rootKeyId;          // the root key used to establish the policy 
+        uint256 sourceKeyId;        // where the funds can be moved from
         uint256[] beneficiaries;    // used for reflection 
         mapping(uint256 => bool) isBeneficiary; // used for validation
     }
@@ -140,11 +141,12 @@ contract Trustee is ITrustee, Initializable, OwnableUpgradeable, UUPSUpgradeable
      *
      * @param keyId the key ID you want to get the policy for
      * @return if the policy is enabled
-     * @return the root key ID source of funds to distibute from
+     * @return the root key id used to establish policy
+     * @return the source key key ID source of funds to distibute from
      * @return the beneficiaries
      * @return the requried events
      */
-    function getPolicy(uint256 keyId) external view returns (bool, uint256, uint256[] memory, bytes32[] memory) {
+    function getPolicy(uint256 keyId) external view returns (bool, uint256, uint256, uint256[] memory, bytes32[] memory) {
         Policy storage t = trustees[keyId];
         
         // check to see if the events have fired async and havent been written yet 
@@ -156,7 +158,7 @@ contract Trustee is ITrustee, Initializable, OwnableUpgradeable, UUPSUpgradeable
         }
 
         return (t.enabled || (enabledCount == t.requiredEvents.length), 
-            t.rootKeyId, t.beneficiaries, t.requiredEvents);
+            t.rootKeyId, t.sourceKeyId, t.beneficiaries, t.requiredEvents);
     }
 
     /**
@@ -194,10 +196,13 @@ contract Trustee is ITrustee, Initializable, OwnableUpgradeable, UUPSUpgradeable
      *
      * @param rootKeyId     the root key to use to set up the trustee role
      * @param trusteeKeyId  the key Id to anoint as trustee
+     * @param sourceKeyId   the key id to use as the source of all fund movements
      * @param beneficiaries the keys the trustee can move funds to
      * @param events        the list of events that must occur before activating the role
      */
-    function setPolicy(uint256 rootKeyId, uint256 trusteeKeyId, uint256[] calldata beneficiaries, bytes32[] calldata events) external { 
+    function setPolicy(uint256 rootKeyId, uint256 trusteeKeyId, uint256 sourceKeyId, 
+        uint256[] calldata beneficiaries, bytes32[] calldata events) external { 
+        
         // ensure that the caller holds the key, and get the trust ID
         uint256 trustId = requireRootHolder(rootKeyId);
 
@@ -205,28 +210,35 @@ contract Trustee is ITrustee, Initializable, OwnableUpgradeable, UUPSUpgradeable
         require(beneficiaries.length > 0, 'ZERO_BENEFICIARIES');
 
         // inspect the trustee key and ensure its on the trust's ring,
-        // but that we also don't have the invariant that the key is root
-        (bool valid,,uint256 tid,bool isRoot,) = locksmith.inspectKey(trusteeKeyId);
+        (bool valid,,uint256 tid,,) = locksmith.inspectKey(trusteeKeyId);
         require(valid, "INVALID_TRUSTEE_KEY");
         require(tid == trustId, "TRUSTEE_OUTSIDE_TRUST");
-        require(!isRoot, "TRUSTEE_CANT_BE_ROOT");
+
+        // inspect the source key and ensure its on the trust's ring
+        (bool sValid,,uint256 sTid,,) = locksmith.inspectKey(sourceKeyId);
+        require(sValid, "INVALID_SOURCE_KEY");
+        require(sTid == trustId, "SOURCE_OUTSIDE_TRUST");
 
         // make sure a duplicate entry doesn't exist for this trustee
         require(trustees[trusteeKeyId].beneficiaries.length == 0, 'KEY_POLICY_EXISTS');
 
         // we also want to validate the destination key ring.
-        // none of the beneficiaries can be root.
         // here, a beneficiary *can* be the same trustee key.
         // if that happens, the beneficiary essentially is given
         // ability to move funds from the trust into their own pocket.
-        locksmith.validateKeyRing(trustId, beneficiaries, false);
+        locksmith.validateKeyRing(trustId, beneficiaries, true);
 
-        // at this point, the caller holds the root key, the trustee
-        // is a valid key on the ring, and so are all of the beneficiaries.
-        // the beneficiaries are also validated to not be the root key.
+        // make sure that the sourceKeyId is not any of the beneficiaries either.
+        for(uint256 x = 0; x < beneficiaries.length; x++) {
+            require(sourceKeyId != beneficiaries[x], 'SOURCE_IS_DESTINATION');
+        }
+
+        // at this point, the caller holds the root key, the trustee and source
+        // are valid keys on the ring, and so are all of the beneficiaries.
         // save the configuration of beneficiaries and events
         Policy storage t = trustees[trusteeKeyId];
         t.rootKeyId = rootKeyId;
+        t.sourceKeyId = sourceKeyId;
         t.beneficiaries = beneficiaries;
 
         // generate the look up for easy validation
@@ -241,7 +253,7 @@ contract Trustee is ITrustee, Initializable, OwnableUpgradeable, UUPSUpgradeable
         t.requiredEvents = events;
         t.enabled = (0 == events.length);
     
-        emit trusteePolicySet(msg.sender, rootKeyId, trusteeKeyId,
+        emit trusteePolicySet(msg.sender, rootKeyId, trusteeKeyId, sourceKeyId,
             beneficiaries, events);
     }
 
@@ -332,7 +344,7 @@ contract Trustee is ITrustee, Initializable, OwnableUpgradeable, UUPSUpgradeable
         // assert proper balances. this call will also blow up if
         // this scribe has not been registered as a trusted one by the
         // root key holder with the notary.
-        return ledger.distribute(provider, arn, t.rootKeyId, beneficiaries, amounts); 
+        return ledger.distribute(provider, arn, t.sourceKeyId, beneficiaries, amounts); 
     }
     ////////////////////////////////////////////////////////
     // Internal Methods

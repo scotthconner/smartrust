@@ -262,13 +262,13 @@ describe("TrustCreator", function () {
           .to.emit(notary, 'trustedRoleChange')
           .withArgs(creator.address, 1, 4, ledger.address, vault.address, true, 0)
           .to.emit(trustee, 'trusteePolicySet')
-          .withArgs(creator.address, 4, 5, [bn(6)], []);
+          .withArgs(creator.address, 4, 5, 4, [bn(6)], []);
 
       // check to ensure the trustee is there, but that there is no event hash.
       // other tests will do more rigorous assertions on the rest of the state.
       // because there are no events, the trustee is enabled.
       await expect(await trustee.getPolicy(5)).eql([
-        true, bn(4), [bn(6)], []
+        true, bn(4), bn(4), [bn(6)], []
       ]);
 
       // make sure that there are actually no events for the trust
@@ -305,7 +305,7 @@ describe("TrustCreator", function () {
           .to.emit(alarmClock, 'alarmClockRegistered')
           .withArgs(creator.address, 1, 4, bn(alarmTime), 60*60*24, 4, eventHash)
           .to.emit(trustee, 'trusteePolicySet')
-          .withArgs(creator.address, 4, 5, [bn(6)], [eventHash]);
+          .withArgs(creator.address, 4, 5, 4, [bn(6)], [eventHash]);
       
       // assert that the key receivers actually hold their keys 
       expect(await keyVault.balanceOf(root.address, 4)).eql(bn(1));
@@ -331,7 +331,7 @@ describe("TrustCreator", function () {
 
       // check to ensure the trustee is there
       await expect(await trustee.getPolicy(5)).eql([
-        false, bn(4), [bn(6)], [eventHash]
+        false, bn(4), bn(4), [bn(6)], [eventHash]
       ]);
 
       // check the alarm clock too

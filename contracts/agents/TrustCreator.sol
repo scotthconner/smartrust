@@ -213,7 +213,8 @@ contract TrustCreator is ERC1155Holder, Initializable, OwnableUpgradeable, UUPSU
         }
 
         // assign the trustee, with the first one assumed as the trustee key
-        ITrustee(trustee).setPolicy(rootKeyId, keys[0], beneficiaries, 
+        // we assume the source Key ID is the root here for this use case.
+        ITrustee(trustee).setPolicy(rootKeyId, keys[0], rootKeyId, beneficiaries, 
             alarmClockTime == 0 ? (new bytes32[](0)) : events); 
 
         // send the root key key to the message sender

@@ -71,28 +71,28 @@ describe("Trustee", function () {
     it("Caller must posess the key", async function() {
       const {trustee, second} = await loadFixture(TrustTestFixtures.fullTrusteeHarness);
 
-      await expect(trustee.connect(second).setPolicy(0, 2, [2,3], []))
+      await expect(trustee.connect(second).setPolicy(0, 2, 0, [2,3], []))
         .to.be.revertedWith('KEY_NOT_HELD');
     });
 
     it("Caller's key must be root", async function() {
       const {trustee, second} = await loadFixture(TrustTestFixtures.fullTrusteeHarness);
 
-      await expect(trustee.connect(second).setPolicy(2, 2, [2,3], []))
+      await expect(trustee.connect(second).setPolicy(2, 2, 0, [2,3], []))
         .to.be.revertedWith('KEY_NOT_ROOT');
     });
 
     it("Configuration must contain key entries", async function() {
       const {trustee, root} = await loadFixture(TrustTestFixtures.fullTrusteeHarness);
 
-      await expect(trustee.connect(root).setPolicy(0, 2, [], []))
+      await expect(trustee.connect(root).setPolicy(0, 2, 0, [], []))
         .to.be.revertedWith('ZERO_BENEFICIARIES');
     });
 
     it("Trustee key must be valid", async function() {
       const {trustee, root} = await loadFixture(TrustTestFixtures.fullTrusteeHarness);
 
-      await expect(trustee.connect(root).setPolicy(0, 90, [1,2,3], []))
+      await expect(trustee.connect(root).setPolicy(0, 90, 0, [1,2,3], []))
         .to.be.revertedWith('INVALID_TRUSTEE_KEY');
     });
 
@@ -103,24 +103,39 @@ describe("Trustee", function () {
       await locksmith.connect(second).createTrustAndRootKey(stb('mine'), second.address);
 
       // try to set the key to the 4th key which is valid but outside
-      await expect(trustee.connect(root).setPolicy(0, 4, [1,2,3], []))
+      await expect(trustee.connect(root).setPolicy(0, 4, 0, [1,2,3], []))
         .to.be.revertedWith('TRUSTEE_OUTSIDE_TRUST');
     });
 
-    it("Trustees cannot be the root key", async function() {
+    it("Source Key must be valid", async function() {
+      const {locksmith, trustee, root, second, third} = await loadFixture(TrustTestFixtures.fullTrusteeHarness);
+
+      await expect(trustee.connect(root).setPolicy(0, 0, 99, [1,2,3], []))
+        .to.be.revertedWith('INVALID_SOURCE_KEY');
+
+      // create a second trust
+      await locksmith.connect(second).createTrustAndRootKey(stb('second trust'), second.address);
+      await locksmith.connect(second).createKey(4, stb('five'), third.address, false);
+
+      await expect(trustee.connect(root).setPolicy(0, 0, 4, [1,2,3], []))
+        .to.be.revertedWith('SOURCE_OUTSIDE_TRUST');
+    });
+
+    it("Trustees can be the root key", async function() {
       const {locksmith, trustee, root, second} = await loadFixture(TrustTestFixtures.fullTrusteeHarness);
 
-      await expect(trustee.connect(root).setPolicy(0, 0, [1,2,3], []))
-        .to.be.revertedWith('TRUSTEE_CANT_BE_ROOT');
+      await expect(await trustee.connect(root).setPolicy(0, 0, 0, [1,2,3], []))
+        .to.emit(trustee, 'trusteePolicySet')
+        .withArgs(root.address, 0, 0, 0, [1,2,3], []);
     });
 
     it("Successful trustee configurations", async function() {
       const {locksmith, trustee, owner, root, second, third} = 
         await loadFixture(TrustTestFixtures.fullTrusteeHarness);
 
-      await expect(await trustee.connect(root).setPolicy(0, 1, [1,2,3], []))
+      await expect(await trustee.connect(root).setPolicy(0, 1, 0, [1,2,3], []))
         .to.emit(trustee, 'trusteePolicySet')
-        .withArgs(root.address, 0, 1, [1,2,3], []);
+        .withArgs(root.address, 0, 1, 0, [1,2,3], []);
 
       expect(await trustee.getTrustPolicyKeys(0)).eql([bn(1)]);
 
@@ -128,34 +143,36 @@ describe("Trustee", function () {
       response = await trustee.getPolicy(1);
       expect(response[0] == true);
       expect(response[1] == bn(0));
-      expect(response[2][0]).to.equal(1);
-      expect(response[2][1]).to.equal(2);
-      expect(response[2][2]).to.equal(3);
-      expect(response[3]).to.eql([]);
+      expect(response[2] == bn(0));
+      expect(response[3][0]).to.equal(1);
+      expect(response[3][1]).to.equal(2);
+      expect(response[3][2]).to.equal(3);
+      expect(response[4]).to.eql([]);
     });
     
     it("Each keyholder can have only one trustee policy", async function() {
       const {locksmith, trustee, owner, root, second, third} = 
         await loadFixture(TrustTestFixtures.fullTrusteeHarness);
 
-      await expect(await trustee.connect(root).setPolicy(0, 1, [1,2,3], []))
+      await expect(await trustee.connect(root).setPolicy(0, 1, 0, [1,2,3], []))
         .to.emit(trustee, 'trusteePolicySet')
-        .withArgs(root.address, 0, 1, [1,2,3], []);
+        .withArgs(root.address, 0, 1, 0, [1,2,3], []);
       expect(await trustee.getTrustPolicyKeys(0)).eql([bn(1)]);
       
       // even if its different, it can't have the same trustee key
-      await expect(trustee.connect(root).setPolicy(0, 1, [1,2], [stb('stab-brother')]))
+      await expect(trustee.connect(root).setPolicy(0, 1, 0, [1,2], [stb('stab-brother')]))
         .to.be.revertedWith('KEY_POLICY_EXISTS');
       expect(await trustee.getTrustPolicyKeys(0)).eql([bn(1)]);
     });
 
-    it("The key ring must pass the locksmith's no-root validation", async function () {
+    it("The key ring must pass the locksmith's validation", async function () {
       const {locksmith, trustee, owner, root, second, third} = 
         await loadFixture(TrustTestFixtures.fullTrusteeHarness);
 
-      // sneak in root in the end
-      await expect(trustee.connect(root).setPolicy(0, 1, [1,2,0], []))
-        .to.revertedWith('ROOT_ON_RING');
+      // sneak in root in the end. this should fail
+      // because the source and beneficiary are the same.
+      await expect(trustee.connect(root).setPolicy(0, 1, 0, [1,2,0], []))
+        .to.revertedWith('SOURCE_IS_DESTINATION');
     });
 
     it("Mixing across trusts maintains data boundary", async function() {
@@ -166,28 +183,28 @@ describe("Trustee", function () {
       await locksmith.connect(second).createTrustAndRootKey(stb('second trust'), second.address);
       await locksmith.connect(second).createKey(4, stb('five'), third.address, false);
 
-      await expect(await trustee.connect(second).setPolicy(4, 5, [5], []))
+      await expect(await trustee.connect(second).setPolicy(4, 5, 4, [5], []))
         .to.emit(trustee, 'trusteePolicySet')
-        .withArgs(second.address, 4, 5, [5], []);
+        .withArgs(second.address, 4, 5, 4, [5], []);
       expect(await trustee.getTrustPolicyKeys(0)).eql([]);
       expect(await trustee.getTrustPolicyKeys(1)).eql([bn(5)]);
 
       // check the first state
       response = await trustee.getPolicy(5);
       expect(response[0] == true);
-      expect(response[2][0]).to.equal(5);
-      expect(response[3]).to.eql([]);
+      expect(response[3][0]).to.equal(5);
+      expect(response[4]).to.eql([]);
 
       // let's put some other keys in there
-      await expect(trustee.connect(root).setPolicy(0, 1, [5], []))
+      await expect(trustee.connect(root).setPolicy(0, 1, 0, [5], []))
         .to.be.revertedWith('NON_TRUST_KEY');
 
       // call get policy on something that doesn't exit
       response = await trustee.getPolicy(1);
       expect(response[0] == true);
       expect(response[1] == bn(0));
-      expect(response[2]).has.length(0);
-      expect(response[3]).to.eql([]);
+      expect(response[3]).has.length(0);
+      expect(response[4]).to.eql([]);
     });
   });
 
@@ -199,9 +216,9 @@ describe("Trustee", function () {
       const {locksmith, trustee, owner, root, second, third} =
         await loadFixture(TrustTestFixtures.fullTrusteeHarness);
 
-      await expect(await trustee.connect(root).setPolicy(0, 1, [1,2,3], []))
+      await expect(await trustee.connect(root).setPolicy(0, 1, 0, [1,2,3], []))
         .to.emit(trustee, 'trusteePolicySet')
-        .withArgs(root.address, 0, 1, [1,2,3], []);
+        .withArgs(root.address, 0, 1, 0, [1,2,3], []);
 
       await expect(trustee.connect(second).removePolicy(0, 1))
         .to.be.revertedWith('KEY_NOT_HELD');
@@ -211,9 +228,9 @@ describe("Trustee", function () {
       const {locksmith, trustee, owner, root, second, third} =
         await loadFixture(TrustTestFixtures.fullTrusteeHarness);
 
-      await expect(await trustee.connect(root).setPolicy(0, 1, [1,2,3], []))
+      await expect(await trustee.connect(root).setPolicy(0, 1, 0, [1,2,3], []))
         .to.emit(trustee, 'trusteePolicySet')
-        .withArgs(root.address, 0, 1, [1,2,3], []);
+        .withArgs(root.address, 0, 1, 0, [1,2,3], []);
 
       await expect(trustee.connect(root).removePolicy(0, 2))
         .to.be.revertedWith('MISSING_POLICY');
@@ -229,9 +246,9 @@ describe("Trustee", function () {
       await locksmith.connect(second).createTrustAndRootKey(stb('second trust'), second.address);
       await locksmith.connect(second).createKey(4, stb('five'), third.address, false);
 
-      await expect(await trustee.connect(root).setPolicy(0, 1, [1,2,3], []))
+      await expect(await trustee.connect(root).setPolicy(0, 1, 0, [1,2,3], []))
         .to.emit(trustee, 'trusteePolicySet')
-        .withArgs(root.address, 0, 1, [1,2,3], []);
+        .withArgs(root.address, 0, 1, 0, [1,2,3], []);
 
       // now try to remove keyID=1 policy with the 4 root key instead of 0
       await expect(trustee.connect(second).removePolicy(4, 1))
@@ -242,18 +259,18 @@ describe("Trustee", function () {
       const {locksmith, trustee, owner, root, second, third} =
         await loadFixture(TrustTestFixtures.fullTrusteeHarness);
 
-      await expect(await trustee.connect(root).setPolicy(0, 1, [1,2,3], []))
+      await expect(await trustee.connect(root).setPolicy(0, 1, 0, [1,2,3], []))
         .to.emit(trustee, 'trusteePolicySet')
-        .withArgs(root.address, 0, 1, [1,2,3], []);
+        .withArgs(root.address, 0, 1, 0, [1,2,3], []);
       expect(await trustee.getTrustPolicyKeys(0)).eql([bn(1)]);
 
        // check the state
       response = await trustee.getPolicy(1);
       expect(response[0] == true);
-      expect(response[2][0]).to.equal(1);
-      expect(response[2][1]).to.equal(2);
-      expect(response[2][2]).to.equal(3);
-      expect(response[3]).to.eql([]);
+      expect(response[3][0]).to.equal(1);
+      expect(response[3][1]).to.equal(2);
+      expect(response[3][2]).to.equal(3);
+      expect(response[4]).to.eql([]);
 
       await expect(await trustee.connect(root).removePolicy(0, 1))
         .to.emit(trustee, 'trusteePolicyRemoved')
@@ -262,8 +279,8 @@ describe("Trustee", function () {
       // make sure the records are gone
       response = await trustee.getPolicy(1);
       expect(response[0] == false);
-      expect(response[2]).has.length(0);
-      expect(response[3]).to.eql([]);
+      expect(response[3]).has.length(0);
+      expect(response[4]).to.eql([]);
       expect(await trustee.getTrustPolicyKeys(0)).eql([]);
     });
   });
@@ -277,9 +294,9 @@ describe("Trustee", function () {
         await loadFixture(TrustTestFixtures.fullTrusteeHarness);
 
       // set the policy
-      await expect(await trustee.connect(root).setPolicy(0, 1, [1,2,3], []))
+      await expect(await trustee.connect(root).setPolicy(0, 1, 0, [1,2,3], []))
         .to.emit(trustee, 'trusteePolicySet')
-        .withArgs(root.address, 0, 1, [1,2,3], []);
+        .withArgs(root.address, 0, 1, 0, [1,2,3], []);
 
       // attempt to execute the distrbution
       await expect(trustee.connect(second).distribute(1, vault.address, ethArn(),
@@ -300,9 +317,9 @@ describe("Trustee", function () {
         await loadFixture(TrustTestFixtures.fullTrusteeHarness);
 
       // set the policy
-      await expect(await trustee.connect(root).setPolicy(0, 1, [1,2,3], [stb('death')]))
+      await expect(await trustee.connect(root).setPolicy(0, 1, 0, [1,2,3], [stb('death')]))
         .to.emit(trustee, 'trusteePolicySet')
-        .withArgs(root.address, 0, 1, [1,2,3], [stb('death')]);
+        .withArgs(root.address, 0, 1, 0, [1,2,3], [stb('death')]);
 
       // attempt to execute the distrbution
       await expect(trustee.connect(owner).distribute(1, vault.address, ethArn(),
@@ -314,9 +331,9 @@ describe("Trustee", function () {
         await loadFixture(TrustTestFixtures.fullTrusteeHarness);
 
       // set the policy
-      await expect(await trustee.connect(root).setPolicy(0, 1, [1,2,3], []))
+      await expect(await trustee.connect(root).setPolicy(0, 1, 0, [1,2,3], []))
         .to.emit(trustee, 'trusteePolicySet')
-        .withArgs(root.address, 0, 1, [1,2,3], []);
+        .withArgs(root.address, 0, 1, 0, [1,2,3], []);
 
       // attempt to execute the distrbution
       await expect(trustee.connect(owner).distribute(1, vault.address, ethArn(),
@@ -328,9 +345,9 @@ describe("Trustee", function () {
         await loadFixture(TrustTestFixtures.fullTrusteeHarness);
 
       // set the policy
-      await expect(await trustee.connect(root).setPolicy(0, 1, [1,2,3], []))
+      await expect(await trustee.connect(root).setPolicy(0, 1, 0, [1,2,3], []))
         .to.emit(trustee, 'trusteePolicySet')
-        .withArgs(root.address, 0, 1, [1,2,3], []);
+        .withArgs(root.address, 0, 1, 0, [1,2,3], []);
 
       // attempt to execute the distrbution
       await expect(trustee.connect(owner).distribute(1, third.address, ethArn(),
@@ -342,9 +359,9 @@ describe("Trustee", function () {
         await loadFixture(TrustTestFixtures.fullTrusteeHarness);
 
       // set the policy
-      await expect(await trustee.connect(root).setPolicy(0, 1, [1,2,3], []))
+      await expect(await trustee.connect(root).setPolicy(0, 1, 0, [1,2,3], []))
         .to.emit(trustee, 'trusteePolicySet')
-        .withArgs(root.address, 0, 1, [1,2,3], []);
+        .withArgs(root.address, 0, 1, 0, [1,2,3], []);
 
       // attempt to execute the distrbution
       await expect(trustee.connect(owner).distribute(1, vault.address, ethArn(),
@@ -359,9 +376,9 @@ describe("Trustee", function () {
        expect(await ethers.provider.getBalance(vault.address)).to.equal(eth(40));
 
       // set the policy
-      await expect(await trustee.connect(root).setPolicy(0, 1, [1,2,3], []))
+      await expect(await trustee.connect(root).setPolicy(0, 1, 0, [1,2,3], []))
         .to.emit(trustee, 'trusteePolicySet')
-        .withArgs(root.address, 0, 1, [1,2,3], []);
+        .withArgs(root.address, 0, 1, 0, [1,2,3], []);
 
       // blanket approval because we aren't testing that
       await notary.connect(owner).setWithdrawalAllowance(vault.ledger(),
@@ -437,9 +454,9 @@ describe("Trustee", function () {
         .withArgs(third.address, 0, hash, stb('The owner dies'));
 
       // set the policy
-      await expect(await trustee.connect(root).setPolicy(0, 1, [1,2,3], [hash]))
+      await expect(await trustee.connect(root).setPolicy(0, 1, 0, [1,2,3], [hash]))
         .to.emit(trustee, 'trusteePolicySet')
-        .withArgs(root.address, 0, 1, [1,2,3], [hash]);
+        .withArgs(root.address, 0, 1, 0, [1,2,3], [hash]);
 
       // attempt to execute the distrbution
       await expect(trustee.connect(owner).distribute(1, vault.address, ethArn(),
@@ -505,10 +522,10 @@ describe("Trustee", function () {
         .withArgs(third.address, 0, momHash, stb('Call Home'));
 
       // set the policy
-      await expect(await trustee.connect(root).setPolicy(0, 1, [1,2,3], [
+      await expect(await trustee.connect(root).setPolicy(0, 1, 0, [1,2,3], [
         hash, tenHash, momHash]))
         .to.emit(trustee, 'trusteePolicySet')
-        .withArgs(root.address, 0, 1, [1,2,3], [hash, tenHash, momHash]);
+        .withArgs(root.address, 0, 1, 0, [1,2,3], [hash, tenHash, momHash]);
 
       // attempt to execute the distrbution
       await expect(trustee.connect(owner).distribute(1, vault.address, ethArn(),
