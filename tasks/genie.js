@@ -85,7 +85,7 @@ const patchOwner = async function() {
   
   // for networks that absolutely require type 2 transactions, avoid
   // the hardhat signer by creating a wallet.
-  if ((await signer.getChainId()).toString().match(/31415/)) {
+  if ((await signer.getChainId()).toString().match(/314/)) {
     return new ethers.Wallet(process.env.MY_PRIVATE_KEY, ethers.provider);
   }
 

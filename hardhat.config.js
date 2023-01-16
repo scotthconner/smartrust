@@ -45,8 +45,8 @@ module.exports = {
       url: 'http://127.0.0.1:1234/rpc/v0',
       accounts: [`${process.env.MY_PRIVATE_KEY}`],
     },
-    wallaby: {
-      url: 'https://wallaby.node.glif.io/rpc/v0',
+    hyperspace: {
+      url: 'https://api.hyperspace.node.glif.io/rpc/v1', 
       accounts: [`${process.env.MY_PRIVATE_KEY}`],
     }
   }
