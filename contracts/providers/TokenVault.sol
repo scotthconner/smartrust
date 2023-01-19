@@ -135,9 +135,8 @@ contract TokenVault is ITokenCollateralProvider, Initializable, OwnableUpgradeab
     /**
      * deposit
      *
-     * This method will enable root key holders to deposit eth into
-     * the trust. This method operates as a payable
-     * transaction where the message's value parameter is what is deposited.
+     * This method will enable root key holders to deposit ERC20s into
+     * the trust. This method operates under the assumption of approval. 
      *
      * @param keyId the ID of the key that the depositor is using.
      * @param token the address of the ERC20 token contract.
@@ -188,7 +187,7 @@ contract TokenVault is ITokenCollateralProvider, Initializable, OwnableUpgradeab
     /**
      * withdrawal
      *
-     * Given a key, attempt to withdrawal ether from the vault. This will only
+     * Given a key, attempt to withdrawal ERC20 from the vault. This will only
      * succeed if the key is held by the user, the key has the permission to
      * withdrawal, the rules of the trust are satisified (whatever those may be),
      * and there is sufficient balance. If any of those fail, the entire

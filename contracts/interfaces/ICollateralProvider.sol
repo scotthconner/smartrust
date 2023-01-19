@@ -2,10 +2,10 @@
 pragma solidity ^0.8.16;
 
 /**
- * IEtherCollateralProvider
+ * ICollateralProvider
  *
  * Interface that enables users to deposit and withdrawal
- * Ether funds from their trust.
+ * funds from their trust.
  */
 interface ICollateralProvider {
     /**
@@ -26,7 +26,7 @@ interface ICollateralProvider {
      *
      * @param keyId  the key you want to use to withdrawal with/from
      * @param arn    the asset resource name to withdrawal
-     * @param amount the amount of ether, in gwei, to withdrawal from the balance.
+     * @param amount the amount, in gwei, to withdrawal from the balance.
      */
     function arnWithdrawal(uint256 keyId, bytes32 arn, uint256 amount) external;
 }

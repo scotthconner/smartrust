@@ -46,7 +46,7 @@ module.exports = {
       accounts: [`${process.env.MY_PRIVATE_KEY}`],
     },
     hyperspace: {
-      url: 'https://api.hyperspace.node.glif.io/rpc/v1', 
+      url: 'https://api.hyperspace.node.glif.io/rpc/v0',
       accounts: [`${process.env.MY_PRIVATE_KEY}`],
     }
   }

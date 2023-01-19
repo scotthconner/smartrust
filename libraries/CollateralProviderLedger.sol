@@ -169,7 +169,7 @@ library CollateralProviderLedger {
      * registry and extracts both the provider, and their
      * balance for the required arn.
      *
-     * This is merely a comvienence factor provided to frontents
+     * This is merely a comvienence factor provided to frontends
      * and not necessarily a critical piece of byte-code.
      *
      * @param c   the context

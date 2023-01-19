@@ -327,13 +327,17 @@ task("deploy", "Deploy a specific contract generating a new address for it.")
 
       console.log("Calling upgrades.upgradeProxy(" + currentAddress + 
         ", [contract:" + taskArgs['contract'] + "])"); 
-      const deployment = await upgrades.upgradeProxy(currentAddress, contract);
+      const deployment = await upgrades.upgradeProxy(currentAddress, contract, {
+        timeout: 180000
+      });
       console.log("Upgrade complete!");
     } else {
       // nah, just a standard deloyment. forced or otherwise.
       console.log("Calling upgrades.deployProxy with #initialize([" + preparedArguments + "])"); 
       try {
-        const deployment = await upgrades.deployProxy(contract, preparedArguments); 
+        const deployment = await upgrades.deployProxy(contract, preparedArguments, {
+          timeout: 180000
+        }); 
         await deployment.deployed();
       
         console.log(greenText, "Deployment complete! Address: " + deployment.address);

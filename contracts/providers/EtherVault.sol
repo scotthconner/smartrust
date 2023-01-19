@@ -146,10 +146,7 @@ contract EtherVault is IEtherCollateralProvider, Initializable, OwnableUpgradeab
         require(IKeyVault(locksmith.getKeyVault()).keyBalanceOf(msg.sender, keyId, false) > 0, 
             'KEY_NOT_HELD');
 
-        // track the deposit on the ledger
-        // this could revert for a few reasons:
-        // - the key is not root
-        // - the vault is not a trusted collateral provider the ledger
+        // track the deposit on the ledger, if trusted
         (,,uint256 finalLedgerBalance) = ledger.deposit(keyId, ethArn, msg.value);
 
         // once the ledger is updated, keep track of the ether balance
