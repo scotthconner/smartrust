@@ -267,6 +267,10 @@ contract TrustCreator is ERC1155Holder, Initializable, OwnableUpgradeable, UUPSU
         // create all of the keys
         for(uint256 x = 0; x < keyReceivers.length; x++) {
             keyIDs[x] = locksmith.createKey(rootKeyId, keyAliases[x], keyReceivers[x], isSoulbound[x]); 
+        
+            // create their inboxes, too.
+            IERC1155(keyVault).safeTransferFrom(address(this), keyAddressFactory, rootKeyId, 1, 
+                abi.encode(keyIDs[x], etherVault));
         }
 
         // trust the ledger actors

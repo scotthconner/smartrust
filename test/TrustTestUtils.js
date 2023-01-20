@@ -491,6 +491,28 @@ TrustTestFixtures = (function() {
         owner, root, second, third};
     },
     //////////////////////////////////////////////////////////
+    // Added Mega Key Creator 
+    //
+    // Combines the operations of creating a key, and an inbox. 
+    //////////////////////////////////////////////////////////
+    addedMegaKeyCreator: async function() {
+      const {keyVault, locksmith,
+        notary, ledger, vault, tokenVault, coin, inbox, postOffice,
+        events, trustee, keyOracle, alarmClock, addressFactory,
+        owner, root, second, third} =
+        await TrustTestFixtures.addedKeyAddressFactory();
+
+      // deploy the inbox
+      const MegaKeyCreator = await ethers.getContractFactory("MegaKeyCreator");
+      const megaKey = await upgrades.deployProxy(MegaKeyCreator, [addressFactory.address]);
+      await megaKey.deployed();
+
+      return {keyVault, locksmith,
+        notary, ledger, vault, tokenVault, coin, inbox, postOffice,
+        events, trustee, keyOracle, alarmClock, addressFactory, megaKey,
+        owner, root, second, third};
+    },
+    //////////////////////////////////////////////////////////
     // Added creator
     //
     // Adds a contract that feeds an orchestration of
@@ -499,8 +521,8 @@ TrustTestFixtures = (function() {
     addedCreator: async function() {
       const { keyVault, locksmith,
         notary, ledger, vault, tokenVault, coin, inbox, postOffice,
-        events, trustee, keyOracle, alarmClock, addressFactory,
-        owner, root, second, third } = await TrustTestFixtures.addedKeyAddressFactory();
+        events, trustee, keyOracle, alarmClock, addressFactory, megaKey,
+        owner, root, second, third } = await TrustTestFixtures.addedMegaKeyCreator();
 
       // deploy the creator
       const Creator = await ethers.getContractFactory("TrustCreator");
@@ -511,7 +533,7 @@ TrustTestFixtures = (function() {
       ]);
       await creator.deployed();
 
-      return { keyVault, locksmith, creator,
+      return { keyVault, locksmith, creator, megaKey,
         notary, ledger, vault, tokenVault, coin, inbox, postOffice,
         events, trustee, keyOracle, alarmClock, addressFactory,
         owner, root, second, third };

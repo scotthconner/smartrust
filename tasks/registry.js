@@ -14,6 +14,7 @@ LocksmithRegistry = (function() {
     'Trustee',
     'PostOffice',
     'KeyAddressFactory',
+    'MegaKeyCreator',
     'TrustCreator',
   ];
 

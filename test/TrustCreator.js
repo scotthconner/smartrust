@@ -197,7 +197,7 @@ describe("TrustCreator", function () {
 
       // check the post office for a virtual key address
       var inboxes = await postOffice.getInboxesForKey(4);
-      expect(inboxes).to.have.length(1);
+      expect(inboxes).to.have.length(4);
     });
   });
 

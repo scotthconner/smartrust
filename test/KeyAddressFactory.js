@@ -179,7 +179,7 @@ describe("KeyAddressFactory", function () {
         [0, vault.address]);
 
       // should be successful? 
-      await expect(keyVault.connect(root).safeTransferFrom(root.address, addressFactory.address, 0, 1, data))
+      await expect(await keyVault.connect(root).safeTransferFrom(root.address, addressFactory.address, 0, 1, data))
         .to.emit(postOffice, 'addressRegistrationEvent');
 
       // check the post office

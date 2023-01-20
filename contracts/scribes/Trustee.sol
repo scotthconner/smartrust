@@ -69,10 +69,9 @@ contract Trustee is ITrustee, Initializable, OwnableUpgradeable, UUPSUpgradeable
         bool enabled;               // is this policy enabled 
         bytes32[] requiredEvents;   // the events needed to enable 
     
-        uint256 rootKeyId;          // the root key used to establish the policy 
-        uint256 sourceKeyId;        // where the funds can be moved from
-        uint256[] beneficiaries;    // used for reflection 
-        mapping(uint256 => bool) isBeneficiary; // used for validation
+        uint256 rootKeyId;                   // the root key used to establish the policy 
+        uint256 sourceKeyId;                 // where the funds can be moved from
+        EnumerableSet.UintSet beneficiaries; // keys that are allowed to receive funds from this policy
     }
   
     // maps trustee Keys, to the metadata
@@ -158,7 +157,7 @@ contract Trustee is ITrustee, Initializable, OwnableUpgradeable, UUPSUpgradeable
         }
 
         return (t.enabled || (enabledCount == t.requiredEvents.length), 
-            t.rootKeyId, t.sourceKeyId, t.beneficiaries, t.requiredEvents);
+            t.rootKeyId, t.sourceKeyId, t.beneficiaries.values(), t.requiredEvents);
     }
 
     /**
@@ -220,7 +219,7 @@ contract Trustee is ITrustee, Initializable, OwnableUpgradeable, UUPSUpgradeable
         require(sTid == trustId, "SOURCE_OUTSIDE_TRUST");
 
         // make sure a duplicate entry doesn't exist for this trustee
-        require(trustees[trusteeKeyId].beneficiaries.length == 0, 'KEY_POLICY_EXISTS');
+        require(trustees[trusteeKeyId].beneficiaries.length() == 0, 'KEY_POLICY_EXISTS');
 
         // we also want to validate the destination key ring.
         // here, a beneficiary *can* be the same trustee key.
@@ -228,22 +227,17 @@ contract Trustee is ITrustee, Initializable, OwnableUpgradeable, UUPSUpgradeable
         // ability to move funds from the trust into their own pocket.
         locksmith.validateKeyRing(trustId, beneficiaries, true);
 
-        // make sure that the sourceKeyId is not any of the beneficiaries either.
-        for(uint256 x = 0; x < beneficiaries.length; x++) {
-            require(sourceKeyId != beneficiaries[x], 'SOURCE_IS_DESTINATION');
-        }
-
         // at this point, the caller holds the root key, the trustee and source
         // are valid keys on the ring, and so are all of the beneficiaries.
         // save the configuration of beneficiaries and events
         Policy storage t = trustees[trusteeKeyId];
         t.rootKeyId = rootKeyId;
         t.sourceKeyId = sourceKeyId;
-        t.beneficiaries = beneficiaries;
-
-        // generate the look up for easy validation
+        
+        // make sure that the sourceKeyId is not any of the beneficiaries either.
         for(uint256 x = 0; x < beneficiaries.length; x++) {
-            t.isBeneficiary[beneficiaries[x]] = true;
+            require(sourceKeyId != beneficiaries[x], 'SOURCE_IS_DESTINATION');
+            t.beneficiaries.add(beneficiaries[x]);
         }
 
         // keep track of the policy key at the trust level
@@ -274,7 +268,7 @@ contract Trustee is ITrustee, Initializable, OwnableUpgradeable, UUPSUpgradeable
         // we can know this, even on the zero trust, by ensuring
         // the beneficiary count is non-zero
         Policy storage t = trustees[trusteeKeyId];
-        require(t.beneficiaries.length > 0, 'MISSING_POLICY');
+        require(t.beneficiaries.length() > 0, 'MISSING_POLICY');
 
         // now that we know the trustee entry is valid, check
         // to ensure the root key being used is the one associated
@@ -282,8 +276,9 @@ contract Trustee is ITrustee, Initializable, OwnableUpgradeable, UUPSUpgradeable
         require(t.rootKeyId == rootKeyId, 'INVALID_ROOT_KEY'); 
 
         // clean up the mapping
-        for(uint256 x = 0; x < t.beneficiaries.length; x++) {
-            delete t.isBeneficiary[t.beneficiaries[x]];
+        uint256[] memory v = t.beneficiaries.values();
+        for(uint256 x = 0; x < v.length; x++) {
+            t.beneficiaries.remove(v[x]);
         }
 
         // at this point, we can delete the entry
@@ -325,7 +320,7 @@ contract Trustee is ITrustee, Initializable, OwnableUpgradeable, UUPSUpgradeable
     
         // make sure the entry is valid
         Policy storage t = trustees[trusteeKeyId];
-        require(t.beneficiaries.length > 0, 'MISSING_POLICY');
+        require(t.beneficiaries.length() > 0, 'MISSING_POLICY');
 
         // make sure the trustee entry is activated, or can activate.
         // this code will panic if the events haven't haven't fired.
@@ -336,7 +331,7 @@ contract Trustee is ITrustee, Initializable, OwnableUpgradeable, UUPSUpgradeable
         // be different potentially for each call and we need to fully
         // validate the input every time.
         for(uint256 x = 0; x < beneficiaries.length; x++) {
-            require(t.isBeneficiary[beneficiaries[x]], 'INVALID_BENEFICIARY');       
+            require(t.beneficiaries.contains(beneficiaries[x]), 'INVALID_BENEFICIARY');       
         }
 
         // do the distribution on the ledger, letting the notary take
