@@ -13,9 +13,8 @@ module.exports = {
     settings: {
       optimizer: {
         enabled: true,
-        runs: 1000,
-      },/*
-      viaIR: true*/
+        runs: 200,
+      }
     }
   }, 
   gasReporter: {
@@ -26,7 +25,10 @@ module.exports = {
     gasPriceApi: 'https://api.etherscan.io/api?module=proxy&action=eth_gasPrice',
   },
   etherscan: {
-    apiKey: `${process.env.ETHERSCAN_API_KEY}`
+    apiKey: {
+      goerli: `${process.env.ETHERSCAN_API_KEY}`,
+      polygonMumbai: `${process.env.POLYGONSCAN_API_KEY}`
+    }
   },
   networks: {
     goerli: {

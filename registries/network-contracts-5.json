@@ -1,54 +1,54 @@
 {
   "KeyVault": {
-    "address": "0xea8e89bEA88ABA9717e37c3E07cBb4a0Cf060A3E",
-    "codeHash": "0xea69d0bd8ce2ae06a2c2f9c3c7b78498cbe4697db6e4104ed6b1c86f6e8b187a"
+    "address": "0xcCAa662DF0c9fea96Eee048B9075b1CAEB77Aec8",
+    "codeHash": "0x1eafc5c903f99fbc6de04c176c3838e5dc19803ec8309b94f678c2ad762b46a5"
   },
   "Locksmith": {
-    "address": "0x71303C3F8B8755701acc73687f36a23B74CEA01D",
-    "codeHash": "0x6fc90914da0443b02ec5a0053d24a0a24ae47e69ff91e5482fc9cfb3eacb0b64"
+    "address": "0x4a55730B37FDe88882488630E27B7BBf806831a6",
+    "codeHash": "0x91615dfc2e4979b12cf21c7e6a5ef9408bf21ae2c42d2c18bfd3b07061a31bf6"
   },
   "Notary": {
-    "address": "0xBa408B91a94e0734b02D8471A8656E248E81Ad51",
-    "codeHash": "0x4df28a74c215e80a8dd834d8ef87394829bc76418aab09fcb92fdd84c3ee7378"
+    "address": "0xEb055C3F486d272B99B0Bd41955771159A635f59",
+    "codeHash": "0x5dcd045e2e046024276b653c8492f19b7d178ab66fd3f8c097975714d93eae15"
   },
   "Ledger": {
-    "address": "0xc0D3B08193c20E4F656C9a14Ba9dE7E687E43319",
-    "codeHash": "0x7fd8b17811eb49341353dcb1b60873e45b096c8994f66e70a3010f5153936894"
+    "address": "0x76DcF12FAf71Dcb3A2D852c504764e0279cE1C36",
+    "codeHash": "0x380f6343f08340f60a9d409f4edcea47c951592b090efa7cd1decee47c439660"
   },
   "EtherVault": {
-    "address": "0x423D8fB0e6BC5819E3770d6f20EC7052E0a5294d",
-    "codeHash": "0xf5205aa6328caab644b10e4f07cb41656a5769d2e8c1109b29e110e285e5a8d1"
+    "address": "0x4817e2e00A4844E854d55eF9E20884A7F451fB68",
+    "codeHash": "0xbb34b5b4037613d523d3850f139c4885c1b93665ce3617b5278a338a90053c7c"
   },
   "TokenVault": {
-    "address": "0x4EEF60212D9A9a00395AF0faFD0BC083D8354233",
-    "codeHash": "0x04279f85de57f25eaa8a66de7ded9ca1c3426215820cd45729253237c8102a32"
+    "address": "0xC85B5e4a895741ef8a3252cAE048ad5f733002bA",
+    "codeHash": "0xad40528090cf678bd5394df2e882eb2430750905da04bc50356714d501c9aa55"
   },
   "TrustEventLog": {
-    "address": "0x8cd9CcF8A029A03b45d8733fc0471aB3b73f9224",
-    "codeHash": "0x6ace7074b786bfee3fb478737c3345005c36ccda587378f7e752e34bf6bea50a"
+    "address": "0x9A5188864d00Aa52C3D68484b0689c3692A9131e",
+    "codeHash": "0x92299c2a003352fcf02a933b8136cc6de61875276d84955f8bb2824186361677"
   },
   "Trustee": {
-    "address": "0xb0908Cd327779849bf2290E93b98bD6d510650ad",
-    "codeHash": "0x7cf3a3e09eeb586529c1a51a11dbf8fde379a35b2fec592a25058711ab364331"
+    "address": "0x85aFD866e495Fd246B052DECeC4F21575156A599",
+    "codeHash": "0x4e174b70c9dba3807f64dc9ca4ce510aeb825aa1a29540d7fdf7e0d5aa17aa19"
   },
   "KeyOracle": {
-    "address": "0x1fD971538B2Dc130501d2A818b3dCFa25D696Ed7",
-    "codeHash": "0x390d1f0584f057166cf323ca4cc0570f8b3090eb14cf6ea11084a2f762e4007f"
+    "address": "0x8557083eeaEE3f16B0fFe013FeF2804188eCb2f4",
+    "codeHash": "0xc9ef579618c05e3704e8a604832cb93c5f8dc88f453b843bd6c869fead181fe9"
   },
   "AlarmClock": {
-    "address": "0x95fC0FDCC6c074931010D0c21d20714A73ee5A30",
-    "codeHash": "0xb1473ec97d36d615a81962174dcaa03bc191167295d79c0cf0fc8382127b43d6"
+    "address": "0x98046E79263251B16f548bbC9247D61066EF5197",
+    "codeHash": "0x9a5b0f5cd209d1dd6775848bc0decf96687e6507e9d4e27e33ba10dc20619f51"
   },
   "PostOffice": {
-    "address": "0xd0BEFeEbeFd6610F9F421d25c01c2f5A9F22dBf1",
-    "codeHash": "0x2f37db9d99f898759bf55ef280b805f9342326a278b33da1207fbf2bd380ad4a"
+    "address": "0x859fd02D75A0f2d8CA980694A288C188537957aa",
+    "codeHash": "0x99cc1f2e375ba8f2326c1ca48e45eb650c4e0d22c936c4d9065fc49f24406681"
   },
   "KeyAddressFactory": {
-    "address": "0x3582cDCFa95820C5C70E0020FD814e47BD60168A",
-    "codeHash": "0x6721fa28c192dc89884d829b07f6f66ef9025192f86ba02f145715f5e78226b8"
+    "address": "0x81BB1E51E4D4B729831D2aEFAf189c7ffE692ED4",
+    "codeHash": "0xe1719a32518025b8a2a3badb29b6b1cb86f5bbb5c390902215c0dd8c3fab846e"
   },
   "TrustCreator": {
-    "address": "0xD577D67F13E37a5783326927F8464E81048B1F2e",
-    "codeHash": "0xe7784c36dfe57e03f7d6eb71d62fcdbaa20d91521e7678b8c52de90f30b5d58a"
+    "address": "0xA2A8c2cf04948b8E58a56e0eF07D95f5662bb29E",
+    "codeHash": "0x25fefc41c57759c93f3c6b59502e28cbf9be026281c58091803dc86dab596263"
   }
 }
