@@ -48,7 +48,11 @@
     "codeHash": "0xe1719a32518025b8a2a3badb29b6b1cb86f5bbb5c390902215c0dd8c3fab846e"
   },
   "TrustCreator": {
-    "address": "0xA2A8c2cf04948b8E58a56e0eF07D95f5662bb29E",
-    "codeHash": "0x25fefc41c57759c93f3c6b59502e28cbf9be026281c58091803dc86dab596263"
+    "address": "0x6D6Ea1651C6d9DeEf4A0a0dC6d6FCFe7675113a4",
+    "codeHash": "0xe25b17e927d6cc596264dea5201814b7ef96866747811fb0ceb331207dfcf47f"
+  },
+  "MegaKeyCreator": {
+    "address": "0x67540E9f6bA26872Bd304CECfBcD32b4fc90150B",
+    "codeHash": "0xf74e319abb0ad312fee58155808fba710e60924db548569bbbb6493e895d2cf6"
   }
 }

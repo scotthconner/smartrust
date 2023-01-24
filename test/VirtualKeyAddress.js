@@ -510,6 +510,49 @@ describe("VirtualKeyAddress", function () {
       expect(tx[5]).eql(tokenArn(coin.address)); // asset
       expect(tx[6]).eql(eth(1));                 // amount
     });
+    
+    it("Accepting token via multi-call", async function() {
+      const {keyVault, locksmith,
+        notary, ledger, vault, tokenVault, coin, inbox,
+        events, trustee, keyOracle, alarmClock, creator,
+        owner, root, second, third} = await loadFixture(TrustTestFixtures.addedInbox);
+
+      // use the locksmith to soulbind a key to the virtual inbox
+      await expect(locksmith.connect(root).copyKey(0, 0, inbox.address, true))
+        .to.emit(locksmith, 'keyMinted')
+        .withArgs(root.address, 0, 0, stb('root'), inbox.address);
+
+      // starting balances
+      var ownerBalance = await coin.balanceOf(second.address);
+      var vaultBalance = await coin.balanceOf(tokenVault.address);
+      var rootBalance = (await ledger.getContextArnBalances(KEY(), 0, tokenVault.address, [tokenArn(coin.address)]))[0];
+
+      // send some coins to the inbox
+      await coin.connect(second).transfer(inbox.address, eth(1));
+
+      await expect(await inbox.connect(root).multicall([],[{
+        target: inbox.address,
+        callData: inbox.interface.encodeFunctionData("acceptToken", [coin.address, tokenVault.address]),
+        msgValue: 0
+      }])).to.emit(inbox, 'addressTransaction')
+        .withArgs(2, inbox.address, inbox.address, tokenVault.address, tokenArn(coin.address), eth(1));
+
+      // assert the token ended up at third and check the vault and ledger balance
+      await expect(await coin.balanceOf(tokenVault.address)).eql(vaultBalance.add(eth(1)));
+      await expect(await ledger.getContextArnBalances(KEY(), 0, tokenVault.address, [tokenArn(coin.address)]))
+        .eql([rootBalance.add(eth(1))]);
+      expect(ownerBalance.sub(eth(1))).eq(await coin.balanceOf(second.address));
+
+      // check the transaction history
+      await expect(await inbox.transactionCount()).eql(bn(1));
+      const tx = await inbox.transactions(0);
+      expect(tx[0]).eql(2);                      // RECEIVE
+      expect(tx[2]).eql(inbox.address);          // sender
+      expect(tx[3]).eql(inbox.address);          // receiver
+      expect(tx[4]).eql(tokenVault.address);     // provider
+      expect(tx[5]).eql(tokenArn(coin.address)); // asset
+      expect(tx[6]).eql(eth(1));                 // amount
+    });
   });
 
   ////////////////////////////////////////////////////////////

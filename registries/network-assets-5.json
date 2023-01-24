@@ -1,23 +1,23 @@
 {
+  "ShadowERC": {
+    "address": "0x4e4b60E821990E172288098E650C7D70DA785F68"
+  },
   "matic": {
-    "address": "0xf17366f9bF80C032bFcB46E4b1f4F06a1D847A52"
+    "address": "0xd6Daf8011Cd6858A5Cb91edcf96Cf6BFe7Bf1aCD"
   },
   "avax": {
-    "address": "0x374E3B0B4B8014Ec6e2D8B6709600117224fE4B7"
+    "address": "0xFe5058Ba9ef6D64ce7D8EeBc04e884064A3DdcC4"
   },
   "grt": {
-    "address": "0x2DeA68eB5cA2A0F80eC4E75A7b91E6d824888d74"
+    "address": "0xa131cED5fE012B720b7285b294279bAf8474ee86"
   },
   "dai": {
-    "address": "0x5Ecb4F2B39806079b1C9e8DB91c76169A6cEAed2"
+    "address": "0x07755E925d215299eC60fcE86CcF5CCFb1e1210D"
   },
   "usdc": {
-    "address": "0x07865c6e87b9f70255377e024ace6630c1eaa37f"
+    "address": "0x12f1374d92261d53DF7Af77467c6A1a4FaA2a397"
   },
   "link": {
-    "address": "0x326C977E6efc84E512bB9C30f76E30c160eD06FB"
-  },
-  "ShadowERC": {
-    "address": "0xBD501846c94A577F73789fcE40B164de7Db202E8"
+    "address": "0xA81cE1884dF037c6b8331B9c35e2105baAF4C5cb"
   }
 }

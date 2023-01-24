@@ -337,7 +337,7 @@ task("deploy", "Deploy a specific contract generating a new address for it.")
       try {
         const deployment = await upgrades.deployProxy(contract, preparedArguments, {
           timeout: 180000
-        }); 
+        });
         await deployment.deployed();
       
         console.log(greenText, "Deployment complete! Address: " + deployment.address);
