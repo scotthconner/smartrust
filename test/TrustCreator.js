@@ -22,11 +22,12 @@ describe("TrustCreator", function () {
   ////////////////////////////////////////////////////////////
   describe("Contract deployment", function () {
     it("Should not fail the deployment", async function () {
-      const { keyVault, locksmith, notary, ledger, alarmClock, events, 
+      const { keyVault, locksmith, notary, ledger, alarmClock, events, allowance, 
         vault, tokenVault, keyOracle, trustee, creator, addressFactory } = await loadFixture(TrustTestFixtures.addedCreator);
       
-      await expect(creator.initialize(keyVault.address, locksmith.address, notary.address,
-        ledger.address, vault.address, tokenVault.address, trustee.address, alarmClock.address, keyOracle.address, events.address,
+      await expect(creator.initialize(locksmith.address, notary.address,
+        ledger.address, vault.address, tokenVault.address, trustee.address, allowance.address,
+        alarmClock.address, keyOracle.address, events.address,
         addressFactory.address))
         .to.be.revertedWith("Initializable: contract is already initialized");
       expect(true);
@@ -41,13 +42,13 @@ describe("TrustCreator", function () {
   ////////////////////////////////////////////////////////////
   describe("Contract upgrade", function() {
     it("Should be able to upgrade", async function() {
-      const { keyVault, locksmith, notary, creator, keyOracle, events,
+      const { keyVault, locksmith, notary, creator, keyOracle, events, allowance,
         ledger, vault, tokenVault, trustee, addressFactory, root } = await loadFixture(TrustTestFixtures.addedCreator);
 
       const contract = await ethers.getContractFactory("TrustCreator")
       const v2 = await upgrades.upgradeProxy(creator.address, contract, 
-          [keyVault.address, locksmith.address, notary.address,
-          ledger.address, vault.address, tokenVault.address, trustee.address, keyOracle.address, 
+          [locksmith.address, notary.address,
+          ledger.address, vault.address, tokenVault.address, trustee.address, allowance.address, keyOracle.address, 
           events.address, addressFactory.address]);
       await v2.deployed();
 
@@ -84,7 +85,7 @@ describe("TrustCreator", function () {
     });
 
     it("Successfully creates a trust with no keys", async function() {
-      const {keyVault, locksmith, notary, creator,
+      const {keyVault, locksmith, notary, creator, allowance,
         ledger, vault, tokenVault, trustee, owner, root } = 
         await loadFixture(TrustTestFixtures.addedCreator);
 
@@ -123,7 +124,7 @@ describe("TrustCreator", function () {
       expect(await notary.getTrustedActors(ledger.address, 1, 0))
         .eql([vault.address, tokenVault.address]);
       expect(await notary.getTrustedActors(ledger.address, 1, 1))
-        .eql([trustee.address]);
+        .eql([trustee.address, allowance.address]);
       
       // test to ensure the names were encoded correctly
       expect(await notary.actorAliases(ledger.address, 1, 0, vault.address))
@@ -132,10 +133,12 @@ describe("TrustCreator", function () {
         .eql(stb('Token Vault'));
       expect(await notary.actorAliases(ledger.address, 1, 1, trustee.address))
         .eql(stb('Trustee Program'));
+      expect(await notary.actorAliases(ledger.address, 1, 1, allowance.address))
+        .eql(stb('Allowance Program'));
     });
 
     it("Successfully creates a trust with multiple keys", async function() {
-      const {keyVault, locksmith, notary, creator, postOffice,
+      const {keyVault, locksmith, notary, creator, postOffice, allowance,
         ledger, vault, tokenVault, trustee, owner, root, second, third } =
         await loadFixture(TrustTestFixtures.addedCreator);
 
@@ -193,7 +196,7 @@ describe("TrustCreator", function () {
       expect(await notary.getTrustedActors(ledger.address, 1, 0))
         .eql([vault.address, tokenVault.address]);
       expect(await notary.getTrustedActors(ledger.address, 1, 1))
-        .eql([trustee.address]);
+        .eql([trustee.address, allowance.address]);
 
       // check the post office for a virtual key address
       var inboxes = await postOffice.getInboxesForKey(4);
@@ -276,7 +279,7 @@ describe("TrustCreator", function () {
     });
 
     it("Successful setup with multiple beneficiaries", async function() {
-      const {keyVault, locksmith, notary, creator, alarmClock, events, keyOracle,
+      const {keyVault, locksmith, notary, creator, alarmClock, events, keyOracle, allowance,
         ledger, vault, tokenVault, trustee, owner, root, second } =
         await loadFixture(TrustTestFixtures.addedCreator);
 
@@ -325,7 +328,7 @@ describe("TrustCreator", function () {
       expect(await notary.getTrustedActors(ledger.address, 1, 0))
         .eql([vault.address, tokenVault.address]);
       expect(await notary.getTrustedActors(ledger.address, 1, 1))
-        .eql([trustee.address]);
+        .eql([trustee.address, allowance.address]);
       expect(await notary.getTrustedActors(events.address, 1, 2))
         .eql([alarmClock.address, keyOracle.address]);
 

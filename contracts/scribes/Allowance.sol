@@ -219,6 +219,9 @@ contract Allowance is IAllowance, Initializable, OwnableUpgradeable, UUPSUpgrade
 
         // delete the entire thing
         delete allowances[allowanceId];
+
+        // emit the event
+        emit allowanceRemoved(msg.sender, allowanceId);
     }
     
     ////////////////////////////////////////////////////////
@@ -301,7 +304,8 @@ contract Allowance is IAllowance, Initializable, OwnableUpgradeable, UUPSUpgrade
 
         // calculate the number of tranches that can be redeemed
         // from a logical stand-point.
-        uint256 tranches = min((block.timestamp - a.nextVestTime) / a.vestingInterval, a.remainingTrancheCount);
+        uint256 tranches = min(1 + ((block.timestamp - a.nextVestTime) / a.vestingInterval), 
+            a.remainingTrancheCount);
 
         // for each entitlement, determine the max number
         // of tranches that can be afforded across all of them.
@@ -315,8 +319,11 @@ contract Allowance is IAllowance, Initializable, OwnableUpgradeable, UUPSUpgrade
             arns[0] = a.entitlements[x].arn;
             uint256[] memory balances = ledger.getContextArnBalances(2, a.entitlements[x].sourceKey,
                 a.entitlements[x].provider, arns); 
-            minTrancheFound = min(tranches, balances[0] / a.entitlements[x].amount);
+            minTrancheFound = min(minTrancheFound, balances[0] / a.entitlements[x].amount);
         }
+
+        // make sure at least one tranche can be afforded
+        require(minTrancheFound > 0, 'UNAFFORDABLE_DISTRIBUTION');
 
         // store the new state before doing any distribution
         a.remainingTrancheCount -= minTrancheFound;
@@ -328,7 +335,7 @@ contract Allowance is IAllowance, Initializable, OwnableUpgradeable, UUPSUpgrade
         uint256[] memory amount = new uint256[](1);
         key[0] = a.recipientKeyId;
         for(uint256 x = 0; x < a.entitlements.length; x++) {
-            amount[0] = a.entitlements[x].amount;
+            amount[0] = a.entitlements[x].amount * minTrancheFound;
             ledger.distribute(a.entitlements[x].provider,
                 a.entitlements[x].arn, a.entitlements[x].sourceKey, 
                 key, amount);

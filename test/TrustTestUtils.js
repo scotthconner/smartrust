@@ -368,6 +368,33 @@ TrustTestFixtures = (function() {
         owner, root, second, third};
     },
     //////////////////////////////////////////////////////////
+    // Added Allowance
+    //
+    // Adds the recurring payment scribe module.
+    //////////////////////////////////////////////////////////
+    addedAllowance: async function() {
+      const {keyVault, locksmith,
+        notary, ledger, vault, tokenVault, coin,
+        events, trustee,
+        owner, root, second, third} = await TrustTestFixtures.fullTrusteeHarness();
+
+      // deploy allowance
+      const Allowance = await ethers.getContractFactory("Allowance");
+      const allowance = await upgrades.deployProxy(Allowance, [
+        locksmith.address, ledger.address, events.address
+      ]);
+      await allowance.deployed();
+
+      // trust allowance as a scribe on the notary
+      await notary.connect(root).setTrustedLedgerRole(0, SCRIBE(),
+        ledger.address, allowance.address, true, stb('Allowances'));
+
+      return {keyVault, locksmith,
+        notary, ledger, vault, tokenVault, coin,
+        events, trustee, allowance,
+        owner, root, second, third}
+    },
+    //////////////////////////////////////////////////////////
     // Added Key Oracle
     // 
     // This takes a trustee harness, and adds the key oracle
@@ -376,9 +403,9 @@ TrustTestFixtures = (function() {
     addedKeyOracle: async function() {
       const {keyVault, locksmith,
         notary, ledger, vault, tokenVault, coin,
-        events, trustee,
+        events, trustee, allowance,
         owner, root, second, third} =
-        await TrustTestFixtures.fullTrusteeHarness();
+        await TrustTestFixtures.addedAllowance();
 
       // deploy the key oracle contract
       const KeyOracle = await ethers.getContractFactory("KeyOracle");
@@ -391,7 +418,7 @@ TrustTestFixtures = (function() {
 
       return {keyVault, locksmith,
         notary, ledger, vault, tokenVault, coin,
-        events, trustee, keyOracle,
+        events, trustee, keyOracle, allowance,
         owner, root, second, third};
     },
     //////////////////////////////////////////////////////////
@@ -401,7 +428,7 @@ TrustTestFixtures = (function() {
     // clock dispatcher.
     //////////////////////////////////////////////////////////
     addedAlarmClock: async function() {
-      const {keyVault, locksmith,
+      const {keyVault, locksmith, allowance, 
         notary, ledger, vault, tokenVault, coin,
         events, trustee, keyOracle,
         owner, root, second, third} =
@@ -416,7 +443,7 @@ TrustTestFixtures = (function() {
       // trust the alarm clock to register events
       await notary.connect(root).setTrustedLedgerRole(0, DISPATCHER(), events.address, alarmClock.address, true, stb('alarm-clock'));
 
-      return { keyVault, locksmith,
+      return { keyVault, locksmith, allowance,
         notary, ledger, vault, tokenVault, coin,
         events, trustee, keyOracle, alarmClock,
         owner, root, second, third };
@@ -428,7 +455,7 @@ TrustTestFixtures = (function() {
     // the initial root key.
     //////////////////////////////////////////////////////////
     addedInbox: async function() {
-      const {keyVault, locksmith,
+      const {keyVault, locksmith, allowance,
         notary, ledger, vault, tokenVault, coin,
         events, trustee, keyOracle, alarmClock, creator,
         owner, root, second, third} =
@@ -441,7 +468,7 @@ TrustTestFixtures = (function() {
       ]);
       await inbox.deployed();
 
-      return {keyVault, locksmith,
+      return {keyVault, locksmith, allowance,
         notary, ledger, vault, tokenVault, coin, inbox,
         events, trustee, keyOracle, alarmClock,
         owner, root, second, third};
@@ -453,7 +480,7 @@ TrustTestFixtures = (function() {
     // the initial root key.
     //////////////////////////////////////////////////////////
     addedPostOffice: async function() {
-      const {keyVault, locksmith,
+      const {keyVault, locksmith, allowance,
         notary, ledger, vault, tokenVault, coin, inbox,
         events, trustee, keyOracle, alarmClock,
         owner, root, second, third} = await TrustTestFixtures.addedInbox();
@@ -463,7 +490,7 @@ TrustTestFixtures = (function() {
       const postOffice = await upgrades.deployProxy(PostOffice, [locksmith.address]);
       await postOffice.deployed();
 
-      return {keyVault, locksmith,
+      return {keyVault, locksmith, allowance,
         notary, ledger, vault, tokenVault, coin, inbox, postOffice,
         events, trustee, keyOracle, alarmClock, 
         owner, root, second, third};
@@ -474,7 +501,7 @@ TrustTestFixtures = (function() {
     // On top of everything else, creates a virtual address factory. 
     //////////////////////////////////////////////////////////
     addedKeyAddressFactory: async function() {
-      const {keyVault, locksmith,
+      const {keyVault, locksmith, allowance,
         notary, ledger, vault, tokenVault, coin, inbox, postOffice,
         events, trustee, keyOracle, alarmClock, 
         owner, root, second, third} =
@@ -485,7 +512,7 @@ TrustTestFixtures = (function() {
       const addressFactory = await upgrades.deployProxy(KeyAddressFactory, [postOffice.address]);
       await addressFactory.deployed();
 
-      return {keyVault, locksmith,
+      return {keyVault, locksmith, allowance,
         notary, ledger, vault, tokenVault, coin, inbox, postOffice,
         events, trustee, keyOracle, alarmClock, addressFactory,
         owner, root, second, third};
@@ -496,7 +523,7 @@ TrustTestFixtures = (function() {
     // Combines the operations of creating a key, and an inbox. 
     //////////////////////////////////////////////////////////
     addedMegaKeyCreator: async function() {
-      const {keyVault, locksmith,
+      const {keyVault, locksmith, allowance,
         notary, ledger, vault, tokenVault, coin, inbox, postOffice,
         events, trustee, keyOracle, alarmClock, addressFactory,
         owner, root, second, third} =
@@ -507,7 +534,7 @@ TrustTestFixtures = (function() {
       const megaKey = await upgrades.deployProxy(MegaKeyCreator, [addressFactory.address]);
       await megaKey.deployed();
 
-      return {keyVault, locksmith,
+      return {keyVault, locksmith, allowance,
         notary, ledger, vault, tokenVault, coin, inbox, postOffice,
         events, trustee, keyOracle, alarmClock, addressFactory, megaKey,
         owner, root, second, third};
@@ -519,7 +546,7 @@ TrustTestFixtures = (function() {
     // a default trust.
     //////////////////////////////////////////////////////////
     addedCreator: async function() {
-      const { keyVault, locksmith,
+      const { keyVault, locksmith, allowance,
         notary, ledger, vault, tokenVault, coin, inbox, postOffice,
         events, trustee, keyOracle, alarmClock, addressFactory, megaKey,
         owner, root, second, third } = await TrustTestFixtures.addedMegaKeyCreator();
@@ -527,38 +554,15 @@ TrustTestFixtures = (function() {
       // deploy the creator
       const Creator = await ethers.getContractFactory("TrustCreator");
       const creator= await upgrades.deployProxy(Creator, [
-        keyVault.address, locksmith.address, notary.address,
-        ledger.address, vault.address, tokenVault.address, trustee.address,
+        locksmith.address, notary.address,
+        ledger.address, vault.address, tokenVault.address, trustee.address, allowance.address,
         alarmClock.address, keyOracle.address, events.address, addressFactory.address,
       ]);
       await creator.deployed();
 
-      return { keyVault, locksmith, creator, megaKey,
+      return { keyVault, locksmith, creator, megaKey, allowance,
         notary, ledger, vault, tokenVault, coin, inbox, postOffice,
         events, trustee, keyOracle, alarmClock, addressFactory,
-        owner, root, second, third };
-    },
-    //////////////////////////////////////////////////////////
-    // Added Allowance 
-    //
-    // Adds the recurring payment scribe module. 
-    //////////////////////////////////////////////////////////
-    addedAllowance: async function() {
-      const { keyVault, locksmith, creator,
-        notary, ledger, vault, tokenVault, coin, inbox, postOffice,
-        events, trustee, keyOracle, alarmClock, addressFactory, megaKey,
-        owner, root, second, third } = await TrustTestFixtures.addedCreator();
-
-      // deploy allowance 
-      const Allowance = await ethers.getContractFactory("Allowance");
-      const allowance = await upgrades.deployProxy(Allowance, [
-        locksmith.address, ledger.address, events.address
-      ]);
-      await allowance.deployed();
-
-      return { keyVault, locksmith, creator, megaKey,
-        notary, ledger, vault, tokenVault, coin, inbox, postOffice,
-        events, trustee, keyOracle, alarmClock, addressFactory, allowance,
         owner, root, second, third };
     },
     //////////////////////////////////////////////////////////

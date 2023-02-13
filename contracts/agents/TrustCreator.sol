@@ -64,6 +64,7 @@ contract TrustCreator is ERC1155Holder, Initializable, OwnableUpgradeable, UUPSU
     address     public trustee;
     address     public trustEventLog;
     address     public keyAddressFactory;
+    address     public allowance;
 
     // permission registry: add these to the notary
     // upon trust creation using the new ROOT key.
@@ -94,13 +95,14 @@ contract TrustCreator is ERC1155Holder, Initializable, OwnableUpgradeable, UUPSU
      * @param _Notary    the address of the assumed notary
      * @param _Ledger    the address of the assumed ledger
      */
-    function initialize(address _KeyVault, address _Locksmith, address _Notary, address _Ledger, 
-        address _EtherVault, address _TokenVault, address _Trustee, address _AlarmClock, address _KeyOracle, address _TrustEventLog,
+    function initialize(address _Locksmith, address _Notary, address _Ledger, 
+        address _EtherVault, address _TokenVault, address _Trustee, address _Allowance, 
+        address _AlarmClock, address _KeyOracle, address _TrustEventLog,
         address _KeyAddressFactory) initializer public {
         __Ownable_init();
         __UUPSUpgradeable_init();
-        keyVault = _KeyVault;
         locksmith = ILocksmith(_Locksmith);
+        keyVault = locksmith.getKeyVault(); 
         notary    = INotary(_Notary);
         trustee = _Trustee;
         alarmClock = _AlarmClock;
@@ -110,6 +112,7 @@ contract TrustCreator is ERC1155Holder, Initializable, OwnableUpgradeable, UUPSU
         tokenVault = _TokenVault;
         trustEventLog = _TrustEventLog;
         keyAddressFactory = _KeyAddressFactory;
+        allowance = _Allowance;
     }
 
     /**
@@ -277,6 +280,7 @@ contract TrustCreator is ERC1155Holder, Initializable, OwnableUpgradeable, UUPSU
         notary.setTrustedLedgerRole(rootKeyId, 0, ledger, etherVault, true, stringToBytes32('Ether Vault')); 
         notary.setTrustedLedgerRole(rootKeyId, 0, ledger, tokenVault, true, stringToBytes32('Token Vault'));
         notary.setTrustedLedgerRole(rootKeyId, 1, ledger, trustee, true, stringToBytes32('Trustee Program'));
+        notary.setTrustedLedgerRole(rootKeyId, 1, ledger, allowance, true, stringToBytes32('Allowance Program'));
         notary.setTrustedLedgerRole(rootKeyId, 2, trustEventLog, alarmClock, true, stringToBytes32('Alarm Clock Dispatcher'));
         notary.setTrustedLedgerRole(rootKeyId, 2, trustEventLog, keyOracle, true, stringToBytes32('Key Oracle Dispatcher'));
 

@@ -104,7 +104,7 @@ interface IAllowance {
      * @param operator       the message sender
      * @param allowanceId    the allowance ID that was removed 
      */
-    event allowanceRemoved(uint256 operator, bytes32 allowanceId); 
+    event allowanceRemoved(address operator, bytes32 allowanceId); 
 
     /**
      * allowanceAwarded
