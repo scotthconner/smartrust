@@ -44,7 +44,7 @@ module.exports = {
       accounts: [`${process.env.MY_MAINNET_PRIVATE_KEY}`],
     },
     devnet: {
-      url: 'http://127.0.0.1:1234/rpc/v0',
+      url: 'http://127.0.0.1:1234/rpc/v1',
       accounts: [`${process.env.MY_PRIVATE_KEY}`],
     },
     hyperspace: {

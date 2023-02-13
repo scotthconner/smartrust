@@ -539,6 +539,29 @@ TrustTestFixtures = (function() {
         owner, root, second, third };
     },
     //////////////////////////////////////////////////////////
+    // Added Allowance 
+    //
+    // Adds the recurring payment scribe module. 
+    //////////////////////////////////////////////////////////
+    addedAllowance: async function() {
+      const { keyVault, locksmith, creator,
+        notary, ledger, vault, tokenVault, coin, inbox, postOffice,
+        events, trustee, keyOracle, alarmClock, addressFactory, megaKey,
+        owner, root, second, third } = await TrustTestFixtures.addedCreator();
+
+      // deploy allowance 
+      const Allowance = await ethers.getContractFactory("Allowance");
+      const allowance = await upgrades.deployProxy(Allowance, [
+        locksmith.address, ledger.address, events.address
+      ]);
+      await allowance.deployed();
+
+      return { keyVault, locksmith, creator, megaKey,
+        notary, ledger, vault, tokenVault, coin, inbox, postOffice,
+        events, trustee, keyOracle, alarmClock, addressFactory, allowance,
+        owner, root, second, third };
+    },
+    //////////////////////////////////////////////////////////
     // Deployed Hardhat Testing
     //
     // This is a fixture we use to help test the frontend
@@ -549,7 +572,7 @@ TrustTestFixtures = (function() {
         notary, ledger, vault, tokenVault, coin,
         events, trustee, keyOracle, alarmClock, creator,
         owner, root, second, third} = 
-        await TrustTestFixtures.addedCreator();
+        await TrustTestFixtures.addedAllowance();
 
       // give out some keys
       await locksmith.connect(root).createKey(0, stb('Testing Four'), root.address, false);
