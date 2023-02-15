@@ -70,7 +70,7 @@ describe("Allowance", function () {
         events, trustee, keyOracle, alarmClock, creator, allowance,
         owner, root, second, third} = await loadFixture(TrustTestFixtures.addedAllowance);
 
-      await expect(allowance.connect(root).createAllowance(1, 1, 1, 100, 100, [{
+      await expect(allowance.connect(root).createAllowance(1, stb('chores'), 1, 1, 100, 100, [{
         sourceKey: 0,
         arn: ethArn(),
         provider: vault.address,
@@ -85,7 +85,7 @@ describe("Allowance", function () {
         owner, root, second, third} = await loadFixture(TrustTestFixtures.addedAllowance);
 
       // invalid key
-      await expect(allowance.connect(root).createAllowance(0, 99, 1, 100, 100, [{
+      await expect(allowance.connect(root).createAllowance(0, stb('chores'), 99, 1, 100, 100, [{
         sourceKey: 0,
         arn: ethArn(),
         provider: vault.address,
@@ -96,7 +96,7 @@ describe("Allowance", function () {
       await locksmith.connect(second).createTrustAndRootKey(stb('second trust'), second.address);
 
       // valid key, invalid trust
-      await expect(allowance.connect(root).createAllowance(0, 4, 1, 100, 100, [{
+      await expect(allowance.connect(root).createAllowance(0, stb('chores'), 4, 1, 100, 100, [{
         sourceKey: 0,
         arn: ethArn(),
         provider: vault.address,
@@ -110,7 +110,7 @@ describe("Allowance", function () {
         events, trustee, keyOracle, alarmClock, creator, allowance,
         owner, root, second, third} = await loadFixture(TrustTestFixtures.addedAllowance);
 
-      await expect(allowance.connect(second).createAllowance(0, 1, 1, 100, 100, [{
+      await expect(allowance.connect(second).createAllowance(0, stb('chores'), 1, 1, 100, 100, [{
         sourceKey: 0,
         arn: ethArn(),
         provider: vault.address,
@@ -124,7 +124,7 @@ describe("Allowance", function () {
         events, trustee, keyOracle, alarmClock, creator, allowance,
         owner, root, second, third} = await loadFixture(TrustTestFixtures.addedAllowance);
 
-      await expect(allowance.connect(root).createAllowance(0, 1, 0, 100, 100, [{
+      await expect(allowance.connect(root).createAllowance(0, stb('chores'), 1, 0, 100, 100, [{
         sourceKey: 0,
         arn: ethArn(),
         provider: vault.address,
@@ -138,7 +138,7 @@ describe("Allowance", function () {
         events, trustee, keyOracle, alarmClock, creator, allowance,
         owner, root, second, third} = await loadFixture(TrustTestFixtures.addedAllowance);
 
-      await expect(allowance.connect(root).createAllowance(0, 1, 1, 0, 100, [{
+      await expect(allowance.connect(root).createAllowance(0, stb('chores'), 1, 1, 0, 100, [{
         sourceKey: 0,
         arn: ethArn(),
         provider: vault.address,
@@ -152,7 +152,7 @@ describe("Allowance", function () {
         events, trustee, keyOracle, alarmClock, creator, allowance,
         owner, root, second, third} = await loadFixture(TrustTestFixtures.addedAllowance);
 
-      await expect(allowance.connect(root).createAllowance(0, 1, 1, 100, 100, [], []))
+      await expect(allowance.connect(root).createAllowance(0, stb('chores'), 1, 1, 100, 100, [], []))
         .to.be.revertedWith('ZERO_ENTITLEMENTS');
     });
 
@@ -162,7 +162,7 @@ describe("Allowance", function () {
         events, trustee, keyOracle, alarmClock, creator, allowance,
         owner, root, second, third} = await loadFixture(TrustTestFixtures.addedAllowance);
 
-      await expect(allowance.connect(root).createAllowance(0, 1, 1, 100, 100, [{
+      await expect(allowance.connect(root).createAllowance(0, stb('chores'), 1, 1, 100, 100, [{
         sourceKey: 0,
         arn: ethArn(),
         provider: vault.address,
@@ -177,7 +177,7 @@ describe("Allowance", function () {
         owner, root, second, third} = await loadFixture(TrustTestFixtures.addedAllowance);
 
       // invalid source key
-      await expect(allowance.connect(root).createAllowance(0, 1, 1, 100, 100, [{
+      await expect(allowance.connect(root).createAllowance(0, stb('chores'), 1, 1, 100, 100, [{
         sourceKey: 99,
         arn: ethArn(),
         provider: vault.address,
@@ -187,7 +187,7 @@ describe("Allowance", function () {
       await locksmith.connect(second).createTrustAndRootKey(stb('second trust'), second.address);
       
       // inter-trust key
-      await expect(allowance.connect(root).createAllowance(0, 1, 1, 100, 100, [{
+      await expect(allowance.connect(root).createAllowance(0, stb('chores'), 1, 1, 100, 100, [{
         sourceKey: 4,
         arn: ethArn(),
         provider: vault.address,
@@ -202,7 +202,7 @@ describe("Allowance", function () {
         owner, root, second, third} = await loadFixture(TrustTestFixtures.addedAllowance);
 
       // success! 
-      await expect(await allowance.connect(root).createAllowance(0, 1, 1, 100, 100, [{
+      await expect(await allowance.connect(root).createAllowance(0, stb('chores'), 1, 1, 100, 100, [{
         sourceKey: 0,
         arn: ethArn(),
         provider: vault.address,
@@ -215,10 +215,11 @@ describe("Allowance", function () {
       var a = await allowance.getAllowance(allowanceId);
       expect(a[0][0]).eql(true);    // enabled
       expect(a[0][1]).eql(bn(0));   // rootKeyId
-      expect(a[0][2]).eql(bn(1));   // recipientKeyId
-      expect(a[0][3]).eql(bn(1));   // remainingTrancheCount
-      expect(a[0][4]).eql(bn(100)); // vestingInterval
-      expect(a[0][5]).eql(bn(100)); // nextVestTime
+      expect(a[0][2]).eql(stb('chores')); // name
+      expect(a[0][3]).eql(bn(1));   // recipientKeyId
+      expect(a[0][4]).eql(bn(1));   // remainingTrancheCount
+      expect(a[0][5]).eql(bn(100)); // vestingInterval
+      expect(a[0][6]).eql(bn(100)); // nextVestTime
       expect(a[1].length).eql(0);   // events
       expect(a[2][0][0]).eql(bn(0));         // entitlement: sourceKey
       expect(a[2][0][1]).eql(ethArn());      // entitlement: arn
@@ -233,7 +234,7 @@ describe("Allowance", function () {
         owner, root, second, third} = await loadFixture(TrustTestFixtures.addedAllowance);
 
       // fail! 
-      await expect(allowance.connect(root).createAllowance(0, 1, 1, 100, 100, [{
+      await expect(allowance.connect(root).createAllowance(0, stb('chores'), 1, 1, 100, 100, [{
         sourceKey: 0,
         arn: ethArn(),
         provider: vault.address,
@@ -246,7 +247,7 @@ describe("Allowance", function () {
       }],[])).to.be.revertedWith('INVALID_SOURCE_KEY');
 
       // success!
-      await expect(await allowance.connect(root).createAllowance(0, 1, 1, 100, 100, [{
+      await expect(await allowance.connect(root).createAllowance(0, stb('chores'), 1, 1, 100, 100, [{
         sourceKey: 0,
         arn: ethArn(),
         provider: vault.address,
@@ -264,10 +265,11 @@ describe("Allowance", function () {
       var a = await allowance.getAllowance(allowanceId);
       expect(a[0][0]).eql(false);    // enabled
       expect(a[0][1]).eql(bn(0));   // rootKeyId
-      expect(a[0][2]).eql(bn(1));   // recipientKeyId
-      expect(a[0][3]).eql(bn(1));   // remainingTrancheCount
-      expect(a[0][4]).eql(bn(100)); // vestingInterval
-      expect(a[0][5]).eql(bn(100)); // nextVestTime
+      expect(a[0][2]).eql(stb('chores')); // name 
+      expect(a[0][3]).eql(bn(1));   // recipientKeyId
+      expect(a[0][4]).eql(bn(1));   // remainingTrancheCount
+      expect(a[0][5]).eql(bn(100)); // vestingInterval
+      expect(a[0][6]).eql(bn(100)); // nextVestTime
       expect(a[1][0]).eql(stb('birthday'));   // events
       expect(a[2][0][0]).eql(bn(0));         // entitlement: sourceKey
       expect(a[2][0][1]).eql(ethArn());      // entitlement: arn
@@ -289,7 +291,7 @@ describe("Allowance", function () {
         notary, ledger, vault, tokenVault, coin, inbox, megaKey,
         events, trustee, keyOracle, alarmClock, creator, allowance,
         owner, root, second, third} = await loadFixture(TrustTestFixtures.addedAllowance);
-      await expect(await allowance.connect(root).createAllowance(0, 1, 1, 100, 100, [{
+      await expect(await allowance.connect(root).createAllowance(0, stb('chores'), 1, 1, 100, 100, [{
         sourceKey: 0,
         arn: ethArn(),
         provider: vault.address,
@@ -310,7 +312,7 @@ describe("Allowance", function () {
         notary, ledger, vault, tokenVault, coin, inbox, megaKey,
         events, trustee, keyOracle, alarmClock, creator, allowance,
         owner, root, second, third} = await loadFixture(TrustTestFixtures.addedAllowance);
-      await expect(await allowance.connect(root).createAllowance(0, 1, 1, 100, 100, [{
+      await expect(await allowance.connect(root).createAllowance(0, stb('chores'), 1, 1, 100, 100, [{
         sourceKey: 0,
         arn: ethArn(),
         provider: vault.address,
@@ -332,7 +334,7 @@ describe("Allowance", function () {
         notary, ledger, vault, tokenVault, coin, inbox, megaKey,
         events, trustee, keyOracle, alarmClock, creator, allowance,
         owner, root, second, third} = await loadFixture(TrustTestFixtures.addedAllowance);
-      await expect(await allowance.connect(root).createAllowance(0, 1, 1, 100, 100, [{
+      await expect(await allowance.connect(root).createAllowance(0, stb('chores'), 1, 1, 100, 100, [{
         sourceKey: 0,
         arn: ethArn(),
         provider: vault.address,
@@ -346,21 +348,21 @@ describe("Allowance", function () {
       var allowanceId = (await allowance.getKeyAllowances([bn(1)]))[0][0][0];
       
       let a = await allowance.getAllowance(allowanceId);
-      expect(a[0][3]).eql(bn(1));   // remainingTrancheCount
+      expect(a[0][4]).eql(bn(1));   // remainingTrancheCount
 
       // increase the tranche count
       await expect(allowance.connect(root).setTrancheCount(allowanceId,2))
         .to.emit(allowance, 'allowanceTrancheCountChanged')
         .withArgs(root.address, allowanceId, 2);
       a = await allowance.getAllowance(allowanceId);
-      expect(a[0][3]).eql(bn(2));   // remainingTrancheCount
+      expect(a[0][4]).eql(bn(2));   // remainingTrancheCount
 
       // decrease the tranche count
       await expect(allowance.connect(root).setTrancheCount(allowanceId,0))
         .to.emit(allowance, 'allowanceTrancheCountChanged')
         .withArgs(root.address, allowanceId, 0);
       a = await allowance.getAllowance(allowanceId);
-      expect(a[0][3]).eql(bn(0));   // remainingTrancheCount
+      expect(a[0][4]).eql(bn(0));   // remainingTrancheCount
     });
   });
 
@@ -373,7 +375,7 @@ describe("Allowance", function () {
         notary, ledger, vault, tokenVault, coin, inbox, megaKey,
         events, trustee, keyOracle, alarmClock, creator, allowance,
         owner, root, second, third} = await loadFixture(TrustTestFixtures.addedAllowance);
-      await expect(await allowance.connect(root).createAllowance(0, 1, 1, 100, 100, [{
+      await expect(await allowance.connect(root).createAllowance(0, stb('chores'), 1, 1, 100, 100, [{
         sourceKey: 0,
         arn: ethArn(),
         provider: vault.address,
@@ -395,7 +397,7 @@ describe("Allowance", function () {
         events, trustee, keyOracle, alarmClock, creator, allowance,
         owner, root, second, third} = await loadFixture(TrustTestFixtures.addedAllowance);
       
-      await expect(await allowance.connect(root).createAllowance(0, 1, 1, 100, 100, [{
+      await expect(await allowance.connect(root).createAllowance(0, stb('chores'), 1, 1, 100, 100, [{
         sourceKey: 0,
         arn: ethArn(),
         provider: vault.address,
@@ -417,7 +419,7 @@ describe("Allowance", function () {
         notary, ledger, vault, tokenVault, coin, inbox, megaKey,
         events, trustee, keyOracle, alarmClock, creator, allowance,
         owner, root, second, third} = await loadFixture(TrustTestFixtures.addedAllowance);
-      await expect(await allowance.connect(root).createAllowance(0, 1, 1, 100, 100, [{
+      await expect(await allowance.connect(root).createAllowance(0, stb('chores'), 1, 1, 100, 100, [{
         sourceKey: 0,
         arn: ethArn(),
         provider: vault.address,
@@ -440,10 +442,10 @@ describe("Allowance", function () {
       var a = await allowance.getAllowance(allowanceId);
       expect(a[0][0]).eql(false); // enabled
       expect(a[0][1]).eql(bn(0)); // rootKeyId
-      expect(a[0][2]).eql(bn(0)); // recipientKeyId
-      expect(a[0][3]).eql(bn(0)); // remainingTrancheCount
-      expect(a[0][4]).eql(bn(0)); // vestingInterval
-      expect(a[0][5]).eql(bn(0)); // nextVestTime
+      expect(a[0][3]).eql(bn(0)); // recipientKeyId
+      expect(a[0][4]).eql(bn(0)); // remainingTrancheCount
+      expect(a[0][5]).eql(bn(0)); // vestingInterval
+      expect(a[0][6]).eql(bn(0)); // nextVestTime
       expect(a[1].length).eql(0); // events
       expect(a[2].length).eql(0); // no entitlements
     });
@@ -458,7 +460,7 @@ describe("Allowance", function () {
         notary, ledger, vault, tokenVault, coin, inbox, megaKey,
         events, trustee, keyOracle, alarmClock, creator, allowance,
         owner, root, second, third} = await loadFixture(TrustTestFixtures.addedAllowance);
-      await expect(await allowance.connect(root).createAllowance(0, 1, 1, 100, 100, [{
+      await expect(await allowance.connect(root).createAllowance(0, stb('chores'), 1, 1, 100, 100, [{
         sourceKey: 0,
         arn: ethArn(),
         provider: vault.address,
@@ -482,7 +484,7 @@ describe("Allowance", function () {
         notary, ledger, vault, tokenVault, coin, inbox, megaKey,
         events, trustee, keyOracle, alarmClock, creator, allowance,
         owner, root, second, third} = await loadFixture(TrustTestFixtures.addedAllowance);
-      await expect(await allowance.connect(root).createAllowance(0, 1, 1, 100, (await now()) + 50000, [{
+      await expect(await allowance.connect(root).createAllowance(0, stb('chores'), 1, 1, 100, (await now()) + 50000, [{
         sourceKey: 0,
         arn: ethArn(),
         provider: vault.address,
@@ -504,7 +506,7 @@ describe("Allowance", function () {
         notary, ledger, vault, tokenVault, coin, inbox, megaKey,
         events, trustee, keyOracle, alarmClock, creator, allowance,
         owner, root, second, third} = await loadFixture(TrustTestFixtures.addedAllowance);
-      await expect(await allowance.connect(root).createAllowance(0, 1, 1, 100, (await now()) - 50000, [{
+      await expect(await allowance.connect(root).createAllowance(0, stb('chores'), 1, 1, 100, (await now()) - 50000, [{
         sourceKey: 0,
         arn: ethArn(),
         provider: vault.address,
@@ -532,7 +534,7 @@ describe("Allowance", function () {
         notary, ledger, vault, tokenVault, coin, inbox, megaKey,
         events, trustee, keyOracle, alarmClock, creator, allowance,
         owner, root, second, third} = await loadFixture(TrustTestFixtures.addedAllowance);
-      await expect(await allowance.connect(root).createAllowance(0, 1, 1, 100, (await now()) - 50000, [{
+      await expect(await allowance.connect(root).createAllowance(0, stb('chores'), 1, 1, 100, (await now()) - 50000, [{
         sourceKey: 0,
         arn: ethArn(),
         provider: vault.address,
@@ -556,7 +558,7 @@ describe("Allowance", function () {
         events, trustee, keyOracle, alarmClock, creator, allowance,
         owner, root, second, third} = await loadFixture(TrustTestFixtures.addedAllowance);
       var time = await now();
-      await expect(await allowance.connect(root).createAllowance(0, 1, 100, 100, time, [{
+      await expect(await allowance.connect(root).createAllowance(0, stb('chores'), 1, 100, 100, time, [{
         sourceKey: 0,
         arn: ethArn(),
         provider: vault.address,
@@ -579,7 +581,7 @@ describe("Allowance", function () {
         events, trustee, keyOracle, alarmClock, creator, allowance,
         owner, root, second, third} = await loadFixture(TrustTestFixtures.addedAllowance);
       var time = await now();
-      await expect(await allowance.connect(root).createAllowance(0, 1, 100, 100, time, [{
+      await expect(await allowance.connect(root).createAllowance(0, stb('chores'), 1, 100, 100, time, [{
         sourceKey: 0,
         arn: ethArn(),
         provider: vault.address,
@@ -638,7 +640,7 @@ describe("Allowance", function () {
       await events.connect(owner).registerTrustEvent(0, innerHash, stb('stub-event'));
 
       var time = await now();
-      await expect(await allowance.connect(root).createAllowance(0, 1, 100, 100, time, [{
+      await expect(await allowance.connect(root).createAllowance(0, stb('chores'), 1, 100, 100, time, [{
         sourceKey: 0,
         arn: ethArn(),
         provider: vault.address,
@@ -682,7 +684,7 @@ describe("Allowance", function () {
         events, trustee, keyOracle, alarmClock, creator, allowance,
         owner, root, second, third} = await loadFixture(TrustTestFixtures.addedAllowance);
       var time = (await now()) - 101;
-      await expect(await allowance.connect(root).createAllowance(0, 1, 2, 100, time, [{
+      await expect(await allowance.connect(root).createAllowance(0, stb('chores'), 1, 2, 100, time, [{
         sourceKey: 0,
         arn: ethArn(),
         provider: vault.address,
@@ -711,8 +713,8 @@ describe("Allowance", function () {
       var a = await allowance.getAllowance(aid);
       expect(a[0][0]).eql(true); // enabled
       expect(a[0][1]).eql(bn(0)); // rootKeyId
-      expect(a[0][2]).eql(bn(1)); // recipientKeyId
-      expect(a[0][3]).eql(bn(0)); // remainingTrancheCount
+      expect(a[0][3]).eql(bn(1)); // recipientKeyId
+      expect(a[0][4]).eql(bn(0)); // remainingTrancheCount
     });
     
     it("Some Tranches Rewarded due to how much", async function() {
@@ -721,7 +723,7 @@ describe("Allowance", function () {
         events, trustee, keyOracle, alarmClock, creator, allowance,
         owner, root, second, third} = await loadFixture(TrustTestFixtures.addedAllowance);
       var time = (await now()) - 10000;
-      await expect(await allowance.connect(root).createAllowance(0, 1, 100, 100, time, [{
+      await expect(await allowance.connect(root).createAllowance(0, stb('chores'), 1, 100, 100, time, [{
         sourceKey: 0,
         arn: ethArn(),
         provider: vault.address,
@@ -750,8 +752,8 @@ describe("Allowance", function () {
       var a = await allowance.getAllowance(aid);
       expect(a[0][0]).eql(true);  // enabled
       expect(a[0][1]).eql(bn(0)); // rootKeyId
-      expect(a[0][2]).eql(bn(1)); // recipientKeyId
-      expect(a[0][3]).eql(bn(95)); // remainingTrancheCount
+      expect(a[0][3]).eql(bn(1)); // recipientKeyId
+      expect(a[0][4]).eql(bn(95)); // remainingTrancheCount
     });
   });
 });

@@ -109,6 +109,7 @@ contract Allowance is IAllowance, Initializable, OwnableUpgradeable, UUPSUpgrade
      * The root key holder calls this method to create an allowance.
      *
      * @param rootKeyId      the root key the message sender is declaring use of
+     * @param name           the bytes32 encoded name of the allowance, for human display
      * @param recipientKeyId the key that will be able to redeem the allowance
      * @param trancheCount   the number of tranches for this allowance
      * @param vestInterval   the period of time in between each entitlement tranche
@@ -117,7 +118,7 @@ contract Allowance is IAllowance, Initializable, OwnableUpgradeable, UUPSUpgrade
      * @param events         an array of event hashes that are required for allowance activation
      * @return the unique identifier for this particular allowance instance.
      */
-    function createAllowance(uint256 rootKeyId, uint256 recipientKeyId, uint256 trancheCount, uint256 vestInterval,
+    function createAllowance(uint256 rootKeyId, bytes32 name, uint256 recipientKeyId, uint256 trancheCount, uint256 vestInterval,
         uint256 firstVestTime, Entitlement[] memory entitlements, bytes32[] calldata events) external returns (bytes32) {
 
         uint256 trustId;
@@ -151,6 +152,7 @@ contract Allowance is IAllowance, Initializable, OwnableUpgradeable, UUPSUpgrade
             // create the allowance, index it by key 
             Allowance storage a = allowances[allowanceId];
             a.rootKeyId = rootKeyId;
+            a.allowanceName = name;
             a.recipientKeyId = recipientKeyId;
             a.remainingTrancheCount = trancheCount;
             a.vestingInterval = vestInterval;
@@ -169,11 +171,12 @@ contract Allowance is IAllowance, Initializable, OwnableUpgradeable, UUPSUpgrade
             }
             a.enabled = (events.length == 0);
             keyAllowances[recipientKeyId].add(allowanceId);
+        
+            // emit event
+            emit allowanceCreated(msg.sender, allowanceId, a.requiredEvents, a.rootKeyId,
+                a.recipientKeyId, a.remainingTrancheCount, a.vestingInterval, a.nextVestTime, a.entitlements);
         }
 
-        // emit event
-        emit allowanceCreated(msg.sender, allowanceId, events, rootKeyId,
-            recipientKeyId, trancheCount, vestInterval, firstVestTime, entitlements);
 
         return allowanceId;
     }

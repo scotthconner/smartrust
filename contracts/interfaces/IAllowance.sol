@@ -42,6 +42,7 @@ interface IAllowance {
     struct Allowance {
         bool          enabled;               // whether or not the allowance is activated
         uint256       rootKeyId;             // the owner of the configuration
+        bytes32       allowanceName;         // a human readable description of the allowance name
         uint256       recipientKeyId;        // the beneficiary of the allowance
         uint256       remainingTrancheCount; // the number of vestings that are left
         uint256       vestingInterval;       // how long the allowance period is
@@ -134,6 +135,7 @@ interface IAllowance {
      * The root key holder calls this method to create an allowance.
      *
      * @param rootKeyId      the root key the message sender is declaring use of
+     * @param name           the name of the allowance, human readable but encoded
      * @param recipientKeyId the key that will be able to redeem the allowance
      * @param trancheCount   the number of tranches for this allowance
      * @param vestInterval   the period of time in between each entitlement tranche
@@ -142,7 +144,7 @@ interface IAllowance {
      * @param events         an array of event Ids that must be fired for allowance activation
      * @return the unique identifier for this particular allowance instance.
      */
-    function createAllowance(uint256 rootKeyId, uint256 recipientKeyId, uint256 trancheCount, uint256 vestInterval,
+    function createAllowance(uint256 rootKeyId, bytes32 name, uint256 recipientKeyId, uint256 trancheCount, uint256 vestInterval,
         uint256 firstVestTime, Entitlement[] calldata entitlements, bytes32[] calldata events) external returns (bytes32);
 
     /**
