@@ -330,6 +330,8 @@ task("deploy", "Deploy a specific contract generating a new address for it.")
       const deployment = await upgrades.upgradeProxy(currentAddress, contract, {
         timeout: 180000
       });
+      LocksmithRegistry.saveContractCodeHash(chainId, taskArgs['contract'], localCodeHash);
+      console.log(greenText, "The code hash been saved as well: " + localCodeHash); 
       console.log("Upgrade complete!");
     } else {
       // nah, just a standard deloyment. forced or otherwise.
@@ -408,4 +410,24 @@ task("assets", "Degenerately spam the network with ERC20s.")
     await run("shadow", {alias: 'dai', ticker: 'DAI', amount: 100000});
     await run("shadow", {alias: 'usdc', ticker: 'USDC', amount: 100000});
     await run("shadow", {alias: 'link', ticker: 'LINK', amount: 100000});
+  });
+
+task("blast", "Degenerately deploy the entire platform, assuming a clean slate.")
+  .setAction(async (taskArgs) => {
+    await run("deploy", {contract: 'KeyVault'});
+    await run("deploy", {contract: 'Locksmith'});
+    await run("deploy", {contract: 'Notary'});
+    await run("deploy", {contract: 'Ledger'});
+    await run("deploy", {contract: 'EtherVault'});
+    await run("deploy", {contract: 'TokenVault'});
+    await run("deploy", {contract: 'TrustEventLog'});
+    await run("deploy", {contract: 'AlarmClock'});
+    await run("deploy", {contract: 'KeyOracle'});
+    await run("deploy", {contract: 'Trustee'});
+    await run("deploy", {contract: 'Allowance'});
+    await run("deploy", {contract: 'PostOffice'});
+    await run("deploy", {contract: 'KeyAddressFactory'});
+    await run("deploy", {contract: 'MegaKeyCreator'});
+    await run("deploy", {contract: 'TrustCreator'});
+    await run("respect");
   });

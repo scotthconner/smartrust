@@ -452,7 +452,7 @@ describe("Allowance", function () {
   });
 
   ////////////////////////////////////////////////////////////
-  // Removing Allowances
+  // Redeeming Allowances
   ////////////////////////////////////////////////////////////
   describe("Allowance Redemption", function () {
     it("Allowance ID must be valid and hold root key", async function() {
@@ -663,6 +663,10 @@ describe("Allowance", function () {
 
       // check state
       expect(await events.firedEvents(hash)).eql(true);
+
+      // check the async enablement of the event before redeeming
+      var a = await allowance.getAllowance(aid);
+      expect(a[0][0]).eql(true); // enabled
 
       // a single tranche was awarded
       await expect(allowance.connect(owner).redeemAllowance(aid))

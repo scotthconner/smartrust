@@ -262,7 +262,19 @@ contract Allowance is IAllowance, Initializable, OwnableUpgradeable, UUPSUpgrade
      * @return the entitlements
      */
     function getAllowance(bytes32 allowanceId) external view returns(Allowance memory, bytes32[] memory, Entitlement[] memory) {
-        Allowance storage a = allowances[allowanceId];
+        Allowance memory a = allowances[allowanceId];
+
+        // check to see if the events have fired async and havent been written yet
+        // also check the requiredEvents length so we don't return 'true' on
+        // a deleted or invalid allowance
+        uint256 enabledCount;
+        if(!a.enabled && a.requiredEvents.length > 0) {
+            for(uint256 x = 0; x < a.requiredEvents.length; x++) {
+                enabledCount += trustEventLog.firedEvents(a.requiredEvents[x]) ? 1 : 0;
+            }
+            a.enabled = (enabledCount == a.requiredEvents.length);
+        }
+        
         return (a, a.requiredEvents, a.entitlements);
     }
 
