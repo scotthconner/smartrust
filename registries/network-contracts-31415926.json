@@ -1,0 +1,26 @@
+{
+  "KeyVault": {
+    "address": "0x59fb2cC4De8Df6b7eA8a1ddA1A0BCA016323225F",
+    "codeHash": "0x1eafc5c903f99fbc6de04c176c3838e5dc19803ec8309b94f678c2ad762b46a5"
+  },
+  "Locksmith": {
+    "address": "0x257E4111fE522fDa9B8784E89161d453bC00A2b0",
+    "codeHash": "0x91615dfc2e4979b12cf21c7e6a5ef9408bf21ae2c42d2c18bfd3b07061a31bf6"
+  },
+  "Notary": {
+    "address": "0x8347aE73275e507d2f8d5680A32277307F0D7f15",
+    "codeHash": "0x5dcd045e2e046024276b653c8492f19b7d178ab66fd3f8c097975714d93eae15"
+  },
+  "Ledger": {
+    "address": "0xf29EB97993ED23E91AD541eDeD7F197423891Fc6",
+    "codeHash": "0x380f6343f08340f60a9d409f4edcea47c951592b090efa7cd1decee47c439660"
+  },
+  "EtherVault": {
+    "address": "0x097A928993aC56b2E189cbf2b1467B88715119b8",
+    "codeHash": "0xbb34b5b4037613d523d3850f139c4885c1b93665ce3617b5278a338a90053c7c"
+  },
+  "TokenVault": {
+    "address": "0x8DE944610a3c97a6A9aa3d09103320153BFf2aAA",
+    "codeHash": "0xad40528090cf678bd5394df2e882eb2430750905da04bc50356714d501c9aa55"
+  }
+}

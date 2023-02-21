@@ -1,0 +1,23 @@
+{
+  "ShadowERC": {
+    "address": "0x5Ecb4F2B39806079b1C9e8DB91c76169A6cEAed2"
+  },
+  "matic": {
+    "address": "0x13d51cE523CEB35e379077025fbA51E524Be0F3c"
+  },
+  "avax": {
+    "address": "0x7FdF6Ce4FCb8F97162FC7fa96eBcB5CB6cf67933"
+  },
+  "grt": {
+    "address": "0xBD501846c94A577F73789fcE40B164de7Db202E8"
+  },
+  "dai": {
+    "address": "0x8c1c498B059bAf6332115078004161B2868e3b18"
+  },
+  "usdc": {
+    "address": "0x20E730F742eE81ed742647F8A68abF64E793225D"
+  },
+  "link": {
+    "address": "0x7B1828Da93cd4E5059D4Fa11983981b6c06dDa4D"
+  }
+}

@@ -50,6 +50,10 @@ module.exports = {
     hyperspace: {
       url: 'https://api.hyperspace.node.glif.io/rpc/v1',
       accounts: [`${process.env.MY_PRIVATE_KEY}`],
-    }
+    },
+    calibration: {
+      url: 'https://api.calibration.node.glif.io/rpc/v1',
+      accounts: [`${process.env.MY_PRIVATE_KEY}`],
+    },
   }
 };
