@@ -263,18 +263,7 @@ contract Allowance is IAllowance, Initializable, OwnableUpgradeable, UUPSUpgrade
      */
     function getAllowance(bytes32 allowanceId) external view returns(Allowance memory, bytes32[] memory, Entitlement[] memory) {
         Allowance memory a = allowances[allowanceId];
-
-        // check to see if the events have fired async and havent been written yet
-        // also check the requiredEvents length so we don't return 'true' on
-        // a deleted or invalid allowance
-        uint256 enabledCount;
-        if(!a.enabled && a.requiredEvents.length > 0) {
-            for(uint256 x = 0; x < a.requiredEvents.length; x++) {
-                enabledCount += trustEventLog.firedEvents(a.requiredEvents[x]) ? 1 : 0;
-            }
-            a.enabled = (enabledCount == a.requiredEvents.length);
-        }
-        
+        a.enabled = isReadOnlyEnabled(a);
         return (a, a.requiredEvents, a.entitlements);
     }
 
@@ -284,6 +273,35 @@ contract Allowance is IAllowance, Initializable, OwnableUpgradeable, UUPSUpgrade
     // The recipient would call these methods to interact with the
     // allowance.
     ////////////////////////////////////////////////////////
+
+    /**
+     * getRedeemableTrancheCount
+     *
+     * This method will determine the number of tranches
+     * that are available and solvent for redemption.
+     *
+     * @param allowanceId the allowance to introspect
+     * @return the number of tranches that are available and solvent for payment.
+     */
+    function getRedeemableTrancheCount(bytes32 allowanceId) public view returns (uint256) {
+        // get the allowance
+        Allowance storage a = allowances[allowanceId];
+
+        // likely invalid allowance ID
+        if (a.entitlements.length < 1) { return 0; }
+
+        // make sure that it is enabled
+        if (!isReadOnlyEnabled(a)) { return 0; }
+
+        // make sure that it is time for a distribution
+        if (block.timestamp < a.nextVestTime) { return 0; }
+
+        // if its exhausted, then the answer is zero 
+        if (a.remainingTrancheCount == 0) { return 0; }
+
+        // return the number of solvent tranches
+        return getSolventTrancheCount(a);
+    }
 
     /**
      * redeemAllowance
@@ -317,32 +335,15 @@ contract Allowance is IAllowance, Initializable, OwnableUpgradeable, UUPSUpgrade
         // ensure that all requisite events have fired.
         ensureEventActivation(a);
 
-        // calculate the number of tranches that can be redeemed
-        // from a logical stand-point.
-        uint256 tranches = min(1 + ((block.timestamp - a.nextVestTime) / a.vestingInterval), 
-            a.remainingTrancheCount);
-
-        // for each entitlement, determine the max number
-        // of tranches that can be afforded across all of them.
-        // this enables the caller to redeem as many FULL tranches
-        // as the source keys can afford, without failing the transaction.
-        uint256 minTrancheFound = tranches;
-        for(uint256 x = 0; x < a.entitlements.length; x ++) {
-            // get the source key's balance for the entitlement from the ledger
-            // and determine the number of tranches they can afford
-            bytes32[] memory arns = new bytes32[](1);
-            arns[0] = a.entitlements[x].arn;
-            uint256[] memory balances = ledger.getContextArnBalances(2, a.entitlements[x].sourceKey,
-                a.entitlements[x].provider, arns); 
-            minTrancheFound = min(minTrancheFound, balances[0] / a.entitlements[x].amount);
-        }
+        // determine the solvent tranches available
+        uint256 solventTranches = getSolventTrancheCount(a);
 
         // make sure at least one tranche can be afforded
-        require(minTrancheFound > 0, 'UNAFFORDABLE_DISTRIBUTION');
+        require(solventTranches > 0, 'UNAFFORDABLE_DISTRIBUTION');
 
         // store the new state before doing any distribution
-        a.remainingTrancheCount -= minTrancheFound;
-        a.nextVestTime += minTrancheFound * a.vestingInterval;
+        a.remainingTrancheCount -= solventTranches;
+        a.nextVestTime += solventTranches * a.vestingInterval;
 
         // distribute out each asset in the allowance, multiplied
         // by the number of tranches we can afford to reward 
@@ -350,14 +351,14 @@ contract Allowance is IAllowance, Initializable, OwnableUpgradeable, UUPSUpgrade
         uint256[] memory amount = new uint256[](1);
         key[0] = a.recipientKeyId;
         for(uint256 x = 0; x < a.entitlements.length; x++) {
-            amount[0] = a.entitlements[x].amount * minTrancheFound;
+            amount[0] = a.entitlements[x].amount * solventTranches;
             ledger.distribute(a.entitlements[x].provider,
                 a.entitlements[x].arn, a.entitlements[x].sourceKey, 
                 key, amount);
         }
 
         // emit the event
-        emit allowanceAwarded(msg.sender, allowanceId, minTrancheFound, a.nextVestTime);
+        emit allowanceAwarded(msg.sender, allowanceId, solventTranches, a.nextVestTime);
     }
     
     ////////////////////////////////////////////////////////
@@ -386,6 +387,64 @@ contract Allowance is IAllowance, Initializable, OwnableUpgradeable, UUPSUpgrade
                 "KEY_NOT_HELD");
 
         return a;
+    }
+
+    /**
+     * getSolventTrancheCount
+     *
+     * Only call this method if you are certain it is "time"
+     * for a tranche to be redeemed and the available tranches
+     * for redemption is non-zero from a logical basis.
+     *
+     * @param a the allowance in question
+     * @return the number of solvent tranches that can be serviced by the allowance.
+     */
+    function getSolventTrancheCount(Allowance memory a) internal view returns (uint256) {
+        // calculate the number of tranches that can be redeemed
+        // from a logical stand-point.
+        uint256 minTrancheFound = min(1 + ((block.timestamp - a.nextVestTime) / a.vestingInterval),
+            a.remainingTrancheCount);
+
+        // for each entitlement, determine the max number
+        // of tranches that can be afforded across all of them.
+        // this enables the caller to redeem as many FULL tranches
+        // as the source keys can afford, without failing the transaction.
+        for(uint256 x = 0; x < a.entitlements.length; x ++) {
+            // get the source key's balance for the entitlement from the ledger
+            // and determine the number of tranches they can afford
+            bytes32[] memory arns = new bytes32[](1);
+            arns[0] = a.entitlements[x].arn;
+            uint256[] memory balances = ledger.getContextArnBalances(2, a.entitlements[x].sourceKey,
+                a.entitlements[x].provider, arns);
+            minTrancheFound = min(minTrancheFound, balances[0] / a.entitlements[x].amount);
+        }
+
+        return minTrancheFound;
+    }
+
+    /**
+     * isReadOnlyEnabled
+     *
+     * This method is called during read only methods 
+     * to determine if all the required events have fired.
+     *
+     * @param a the allowance in question.
+     * @return true if enabled, false otherwise.
+     */
+    function isReadOnlyEnabled(Allowance memory a) internal view returns (bool) {
+        // if we are already written as enabled, then its done.
+        if (a.enabled) { return true; }
+
+        // check each event for completion, returning false if one isn't fired.
+        for(uint256 x = 0; x < a.requiredEvents.length; x++) {
+            if (!trustEventLog.firedEvents(a.requiredEvents[x])) {
+                return false;
+            }
+        }
+
+        // also handle the case where the entire allowance is invalid.
+        // if we've reached here, is either invalid, or async enabled.
+        return a.entitlements.length > 0;
     }
 
     /**

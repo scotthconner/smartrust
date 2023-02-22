@@ -473,6 +473,7 @@ describe("Allowance", function () {
       }],[])).to.emit(allowance, 'allowanceCreated');
       var allowanceId = (await allowance.getKeyAllowances([bn(1)]))[0][0][0];
 
+      await expect(await allowance.getRedeemableTrancheCount(stb('fake'))).eql(bn(0));
       await expect(allowance.connect(root).redeemAllowance(stb('fake')))
         .to.be.revertedWith('INVALID_ALLOWANCE_ID');
       await expect(allowance.connect(second).redeemAllowance(allowanceId))
@@ -497,6 +498,7 @@ describe("Allowance", function () {
       }],[])).to.emit(allowance, 'allowanceCreated');
       let aid = (await allowance.getKeyAllowances([bn(1)]))[0][0][0];
 
+      await expect(await allowance.getRedeemableTrancheCount(aid)).eql(bn(0));
       await expect(allowance.connect(owner).redeemAllowance(aid))
         .to.be.revertedWith('TOO_EARLY');
     });
@@ -525,6 +527,7 @@ describe("Allowance", function () {
         .withArgs(root.address, aid, 0);
 
       // there won't be any tranches
+      await expect(await allowance.getRedeemableTrancheCount(aid)).eql(bn(0));
       await expect(allowance.connect(owner).redeemAllowance(aid))
         .to.be.revertedWith('ALLOWANCE_EXHAUSTED');
     });
@@ -548,6 +551,7 @@ describe("Allowance", function () {
       let aid = (await allowance.getKeyAllowances([bn(1)]))[0][0][0];
 
       // there won't be any tranches
+      await expect(await allowance.getRedeemableTrancheCount(aid)).eql(bn(0));
       await expect(allowance.connect(owner).redeemAllowance(aid))
         .to.be.revertedWith('MISSING_EVENT');
     });
@@ -571,6 +575,7 @@ describe("Allowance", function () {
       }],[])).to.emit(allowance, 'allowanceCreated');
       let aid = (await allowance.getKeyAllowances([bn(1)]))[0][0][0];
 
+      await expect(await allowance.getRedeemableTrancheCount(aid)).eql(bn(0));
       await expect(allowance.connect(owner).redeemAllowance(aid))
         .to.be.revertedWith('UNAFFORDABLE_DISTRIBUTION');
     });
@@ -601,6 +606,7 @@ describe("Allowance", function () {
       expect(await ledger.getContextArnBalances(KEY(), 1, tokenVault.address, [tokenArn(coin.address)])).eql([eth(0)]);
 
       // a single tranche was awarded 
+      await expect(await allowance.getRedeemableTrancheCount(aid)).eql(bn(1));
       await expect(allowance.connect(owner).redeemAllowance(aid))
         .to.emit(allowance, 'allowanceAwarded')
         .withArgs(owner.address, aid, 1, time + 100)
@@ -669,7 +675,8 @@ describe("Allowance", function () {
       expect(a[0][0]).eql(true); // enabled
 
       // a single tranche was awarded
-      await expect(allowance.connect(owner).redeemAllowance(aid))
+      await expect(await allowance.getRedeemableTrancheCount(aid)).eql(bn(1));
+      await expect(await allowance.connect(owner).redeemAllowance(aid))
         .to.emit(allowance, 'allowanceAwarded')
         .withArgs(owner.address, aid, 1, time + 100)
         .to.emit(notary, 'notaryDistributionApproval')
@@ -701,7 +708,8 @@ describe("Allowance", function () {
       }],[])).to.emit(allowance, 'allowanceCreated');
       let aid = (await allowance.getKeyAllowances([bn(1)]))[0][0][0];
 
-      await expect(allowance.connect(owner).redeemAllowance(aid))
+      await expect(await allowance.getRedeemableTrancheCount(aid)).eql(bn(2));
+      await expect(await allowance.connect(owner).redeemAllowance(aid))
         .to.emit(allowance, 'allowanceAwarded')
         .withArgs(owner.address, aid, 2, time + 200)
         .to.emit(notary, 'notaryDistributionApproval')
@@ -740,7 +748,8 @@ describe("Allowance", function () {
       }],[])).to.emit(allowance, 'allowanceCreated');
       let aid = (await allowance.getKeyAllowances([bn(1)]))[0][0][0];
 
-       await expect(allowance.connect(owner).redeemAllowance(aid))
+      await expect(await allowance.getRedeemableTrancheCount(aid)).eql(bn(5)); 
+      await expect(await allowance.connect(owner).redeemAllowance(aid))
         .to.emit(allowance, 'allowanceAwarded')
         .withArgs(owner.address, aid, 5, time + 500)
         .to.emit(notary, 'notaryDistributionApproval')
