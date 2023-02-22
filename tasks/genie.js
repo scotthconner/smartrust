@@ -329,7 +329,6 @@ task("deploy", "Deploy a specific contract generating a new address for it.")
         ", [contract:" + taskArgs['contract'] + "])"); 
       const deployment = await upgrades.upgradeProxy(currentAddress, contract, {
         timeout: 180000,
-        kind: 'uups'
       });
       LocksmithRegistry.saveContractCodeHash(chainId, taskArgs['contract'], localCodeHash);
       console.log(greenText, "The code hash been saved as well: " + localCodeHash); 
