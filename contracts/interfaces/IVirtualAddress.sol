@@ -75,6 +75,13 @@ interface IVirtualAddress {
     ////////////////////////////////////////////////////////
 
     /**
+     * getVersion
+     *
+     * @return the version number of this inbox implementation.
+     */
+    function getVersion() external view returns (uint256);
+
+    /**
      * locksmith
      *
      * @return the locksmith that is used for key inspection

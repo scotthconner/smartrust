@@ -145,6 +145,15 @@ contract VirtualKeyAddress is IVirtualAddress, ERC1155Holder, Initializable, UUP
     ////////////////////////////////////////////////////////
 
     /**
+     * getVersion
+     *
+     * @return the version number of this inbox implementation.
+     */
+    function getVersion() external pure returns (uint256) {
+        return 1;
+    }
+
+    /**
      * getDefaultEthDepositProvider
      *
      * @return the address of the default IEtherCollateralProvider used for receiving ether payments

@@ -56,6 +56,9 @@ describe("VirtualKeyAddress", function () {
           [locksmith.address, vault.address, 0, 0]);
       await v2.deployed();
 
+      // detect the version bump
+      await expect(await inbox.getVersion()).gt(bn(0));
+
       expect(true);
     });
   });
