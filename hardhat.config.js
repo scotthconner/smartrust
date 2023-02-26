@@ -35,6 +35,10 @@ module.exports = {
       url: `${process.env.ALCHEMY_GOERLI_URL}`,
       accounts: [`${process.env.MY_PRIVATE_KEY}`],
     },
+    basegoerli: {
+      url: 'https://goerli.base.org',
+      accounts: [`${process.env.MY_PRIVATE_KEY}`],
+    },
     mumbai: {
       url: `${process.env.ALCHEMY_MUMBAI_URL}`,
       accounts: [`${process.env.MY_PRIVATE_KEY}`],

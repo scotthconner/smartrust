@@ -1,0 +1,62 @@
+{
+  "KeyVault": {
+    "address": "0x718CB9B43E9DdB697F82B7F69800EA1fCaFF239c",
+    "codeHash": "0x1eafc5c903f99fbc6de04c176c3838e5dc19803ec8309b94f678c2ad762b46a5"
+  },
+  "Locksmith": {
+    "address": "0x5e2918a472611f4e9eB50fF4064b63106770F6C3",
+    "codeHash": "0x91615dfc2e4979b12cf21c7e6a5ef9408bf21ae2c42d2c18bfd3b07061a31bf6"
+  },
+  "Notary": {
+    "address": "0x36fEeD6E4119EF282fa33cAd396f35140459024e",
+    "codeHash": "0x5dcd045e2e046024276b653c8492f19b7d178ab66fd3f8c097975714d93eae15"
+  },
+  "Ledger": {
+    "address": "0x9699370C4582a8aC69420c04ce28680e44DC0b8B",
+    "codeHash": "0x380f6343f08340f60a9d409f4edcea47c951592b090efa7cd1decee47c439660"
+  },
+  "EtherVault": {
+    "address": "0x1B720481A809CEF00956A46d1adC4B8F7eaf69AB",
+    "codeHash": "0xbb34b5b4037613d523d3850f139c4885c1b93665ce3617b5278a338a90053c7c"
+  },
+  "TokenVault": {
+    "address": "0x0Ac198fe62919f887a5f8FEe0B89c7F5fbaC12a0",
+    "codeHash": "0xad40528090cf678bd5394df2e882eb2430750905da04bc50356714d501c9aa55"
+  },
+  "TrustEventLog": {
+    "address": "0x1C2E7Cd98712c6d11E4f4A5Bd3A5167dB334dA75",
+    "codeHash": "0x92299c2a003352fcf02a933b8136cc6de61875276d84955f8bb2824186361677"
+  },
+  "AlarmClock": {
+    "address": "0x9b3c306a7f19797dd5380B5Cc069073B318aE766",
+    "codeHash": "0x9a5b0f5cd209d1dd6775848bc0decf96687e6507e9d4e27e33ba10dc20619f51"
+  },
+  "KeyOracle": {
+    "address": "0x8219ce9f581Be909a6AD82Fc69E0572890cb1B24",
+    "codeHash": "0xc9ef579618c05e3704e8a604832cb93c5f8dc88f453b843bd6c869fead181fe9"
+  },
+  "Trustee": {
+    "address": "0x18F05f0608A1C0EcFD19420F2bE964cB69ffB486",
+    "codeHash": "0x4e174b70c9dba3807f64dc9ca4ce510aeb825aa1a29540d7fdf7e0d5aa17aa19"
+  },
+  "Allowance": {
+    "address": "0xf17366f9bF80C032bFcB46E4b1f4F06a1D847A52",
+    "codeHash": "0x4f53ca2575e235ef40bcdb2ff2f2f58a39cc6120e19912627113a18ef4e7634c"
+  },
+  "PostOffice": {
+    "address": "0xeE16B5579EdC570b4B21c850E52C90145E40e492",
+    "codeHash": "0xcabefb45180276c0701a6d4f68c28dc992b5d610a3b2b50698a9e0d5ff619806"
+  },
+  "KeyAddressFactory": {
+    "address": "0x309C1D48b7AeabfE03b53d6dB0700E4B8ECd91Aa",
+    "codeHash": "0x4fecead210c36374dbb0a305c98e30f1db788384f1a1f08225cd57d72913214b"
+  },
+  "MegaKeyCreator": {
+    "address": "0x2DeA68eB5cA2A0F80eC4E75A7b91E6d824888d74",
+    "codeHash": "0xf74e319abb0ad312fee58155808fba710e60924db548569bbbb6493e895d2cf6"
+  },
+  "TrustCreator": {
+    "address": "0x1B0983F9de9e8F1b674198E427Cd45B1Cf646b65",
+    "codeHash": "0x29797486bbc8e918f9d2345db7f3ac8a024dd3012b78573b0ce2ab278359b4da"
+  }
+}

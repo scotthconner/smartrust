@@ -79,7 +79,7 @@ describe("VirtualKeyAddress", function () {
     });
 
     it("Send must have valid provider address", async function() {
-       const {keyVault, locksmith,
+      const {keyVault, locksmith,
         notary, ledger, vault, tokenVault, coin, inbox,
         events, trustee, keyOracle, alarmClock, creator,
         owner, root, second, third} = await loadFixture(TrustTestFixtures.addedInbox);
