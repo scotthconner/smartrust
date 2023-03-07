@@ -180,7 +180,7 @@ contract Notary is INotary, Initializable, OwnableUpgradeable, UUPSUpgradeable {
             require(!actorRegistry[ledger][trustId][role].contains(actor), 'REDUNDANT_PROVISION');
 
             // register them with the trust if not already done so
-            actorRegistry[ledger][trustId][role].add(actor);
+            assert(actorRegistry[ledger][trustId][role].add(actor));
 
             // set the alias
             actorAliases[ledger][trustId][role][actor] = actorAlias;
@@ -193,7 +193,7 @@ contract Notary is INotary, Initializable, OwnableUpgradeable, UUPSUpgradeable {
             // the provider isn't trusted at this moment to facilitate deposits
             // or withdrawals. Adding them back would re-enable their trusted
             // status. This is useful if a collateral provider is somehow compromised.
-            actorRegistry[ledger][trustId][role].remove(actor);
+            assert(actorRegistry[ledger][trustId][role].remove(actor));
         }
 
         // keep an entry for auditing purposes
@@ -338,7 +338,7 @@ contract Notary is INotary, Initializable, OwnableUpgradeable, UUPSUpgradeable {
         require(keys.length == amounts.length, "KEY_AMOUNT_SIZE_MISMATCH");
 
         // this method will fully panic if its not valid.
-        locksmith.validateKeyRing(trustId, keys, true);
+        assert(locksmith.validateKeyRing(trustId, keys, true));
 
         emit notaryDistributionApproval(msg.sender, provider, scribe,
             arn, trustId, sourceKeyId, keys, amounts);

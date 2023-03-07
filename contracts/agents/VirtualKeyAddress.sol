@@ -336,8 +336,8 @@ contract VirtualKeyAddress is IVirtualAddress, ERC1155Holder, Initializable, UUP
         ICollateralProvider(provider).arnWithdrawal(keyId, arn, amount);
 
         // and send it from here, to ... to.
-        IERC20(token).transfer(to, amount);
-
+        assert(IERC20(token).transfer(to, amount));
+        
         // record and emit entry 
         logTransaction(TxType.SEND, to, provider, arn, amount);
     }
@@ -372,13 +372,7 @@ contract VirtualKeyAddress is IVirtualAddress, ERC1155Holder, Initializable, UUP
         require(tokenBalance > 0, 'NO_TOKENS'); // no reason to waste gas
 
         // set the allowance for the vault to pull from here
-        IERC20(token).approve(provider, tokenBalance); 
-
-        // deposit the tokens from this contract into the provider 
-        p.deposit(keyId, token, tokenBalance);
-
-        // invariant control, we shouldn't have any tokens left
-        assert(IERC20(token).balanceOf(address(this)) == 0);
+        assert(IERC20(token).approve(provider, tokenBalance)); 
 
         // record and emit entry
         // note: this will record the "operator" as the key-holder
@@ -386,6 +380,9 @@ contract VirtualKeyAddress is IVirtualAddress, ERC1155Holder, Initializable, UUP
         //       accurate but solving this problem requires off-chain.
         logTransaction(TxType.RECEIVE, address(this), provider, arn, tokenBalance);
 
+        // deposit the tokens from this contract into the provider 
+        p.deposit(keyId, token, tokenBalance);
+        
         // return the swept balance to the caller
         return tokenBalance;
     }

@@ -146,13 +146,13 @@ contract EtherVault is IEtherCollateralProvider, Initializable, OwnableUpgradeab
         require(IKeyVault(locksmith.getKeyVault()).keyBalanceOf(msg.sender, keyId, false) > 0, 
             'KEY_NOT_HELD');
 
-        // track the deposit on the ledger, if trusted
-        (,,uint256 finalLedgerBalance) = ledger.deposit(keyId, ethArn, msg.value);
-
-        // once the ledger is updated, keep track of the ether balance
-        // here as well. we can't rely on address(this).balance due to
+        // keep track of the ether balance here as well.
+        // we can't rely on address(this).balance due to
         // self-destruct attacks
         etherBalance += msg.value;
+        
+        // track the deposit on the ledger, if trusted
+        (,,uint256 finalLedgerBalance) = ledger.deposit(keyId, ethArn, msg.value);
 
         // jam the vault if the ledger's balance 
         // provisions doesn't match the vault balance
@@ -215,11 +215,11 @@ contract EtherVault is IEtherCollateralProvider, Initializable, OwnableUpgradeab
         // stop right now if the message sender doesn't hold the key
         require(IKeyVault(locksmith.getKeyVault()).keyBalanceOf(msg.sender, keyId, false) > 0,
             'KEY_NOT_HELD');
-
+        
         // withdrawal from the ledger *first*. if there is an overdraft,
         // the entire transaction will revert.
         (,, uint256 finalLedgerBalance) = ledger.withdrawal(keyId, ethArn, amount);
-
+        
         // decrement the ether balance. We don't want to rely
         // on address(this).balance due to self-destruct attacks
         etherBalance -= amount;

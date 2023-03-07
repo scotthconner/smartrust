@@ -268,8 +268,8 @@ contract KeyVault is IKeyVault, ERC1155Upgradeable, UUPSUpgradeable {
 
             // lets keep track of each key that is moving
             if(from != address(0) && ((this.balanceOf(from, ids[x]) - amounts[x]) == 0)) {
-                addressKeys[from].remove(ids[x]);
-                keyHolders[ids[x]].remove(from);
+                assert(addressKeys[from].remove(ids[x]));
+                assert(keyHolders[ids[x]].remove(from));
             }
             if(to != address(0) && ((this.balanceOf(to, ids[x]) + amounts[x]) > 0)) {
                 addressKeys[to].add(ids[x]);

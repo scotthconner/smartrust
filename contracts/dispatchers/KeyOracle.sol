@@ -177,7 +177,7 @@ contract KeyOracle is Initializable, OwnableUpgradeable, UUPSUpgradeable {
 
         // if we get this far, we know its not a duplicate. Store it
         // here for introspection.
-        oracleKeyEvents[keyId].add(finalHash);
+        assert(oracleKeyEvents[keyId].add(finalHash));
         eventKeys[finalHash] = keyId;
 
         // emit the oracle creation event

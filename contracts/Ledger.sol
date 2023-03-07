@@ -335,7 +335,7 @@ contract Ledger is ILedger, Initializable, OwnableUpgradeable, UUPSUpgradeable {
         // to save on gas, we aren't doing a withdrawal against the root for
         // each key. It's super important not to leave this contract as we could
         // end up with a re-entrancy attack.
-        uint256 moveSum;
+        uint256 moveSum = 0;
         for(uint256 x = 0; x < keys.length; x++) {
             // you would expect the notary to check that the source and
             // desintation key are different, but the notary

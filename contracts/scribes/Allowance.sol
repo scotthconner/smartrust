@@ -121,7 +121,7 @@ contract Allowance is IAllowance, Initializable, OwnableUpgradeable, UUPSUpgrade
     function createAllowance(uint256 rootKeyId, bytes32 name, uint256 recipientKeyId, uint256 trancheCount, uint256 vestInterval,
         uint256 firstVestTime, Entitlement[] memory entitlements, bytes32[] calldata events) external returns (bytes32) {
 
-        uint256 trustId;
+        uint256 trustId = 0;
         { 
             // inspect the key they are holding and ensure its root
             (,,uint256 tid, bool isRoot,) = locksmith.inspectKey(rootKeyId);
@@ -170,7 +170,7 @@ contract Allowance is IAllowance, Initializable, OwnableUpgradeable, UUPSUpgrade
                 a.entitlements.push(entitlements[x]);
             }
             a.enabled = (events.length == 0);
-            keyAllowances[recipientKeyId].add(allowanceId);
+            assert(keyAllowances[recipientKeyId].add(allowanceId));
         
             // emit event
             emit allowanceCreated(msg.sender, allowanceId, a.requiredEvents, a.rootKeyId,
@@ -214,7 +214,7 @@ contract Allowance is IAllowance, Initializable, OwnableUpgradeable, UUPSUpgrade
         Allowance storage a = getRootAllowance(allowanceId); 
 
         // remove the key reference
-        keyAllowances[a.recipientKeyId].remove(allowanceId);
+        assert(keyAllowances[a.recipientKeyId].remove(allowanceId));
 
         // remove the array storage
         delete a.entitlements;

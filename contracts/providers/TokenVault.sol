@@ -160,10 +160,18 @@ contract TokenVault is ITokenCollateralProvider, Initializable, OwnableUpgradeab
         require(IERC20(token).balanceOf(msg.sender) >= amount,
             "INSUFFICIENT_TOKENS");
         
+        // increment the witnessed token balance
+        tokenBalances[token] += amount;
+        
+        // update the witnessed token addresses, so we can easily describe
+        // the trust-level tokens in this vault.
+        (,,uint256 trustId,,) = locksmith.inspectKey(keyId);
+        witnessedTokenAddresses[trustId].add(token);
+        
         // transfer tokens in the target token contract. if the
         // control flow ever got back into the callers hands
         // before modifying the ledger we could end up re-entrant.
-        IERC20(token).transferFrom(msg.sender, address(this), amount);
+        assert(IERC20(token).transferFrom(msg.sender, address(this), amount));
 
         // track the deposit on the ledger
         // this could revert for a few reasons:
@@ -171,17 +179,9 @@ contract TokenVault is ITokenCollateralProvider, Initializable, OwnableUpgradeab
         // - the vault is not a trusted collateral provider the ledger
         (,,uint256 finalLedgerBalance) = ledger.deposit(keyId, tokenArn, amount);
 
-        // increment the witnessed token balance
-        tokenBalances[token] += amount;
-
         // jam the vault if the ledger's balance 
         // provisions doesn't match the vault balance
         assert(finalLedgerBalance == tokenBalances[token]);
-
-        // update the witnessed token addresses, so we can easily describe
-        // the trust-level tokens in this vault.
-        (,,uint256 trustId,,) = locksmith.inspectKey(keyId);
-        witnessedTokenAddresses[trustId].add(token);
     }
 
     /**
@@ -263,7 +263,7 @@ contract TokenVault is ITokenCollateralProvider, Initializable, OwnableUpgradeab
         // withdrawal from the ledger *first*. if there is an overdraft,
         // the entire transaction will revert.
         (,, uint256 finalLedgerBalance) = ledger.withdrawal(keyId, arn, amount);
-
+        
         // decrement the witnessed token balance
         tokenBalances[token] -= amount;
 
@@ -273,6 +273,6 @@ contract TokenVault is ITokenCollateralProvider, Initializable, OwnableUpgradeab
         
         // We trust that the ledger didn't overdraft so
         // send at the end to prevent re-entrancy.
-        IERC20(token).transfer(msg.sender, amount);
+        assert(IERC20(token).transfer(msg.sender, amount));
     }
 }

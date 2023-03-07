@@ -239,7 +239,7 @@ contract Locksmith is ILocksmith, Initializable, OwnableUpgradeable, UUPSUpgrade
 
         // push the latest key ID into the trust, and
         // keep track of the association at O(1), along
-        t.keys.add(newKeyId);
+        assert(t.keys.add(newKeyId));
         t.keyNames[newKeyId] = keyName;
         keyTrustAssociations[newKeyId] = t.id;
 

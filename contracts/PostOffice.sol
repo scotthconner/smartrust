@@ -165,7 +165,7 @@ contract PostOffice is IPostOffice, Initializable, OwnableUpgradeable, UUPSUpgra
 
         // register the inbox
         inboxes[inbox] = true;
-        ownerKeyInboxes[ownerKey].add(inbox);
+        assert(ownerKeyInboxes[ownerKey].add(inbox));
         keyIdentityInboxes[keyId] = inbox;
 
         emit addressRegistrationEvent(InboxEventType.ADD, msg.sender, ownerKey, inbox);

@@ -54,33 +54,4 @@ library AssetResourceName {
     function arn(AssetType memory asset) internal pure returns (bytes32) {
         return keccak256(abi.encode(asset.contractAddress, asset.tokenStandard, asset.id)); 
     }
-    
-    /**
-     * isAsset
-     *
-     * Method to determine if two assets are considered the same.
-     *
-     * @param a1 the baseline asset you want to compare
-     * @param a2 the comparative asset you want to compare
-     * @return true if they are the same, false otherwise
-     */
-    function isAsset(AssetType memory a1, AssetType memory a2) internal pure returns (bool) {
-        return arn(a1) == arn(a2); 
-    }
-    
-    /**
-     * isConsideredGas
-     *
-     * This method embodies the definition of what is
-     * considered a gas token, or the native asset for the
-     * block chain. In basically every case, this is ethereum.
-     *
-     * @param asset the asset you want to determine if it's gas
-     * @return true if it's gas, false otherwise
-     */
-    function isConsideredGas(AssetType memory asset) internal pure returns (bool) {
-        return asset.tokenStandard == GAS_TOKEN_STANDARD &&
-            asset.contractAddress == GAS_TOKEN_CONTRACT &&
-            asset.id == GAS_ID; 
-    }
 }

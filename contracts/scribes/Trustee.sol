@@ -149,7 +149,7 @@ contract Trustee is ITrustee, Initializable, OwnableUpgradeable, UUPSUpgradeable
         Policy storage t = trustees[keyId];
         
         // check to see if the events have fired async and havent been written yet 
-        uint256 enabledCount;
+        uint256 enabledCount = 0;
         if(!t.enabled) {
             for(uint256 x = 0; x < t.requiredEvents.length; x++) {
                 enabledCount += trustEventLog.firedEvents(t.requiredEvents[x]) ? 1 : 0;
@@ -225,7 +225,7 @@ contract Trustee is ITrustee, Initializable, OwnableUpgradeable, UUPSUpgradeable
         // here, a beneficiary *can* be the same trustee key.
         // if that happens, the beneficiary essentially is given
         // ability to move funds from the trust into their own pocket.
-        locksmith.validateKeyRing(trustId, beneficiaries, true);
+        assert(locksmith.validateKeyRing(trustId, beneficiaries, true));
 
         // at this point, the caller holds the root key, the trustee and source
         // are valid keys on the ring, and so are all of the beneficiaries.
@@ -237,11 +237,11 @@ contract Trustee is ITrustee, Initializable, OwnableUpgradeable, UUPSUpgradeable
         // make sure that the sourceKeyId is not any of the beneficiaries either.
         for(uint256 x = 0; x < beneficiaries.length; x++) {
             require(sourceKeyId != beneficiaries[x], 'SOURCE_IS_DESTINATION');
-            t.beneficiaries.add(beneficiaries[x]);
+            assert(t.beneficiaries.add(beneficiaries[x]));
         }
 
         // keep track of the policy key at the trust level
-        trustPolicyKeys[trustId].add(trusteeKeyId);
+        assert(trustPolicyKeys[trustId].add(trusteeKeyId));
 
         // if the events requirement is empty, immediately activate
         t.requiredEvents = events;
@@ -278,14 +278,14 @@ contract Trustee is ITrustee, Initializable, OwnableUpgradeable, UUPSUpgradeable
         // clean up the mapping
         uint256[] memory v = t.beneficiaries.values();
         for(uint256 x = 0; x < v.length; x++) {
-            t.beneficiaries.remove(v[x]);
+            assert(t.beneficiaries.remove(v[x]));
         }
 
         // at this point, we can delete the entry
         delete trustees[trusteeKeyId];
 
         // remove the policy key at the trust level
-        trustPolicyKeys[trustId].remove(trusteeKeyId);
+        assert(trustPolicyKeys[trustId].remove(trusteeKeyId));
 
         emit trusteePolicyRemoved(msg.sender, rootKeyId, trusteeKeyId);
     }
