@@ -42,5 +42,21 @@
   "Allowance": {
     "address": "0x7b543022239435f4947cfA8eE235a0227367810D",
     "codeHash": "0x2fed36e9b2225d0f580adda57fd22a049826b85749424032b5caac6fe3d7c796"
+  },
+  "PostOffice": {
+    "address": "0x4986F4C8d5b2962bc4fD865AEa3201877263381C",
+    "codeHash": "0x4f7e03a119a7b36b8240fe84d408d700f7eac189a7ee349a124e37de7bb44cb1"
+  },
+  "KeyAddressFactory": {
+    "address": "0xD91B205c93Ed11771642CbcE6E8f61a6C3F83F7a",
+    "codeHash": "0xf66971e4ff2910b6d0ac51d177729e884673d5e0334e31130b232f701590c2dc"
+  },
+  "MegaKeyCreator": {
+    "address": "0xe4802b8BE97Ec0Db9D4c5b01a666B5dcbfA4d5cb",
+    "codeHash": "0xf74e319abb0ad312fee58155808fba710e60924db548569bbbb6493e895d2cf6"
+  },
+  "TrustCreator": {
+    "address": "0x2F327d6057D77005DD093E0AbF020a33D565E969",
+    "codeHash": "0x29797486bbc8e918f9d2345db7f3ac8a024dd3012b78573b0ce2ab278359b4da"
   }
 }
