@@ -59,5 +59,9 @@ module.exports = {
       url: 'https://api.calibration.node.glif.io/rpc/v1',
       accounts: [`${process.env.MY_PRIVATE_KEY}`],
     },
+    filecoin: {
+      url: 'https://api.node.glif.io',
+      accounts: [`${process.env.MY_FILECOIN_KEY}`],
+    },
   }
 };
