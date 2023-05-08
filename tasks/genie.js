@@ -405,11 +405,6 @@ task("respect", "Make the current registry's key vault respect the current locks
 
 task("assets", "Degenerately spam the network with ERC20s.")
   .setAction(async (taskArgs) => {
-    await run("shadow", {alias: 'ShadowERC', ticker: 'SHAD', amount: 100000});
-    await run("shadow", {alias: 'matic', ticker: 'MATIC', amount: 100000});
-    await run("shadow", {alias: 'avax', ticker: 'WAVAX', amount: 100000});
-    await run("shadow", {alias: 'grt', ticker: 'GRT', amount: 100000});
-    await run("shadow", {alias: 'dai', ticker: 'DAI', amount: 100000});
     await run("shadow", {alias: 'usdc', ticker: 'USDC', amount: 100000});
     await run("shadow", {alias: 'link', ticker: 'LINK', amount: 100000});
   });

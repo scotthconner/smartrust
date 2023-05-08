@@ -1,11 +1,11 @@
 {
   "KeyVault": {
-    "address": "0x718CB9B43E9DdB697F82B7F69800EA1fCaFF239c",
-    "codeHash": "0x22ba7d93ee54293ec20a653194b046610cbbdd4e363cc147cd4c0b00769e5ecd"
+    "address": "0x37282205EADF5Ec90B2eD79244fa22C8c5e14a59",
+    "codeHash": "0x1eafc5c903f99fbc6de04c176c3838e5dc19803ec8309b94f678c2ad762b46a5"
   },
   "Locksmith": {
-    "address": "0x5e2918a472611f4e9eB50fF4064b63106770F6C3",
-    "codeHash": "0x96c295311e54054b97738cb6f256baab5f2fd152304c7dba21b98eb630a91103"
+    "address": "0x0aa0699fB29bdB0CeD8C7F42bF13753CCA17DdF0",
+    "codeHash": "0x91615dfc2e4979b12cf21c7e6a5ef9408bf21ae2c42d2c18bfd3b07061a31bf6"
   },
   "Notary": {
     "address": "0x36fEeD6E4119EF282fa33cAd396f35140459024e",
