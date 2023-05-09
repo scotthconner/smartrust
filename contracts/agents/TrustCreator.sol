@@ -65,6 +65,7 @@ contract TrustCreator is ERC1155Holder, Initializable, OwnableUpgradeable, UUPSU
     address     public trustEventLog;
     address     public keyAddressFactory;
     address     public allowance;
+    address     public distributor;
 
     // permission registry: add these to the notary
     // upon trust creation using the new ROOT key.
@@ -98,7 +99,7 @@ contract TrustCreator is ERC1155Holder, Initializable, OwnableUpgradeable, UUPSU
     function initialize(address _Locksmith, address _Notary, address _Ledger, 
         address _EtherVault, address _TokenVault, address _Trustee, address _Allowance, 
         address _AlarmClock, address _KeyOracle, address _TrustEventLog,
-        address _KeyAddressFactory) initializer public {
+        address _KeyAddressFactory, address _Distributor) initializer public {
         __Ownable_init();
         __UUPSUpgradeable_init();
         locksmith = ILocksmith(_Locksmith);
@@ -113,6 +114,7 @@ contract TrustCreator is ERC1155Holder, Initializable, OwnableUpgradeable, UUPSU
         trustEventLog = _TrustEventLog;
         keyAddressFactory = _KeyAddressFactory;
         allowance = _Allowance;
+        distributor = _Distributor;
     }
 
     /**
@@ -279,6 +281,7 @@ contract TrustCreator is ERC1155Holder, Initializable, OwnableUpgradeable, UUPSU
         // trust the ledger actors
         notary.setTrustedLedgerRole(rootKeyId, 0, ledger, etherVault, true, stringToBytes32('Ether Vault')); 
         notary.setTrustedLedgerRole(rootKeyId, 0, ledger, tokenVault, true, stringToBytes32('Token Vault'));
+        notary.setTrustedLedgerRole(rootKeyId, 1, ledger, distributor, true, stringToBytes32('Key Fund Distributor'));
         notary.setTrustedLedgerRole(rootKeyId, 1, ledger, trustee, true, stringToBytes32('Trustee Program'));
         notary.setTrustedLedgerRole(rootKeyId, 1, ledger, allowance, true, stringToBytes32('Allowance Program'));
         notary.setTrustedLedgerRole(rootKeyId, 2, trustEventLog, alarmClock, true, stringToBytes32('Alarm Clock Dispatcher'));
