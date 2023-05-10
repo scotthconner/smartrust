@@ -58,5 +58,9 @@
   "TrustCreator": {
     "address": "0x2F327d6057D77005DD093E0AbF020a33D565E969",
     "codeHash": "0x29797486bbc8e918f9d2345db7f3ac8a024dd3012b78573b0ce2ab278359b4da"
+  },
+  "Distributor": {
+    "address": "0xb88671458fae5f92c406395C0C0173D560E12912",
+    "codeHash": "0x29d22d97a898b55fe9e55b725670cc4385cde63c1dc83f5051d4820cbe526414"
   }
 }

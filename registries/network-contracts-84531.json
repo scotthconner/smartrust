@@ -56,7 +56,11 @@
     "codeHash": "0xf74e319abb0ad312fee58155808fba710e60924db548569bbbb6493e895d2cf6"
   },
   "TrustCreator": {
-    "address": "0x1B0983F9de9e8F1b674198E427Cd45B1Cf646b65",
-    "codeHash": "0x29797486bbc8e918f9d2345db7f3ac8a024dd3012b78573b0ce2ab278359b4da"
+    "address": "0x50157979eA086272570d0F449AdE891677D65e9d",
+    "codeHash": "0x56ebb7d7e5310b166ac1d7d0e466567abdda2c156428f14535f952e2e615dd7c"
+  },
+  "Distributor": {
+    "address": "0xa6B6145D49a82C8a1a8eBdfEaF8EA997ad0E74b7",
+    "codeHash": "0x29d22d97a898b55fe9e55b725670cc4385cde63c1dc83f5051d4820cbe526414"
   }
 }
