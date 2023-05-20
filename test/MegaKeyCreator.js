@@ -120,7 +120,7 @@ describe("MegaKeyCreator", function () {
 
       // should be successful? 
       await expect(await keyVault.connect(root).safeTransferFrom(root.address, megaKey.address, 0, 1, data))
-        .to.emit(postOffice, 'addressRegistrationEvent');
+        .to.emit(postOffice, 'keyAddressRegistrationEvent');
 
       // check the post office
       var inboxes = await postOffice.getInboxesForKey(0); 

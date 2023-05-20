@@ -22,7 +22,7 @@ interface IPostOffice {
     ////////////////////////////////////////////////////////
 
     /**
-     * addressRegistrationEvent 
+     * keyAddressRegistrationEvent 
      *
      * This is emitted when a change to the address registration 
      * at the post office occurs.
@@ -30,10 +30,11 @@ interface IPostOffice {
      * @param eventType  the InboxEventType
      * @param operator   the message sender of the operation
      * @param ownerKeyId the address owner key ID
+     * @param inboxKey   the key for the inbox in question
      * @param inbox      the claimed IVirtualAddress
      */
-    event addressRegistrationEvent(InboxEventType eventType, address operator,
-        uint256 ownerKeyId, address inbox);
+    event keyAddressRegistrationEvent(InboxEventType eventType, address operator,
+        uint256 ownerKeyId, uint256 inboxKey, address inbox);
 
     ////////////////////////////////////////////////////////
     // Introspection

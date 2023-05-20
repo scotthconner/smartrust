@@ -184,7 +184,7 @@ describe("TrustCreator", function () {
           .withArgs(creator.address, 1, 4, ledger.address, tokenVault.address, true, 0)
           .to.emit(notary, 'trustedRoleChange')
           .withArgs(creator.address, 1, 4, ledger.address, vault.address, true, 0)
-          .to.emit(postOffice, 'addressRegistrationEvent');
+          .to.emit(postOffice, 'keyAddressRegistrationEvent');
 
       // make sure the contract doesn't have one still
       // Note: this is obviously where the caller has to trust this contract.
