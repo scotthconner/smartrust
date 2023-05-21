@@ -33,7 +33,7 @@ interface IPostOffice {
      * @param inboxKey   the key for the inbox in question
      * @param inbox      the claimed IVirtualAddress
      */
-    event keyAddressRegistrationEvent(InboxEventType eventType, address operator,
+    event keyAddressRegistration(InboxEventType eventType, address operator,
         uint256 ownerKeyId, uint256 inboxKey, address inbox);
 
     ////////////////////////////////////////////////////////

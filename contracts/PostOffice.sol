@@ -168,7 +168,7 @@ contract PostOffice is IPostOffice, Initializable, OwnableUpgradeable, UUPSUpgra
         assert(ownerKeyInboxes[ownerKey].add(inbox));
         keyIdentityInboxes[keyId] = inbox;
 
-        emit keyAddressRegistrationEvent(InboxEventType.ADD, msg.sender, ownerKey, keyId, inbox);
+        emit keyAddressRegistration(InboxEventType.ADD, msg.sender, ownerKey, keyId, inbox);
     }
 
     /**
@@ -200,6 +200,6 @@ contract PostOffice is IPostOffice, Initializable, OwnableUpgradeable, UUPSUpgra
         // clean up the bit table
         inboxes[inbox] = false; 
         keyIdentityInboxes[keyId] = address(0);
-        emit keyAddressRegistrationEvent(InboxEventType.REMOVE, msg.sender, ownerKeyId, keyId, inbox);
+        emit keyAddressRegistration(InboxEventType.REMOVE, msg.sender, ownerKeyId, keyId, inbox);
     }
 } 

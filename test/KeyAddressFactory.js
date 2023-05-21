@@ -180,7 +180,7 @@ describe("KeyAddressFactory", function () {
 
       // should be successful? 
       await expect(await keyVault.connect(root).safeTransferFrom(root.address, addressFactory.address, 0, 1, data))
-        .to.emit(postOffice, 'keyAddressRegistrationEvent');
+        .to.emit(postOffice, 'keyAddressRegistration');
 
       // check the post office
       var inboxes = await postOffice.getInboxesForKey(0); 
@@ -234,7 +234,7 @@ describe("KeyAddressFactory", function () {
 
       // should be successful?
       await expect(keyVault.connect(root).safeTransferFrom(root.address, addressFactory.address, 0, 1, data))
-        .to.emit(postOffice, 'keyAddressRegistrationEvent');
+        .to.emit(postOffice, 'keyAddressRegistration');
 
       // check the post office
       var inboxes = await postOffice.getInboxesForKey(0);

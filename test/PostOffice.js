@@ -126,7 +126,7 @@ describe("PostOffice", function () {
 
       // success! 
       await expect(await postOffice.connect(root).registerInbox(inbox.address))
-        .to.emit(postOffice, 'keyAddressRegistrationEvent')
+        .to.emit(postOffice, 'keyAddressRegistration')
         .withArgs(0, root.address, 0, 0, inbox.address);
 
       await expect(await postOffice.getInboxesForKey(0)).eql([inbox.address]);
@@ -174,7 +174,7 @@ describe("PostOffice", function () {
 
       // success 
       await expect(await postOffice.connect(root).registerInbox(inbox.address))
-        .to.emit(postOffice, 'keyAddressRegistrationEvent')
+        .to.emit(postOffice, 'keyAddressRegistration')
         .withArgs(0, root.address, 0, 0, inbox.address);
 
       // second doesn't hold the root key, but the registration is there.
@@ -190,7 +190,7 @@ describe("PostOffice", function () {
 
       // success
       await expect(await postOffice.connect(root).registerInbox(inbox.address))
-        .to.emit(postOffice, 'keyAddressRegistrationEvent')
+        .to.emit(postOffice, 'keyAddressRegistration')
         .withArgs(0, root.address, 0, 0, inbox.address);
 
       // second holds the key ID 2, but the address isn't registered to key 2 
@@ -206,7 +206,7 @@ describe("PostOffice", function () {
 
       // success
       await expect(await postOffice.connect(root).registerInbox(inbox.address))
-        .to.emit(postOffice, 'keyAddressRegistrationEvent')
+        .to.emit(postOffice, 'keyAddressRegistration')
         .withArgs(0, root.address, 0, 0, inbox.address);
 
       await expect(await postOffice.getInboxesForKey(0)).eql([inbox.address]);
@@ -240,7 +240,7 @@ describe("PostOffice", function () {
 
       // success
       await expect(await postOffice.connect(root).registerInbox(inbox.address))
-        .to.emit(postOffice, 'keyAddressRegistrationEvent')
+        .to.emit(postOffice, 'keyAddressRegistration')
         .withArgs(0, root.address, 0, 0, inbox.address);
 
       await expect(await postOffice.getInboxesForKey(0)).eql([inbox.address]);
@@ -248,7 +248,7 @@ describe("PostOffice", function () {
 
       // removal success
       await expect(postOffice.connect(root).deregisterInbox(0, inbox.address))
-        .to.emit(postOffice, 'keyAddressRegistrationEvent')
+        .to.emit(postOffice, 'keyAddressRegistration')
         .withArgs(1, root.address, 0, 0, inbox.address);
       
       await expect(await postOffice.getInboxesForKey(0)).eql([]);

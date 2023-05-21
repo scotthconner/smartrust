@@ -45,11 +45,11 @@
   },
   "PostOffice": {
     "address": "0xeE16B5579EdC570b4B21c850E52C90145E40e492",
-    "codeHash": "0x25bc76a73d939f953a4d94ceeb5e80f4cfecf57cb1cfb71158063d06c4490e27"
+    "codeHash": "0x3cb2c86a5b73a00a56216a02e8539be7e4b41f323e9f5799efc5c7ee5c381ba8"
   },
   "KeyAddressFactory": {
     "address": "0x309C1D48b7AeabfE03b53d6dB0700E4B8ECd91Aa",
-    "codeHash": "0x5e52a8cba6640afa43e02e3dd5e5a9ec5a7da345594df94b26a27a83eb5c026c"
+    "codeHash": "0x0a36892be9c8c0b5a477c91c296e7aea3338f8aa550b1b0d79ed83a749690510"
   },
   "MegaKeyCreator": {
     "address": "0x2DeA68eB5cA2A0F80eC4E75A7b91E6d824888d74",
