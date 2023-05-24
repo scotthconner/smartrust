@@ -422,6 +422,7 @@ task("blast", "Degenerately deploy the entire platform, assuming a clean slate."
     await run("deploy", {contract: 'KeyOracle'});
     await run("deploy", {contract: 'Trustee'});
     await run("deploy", {contract: 'Allowance'});
+    await run("deploy", {contract: 'Distributor'});
     await run("deploy", {contract: 'PostOffice'});
     await run("deploy", {contract: 'KeyAddressFactory'});
     await run("deploy", {contract: 'MegaKeyCreator'});
