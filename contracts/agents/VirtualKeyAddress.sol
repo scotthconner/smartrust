@@ -278,12 +278,12 @@ contract VirtualKeyAddress is IVirtualAddress, ERC1155Holder, Initializable, UUP
         // re-enable deposits on ether
         depositHatch = false; 
 
+        // record and emit entry
+        logTransaction(TxType.SEND, to, provider, ethArn, amount);
+        
         // and send it from here, to ... to. 
         (bool sent,) = to.call{value: amount}("");
         assert(sent); // failed to send ether.
-
-        // record and emit entry
-        logTransaction(TxType.SEND, to, provider, ethArn, amount);
     }
 
     /**
@@ -297,12 +297,12 @@ contract VirtualKeyAddress is IVirtualAddress, ERC1155Holder, Initializable, UUP
         // of a withdrawal.
         if (depositHatch) { return; }
 
-        // deposit the entire contract balance to default collateral provider
-        defaultEthDepositProvider.deposit{value: msg.value}(keyId);
-            
         // record and emit entry 
         logTransaction(TxType.RECEIVE, address(this), 
             address(defaultEthDepositProvider), ethArn, msg.value);
+        
+        // deposit the entire contract balance to default collateral provider
+        defaultEthDepositProvider.deposit{value: msg.value}(keyId);
     }
 
     ////////////////////////////////////////////////////////
@@ -335,11 +335,12 @@ contract VirtualKeyAddress is IVirtualAddress, ERC1155Holder, Initializable, UUP
         // withdrawal the amount into this contract
         ICollateralProvider(provider).arnWithdrawal(keyId, arn, amount);
 
+        // record and emit entry - we want this logged before any receives on
+        // the other side
+        logTransaction(TxType.SEND, to, provider, arn, amount);
+        
         // and send it from here, to ... to.
         assert(IERC20(token).transfer(to, amount));
-        
-        // record and emit entry 
-        logTransaction(TxType.SEND, to, provider, arn, amount);
     }
 
     /**
@@ -438,6 +439,6 @@ contract VirtualKeyAddress is IVirtualAddress, ERC1155Holder, Initializable, UUP
         transactionCount += 1;
 
         // emit the proper event.
-        emit addressTransaction(txType, msg.sender, to, provider, arn, amount);
+        emit addressTransaction(txType, msg.sender, to, provider, arn, amount, keyId);
     }
 }

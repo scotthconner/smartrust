@@ -45,11 +45,11 @@
   },
   "PostOffice": {
     "address": "0xeE16B5579EdC570b4B21c850E52C90145E40e492",
-    "codeHash": "0x3cb2c86a5b73a00a56216a02e8539be7e4b41f323e9f5799efc5c7ee5c381ba8"
+    "codeHash": "0xefb042a5754c80994f533002764fe43636b714d1319214d4cbafb1b83b8541ca"
   },
   "KeyAddressFactory": {
     "address": "0x309C1D48b7AeabfE03b53d6dB0700E4B8ECd91Aa",
-    "codeHash": "0x0a36892be9c8c0b5a477c91c296e7aea3338f8aa550b1b0d79ed83a749690510"
+    "codeHash": "0xbf88ad1bcc6eaaf86b61a7d77165a9d60892f35fda8f19468490bca17d05d1c6"
   },
   "MegaKeyCreator": {
     "address": "0x2DeA68eB5cA2A0F80eC4E75A7b91E6d824888d74",
@@ -57,7 +57,7 @@
   },
   "TrustCreator": {
     "address": "0x50157979eA086272570d0F449AdE891677D65e9d",
-    "codeHash": "0x56ebb7d7e5310b166ac1d7d0e466567abdda2c156428f14535f952e2e615dd7c"
+    "codeHash": "0x7ecc3d8c11b42f6c268cab5ee715ca9d9fc463f4dccc7d79a9593b811e05a39a"
   },
   "Distributor": {
     "address": "0xa6B6145D49a82C8a1a8eBdfEaF8EA997ad0E74b7",

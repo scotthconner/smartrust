@@ -66,9 +66,10 @@ interface IVirtualAddress {
      * @param provider the collateral provider involved in the transaction
      * @param arn      the asset resource name of the asset moved
      * @param amount   the amount of asset moved
+     * @param keyId    the key ID for the given inbox
      */
     event addressTransaction(TxType txType, address operator, address target, address provider,
-        bytes32 arn, uint256 amount);
+        bytes32 arn, uint256 amount, uint256 keyId);
 
     ////////////////////////////////////////////////////////
     // Introspection

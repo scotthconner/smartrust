@@ -202,7 +202,7 @@ describe("KeyAddressFactory", function () {
       // this will work!
       await expect(await VirtualAddress.attach(inboxes[0]).connect(root).send(vault.address, eth(1), third.address))
         .to.emit(VirtualAddress.attach(inboxes[0]), 'addressTransaction')
-        .withArgs(1, root.address, third.address, vault.address, ethArn(), eth(1));
+        .withArgs(1, root.address, third.address, vault.address, ethArn(), eth(1), bn(0));
 
       // assert the ether ended up at third and check the vault and ledger balance
       await expect(await ethers.provider.getBalance(third.address)).eql(thirdBalance.add(eth(1)));
