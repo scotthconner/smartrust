@@ -9,13 +9,21 @@
     "hardhat-contract-sizer": "^2.6.1"
   },
   "devDependencies": {
+    "@nomicfoundation/hardhat-chai-matchers": "^1.0.6",
     "@nomicfoundation/hardhat-network-helpers": "^1.0.4",
     "@nomiclabs/hardhat-ethers": "^2.1.1",
     "@nomiclabs/hardhat-etherscan": "^3.1.2",
     "@openzeppelin/hardhat-upgrades": "^1.20.0",
+    "@typechain/ethers-v5": "^10.2.1",
+    "@typechain/hardhat": "^6.1.6",
+    "@types/chai": "^4.3.5",
+    "@types/mocha": "^9.1.1",
     "chai": "^4.3.6",
     "ethers": "^5.7.0",
     "hardhat-gas-reporter": "^1.0.8",
-    "solidity-coverage": "^0.8.2"
+    "solidity-coverage": "^0.8.3",
+    "ts-node": "^10.9.1",
+    "typechain": "^8.2.0",
+    "typescript": "^5.1.6"
   }
 }
