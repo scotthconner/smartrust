@@ -100,7 +100,7 @@ describe("KeyAddressFactory", function () {
 
       // build a new trust
        await expect(await ls.connect(root).createTrustAndRootKey(stb("Conner Trust"), root.address))
-        .to.emit(ls, "keyMinted").withArgs(root.address, 0, 0, stb('root'), root.address)
+        .to.emit(ls, "keyMinted").withArgs(root.address, 0, 0, stb('Master Key'), root.address)
         .to.emit(ls, "trustCreated").withArgs(root.address, 0, stb("Conner Trust"), root.address);
 
       // send two keys to the factory, and have it revert

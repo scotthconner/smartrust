@@ -196,7 +196,7 @@ describe("AlarmClock", function () {
         .withArgs(root.address, 0, 0, time, 100, 1, hash);
 
       // fast forward the block chain
-      await network.provider.send("evm_setNextBlockTimestamp", [time + 60*60*24]);
+      await ethers.provider.send("evm_setNextBlockTimestamp", [time + 60*60*24]);
 
       await expect(await alarmClock.connect(root).challengeAlarm(hash))
         .to.emit(alarmClock, 'alarmClockChallenged')
@@ -289,7 +289,7 @@ describe("AlarmClock", function () {
         .withArgs(root.address, 0, 0, time, 100, 1, hash);
 
       // fast forward the block chain
-      await network.provider.send("evm_setNextBlockTimestamp", [time + 60*60*24]);
+      await ethers.provider.send("evm_setNextBlockTimestamp", [time + 60*60*24]);
 
       await expect(await alarmClock.connect(root).challengeAlarm(hash))
         .to.emit(alarmClock, 'alarmClockChallenged')
@@ -350,7 +350,7 @@ describe("AlarmClock", function () {
         .withArgs(root.address, 0, 0, time, 100, 1, hash);
 
       // fast forward the block chain
-      await network.provider.send("evm_setNextBlockTimestamp", [time + 61]);
+      await ethers.provider.send("evm_setNextBlockTimestamp", [time + 61]);
 
       await expect(await alarmClock.connect(owner).snoozeAlarm(hash, 1))
         .to.emit(alarmClock, 'alarmClockSnoozed')

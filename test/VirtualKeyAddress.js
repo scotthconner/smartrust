@@ -110,7 +110,7 @@ describe("VirtualKeyAddress", function () {
       // use the locksmith to soulbind a key to the virtual inbox
       await expect(locksmith.connect(root).copyKey(0, 0, inbox.address, true))
         .to.emit(locksmith, 'keyMinted')
-        .withArgs(root.address, 0, 0, stb('root'), inbox.address);
+        .withArgs(root.address, 0, 0, stb('Master Key'), inbox.address);
 
       // rug the trust from the vault
       await expect(notary.connect(root).setTrustedLedgerRole(0, COLLATERAL_PROVIDER(), ledger.address,
@@ -131,7 +131,7 @@ describe("VirtualKeyAddress", function () {
       // use the locksmith to soulbind a key to the virtual inbox
       await expect(locksmith.connect(root).copyKey(0, 0, inbox.address, true))
         .to.emit(locksmith, 'keyMinted')
-        .withArgs(root.address, 0, 0, stb('root'), inbox.address);
+        .withArgs(root.address, 0, 0, stb('Master Key'), inbox.address);
 
       // this should work, but we are asking for far too much ether 
       await expect(inbox.connect(root).send(vault.address, eth(1000), owner.address))
@@ -147,7 +147,7 @@ describe("VirtualKeyAddress", function () {
       // use the locksmith to soulbind a key to the virtual inbox
       await expect(locksmith.connect(root).copyKey(0, 0, inbox.address, true))
         .to.emit(locksmith, 'keyMinted')
-        .withArgs(root.address, 0, 0, stb('root'), inbox.address);
+        .withArgs(root.address, 0, 0, stb('Master Key'), inbox.address);
 
       // get the balance of third
       var thirdBalance = await ethers.provider.getBalance(third.address);
@@ -233,7 +233,7 @@ describe("VirtualKeyAddress", function () {
       // use the locksmith to soulbind a key to the virtual inbox
       await expect(locksmith.connect(root).copyKey(0, 0, inbox.address, true))
         .to.emit(locksmith, 'keyMinted')
-        .withArgs(root.address, 0, 0, stb('root'), inbox.address);
+        .withArgs(root.address, 0, 0, stb('Master Key'), inbox.address);
 
       // send an ether, will fail because the provider isn't trusted 
       await expect(owner.sendTransaction({
@@ -251,7 +251,7 @@ describe("VirtualKeyAddress", function () {
       // use the locksmith to soulbind a key to the virtual inbox
       await expect(locksmith.connect(root).copyKey(0, 0, inbox.address, true))
         .to.emit(locksmith, 'keyMinted')
-        .withArgs(root.address, 0, 0, stb('root'), inbox.address);
+        .withArgs(root.address, 0, 0, stb('Master Key'), inbox.address);
 
       // starting balances
       var ownerBalance = await ethers.provider.getBalance(owner.address);
@@ -330,7 +330,7 @@ describe("VirtualKeyAddress", function () {
       // use the locksmith to soulbind a key to the virtual inbox
       await expect(locksmith.connect(root).copyKey(0, 0, inbox.address, true))
         .to.emit(locksmith, 'keyMinted')
-        .withArgs(root.address, 0, 0, stb('root'), inbox.address);
+        .withArgs(root.address, 0, 0, stb('Master Key'), inbox.address);
 
       // rug the trust from the token vault
       await expect(notary.connect(root).setTrustedLedgerRole(0, COLLATERAL_PROVIDER(), ledger.address,
@@ -351,7 +351,7 @@ describe("VirtualKeyAddress", function () {
       // use the locksmith to soulbind a key to the virtual inbox
       await expect(locksmith.connect(root).copyKey(0, 0, inbox.address, true))
         .to.emit(locksmith, 'keyMinted')
-        .withArgs(root.address, 0, 0, stb('root'), inbox.address);
+        .withArgs(root.address, 0, 0, stb('Master Key'), inbox.address);
 
       // this should work, but we are asking for far too much coin 
       await expect(inbox.connect(root).sendToken(tokenVault.address, coin.address, eth(1000), owner.address))
@@ -367,7 +367,7 @@ describe("VirtualKeyAddress", function () {
       // use the locksmith to soulbind a key to the virtual inbox
       await expect(locksmith.connect(root).copyKey(0, 0, inbox.address, true))
         .to.emit(locksmith, 'keyMinted')
-        .withArgs(root.address, 0, 0, stb('root'), inbox.address);
+        .withArgs(root.address, 0, 0, stb('Master Key'), inbox.address);
 
       // get the balance of third
       var thirdBalance = await coin.balanceOf(third.address);
@@ -464,7 +464,7 @@ describe("VirtualKeyAddress", function () {
       // use the locksmith to soulbind a key to the virtual inbox
       await expect(locksmith.connect(root).copyKey(0, 0, inbox.address, true))
         .to.emit(locksmith, 'keyMinted')
-        .withArgs(root.address, 0, 0, stb('root'), inbox.address);
+        .withArgs(root.address, 0, 0, stb('Master Key'), inbox.address);
 
       // send some coins to the inbox
       await coin.connect(second).transfer(inbox.address, eth(1));
@@ -483,7 +483,7 @@ describe("VirtualKeyAddress", function () {
       // use the locksmith to soulbind a key to the virtual inbox
       await expect(locksmith.connect(root).copyKey(0, 0, inbox.address, true))
         .to.emit(locksmith, 'keyMinted')
-        .withArgs(root.address, 0, 0, stb('root'), inbox.address);
+        .withArgs(root.address, 0, 0, stb('Master Key'), inbox.address);
 
       // starting balances
       var ownerBalance = await coin.balanceOf(second.address);
@@ -523,7 +523,7 @@ describe("VirtualKeyAddress", function () {
       // use the locksmith to soulbind a key to the virtual inbox
       await expect(locksmith.connect(root).copyKey(0, 0, inbox.address, true))
         .to.emit(locksmith, 'keyMinted')
-        .withArgs(root.address, 0, 0, stb('root'), inbox.address);
+        .withArgs(root.address, 0, 0, stb('Master Key'), inbox.address);
 
       // starting balances
       var ownerBalance = await coin.balanceOf(second.address);
@@ -581,7 +581,7 @@ describe("VirtualKeyAddress", function () {
       // use the locksmith to soulbind a key to the virtual inbox
       await expect(locksmith.connect(root).copyKey(0, 0, inbox.address, true))
         .to.emit(locksmith, 'keyMinted')
-        .withArgs(root.address, 0, 0, stb('root'), inbox.address);
+        .withArgs(root.address, 0, 0, stb('Master Key'), inbox.address);
       
       // starting balances
       var thirdBalance = await ethers.provider.getBalance(third.address);
@@ -627,7 +627,7 @@ describe("VirtualKeyAddress", function () {
       // use the locksmith to soulbind a key to the virtual inbox
       await expect(locksmith.connect(root).copyKey(0, 0, inbox.address, true))
         .to.emit(locksmith, 'keyMinted')
-        .withArgs(root.address, 0, 0, stb('root'), inbox.address);
+        .withArgs(root.address, 0, 0, stb('Master Key'), inbox.address);
 
       // starting balances
       var thirdBalance = await ethers.provider.getBalance(third.address);
@@ -654,7 +654,7 @@ describe("VirtualKeyAddress", function () {
       // use the locksmith to soulbind a key to the virtual inbox
       await expect(locksmith.connect(root).copyKey(0, 0, inbox.address, true))
         .to.emit(locksmith, 'keyMinted')
-        .withArgs(root.address, 0, 0, stb('root'), inbox.address);
+        .withArgs(root.address, 0, 0, stb('Master Key'), inbox.address);
 
       // get the balance of third
       var thirdBalance = await coin.balanceOf(third.address);
@@ -703,7 +703,7 @@ describe("VirtualKeyAddress", function () {
       // use the locksmith to soulbind a key to the virtual inbox
       await expect(locksmith.connect(root).copyKey(0, 0, inbox.address, true))
         .to.emit(locksmith, 'keyMinted')
-        .withArgs(root.address, 0, 0, stb('root'), inbox.address);
+        .withArgs(root.address, 0, 0, stb('Master Key'), inbox.address);
 
       // starting balances
       var thirdBalanceEth = await ethers.provider.getBalance(third.address);
@@ -777,7 +777,7 @@ describe("VirtualKeyAddress", function () {
       // use the locksmith to soulbind a key to the virtual inbox
       await expect(locksmith.connect(root).copyKey(0, 0, inbox.address, true))
         .to.emit(locksmith, 'keyMinted')
-        .withArgs(root.address, 0, 0, stb('root'), inbox.address);
+        .withArgs(root.address, 0, 0, stb('Master Key'), inbox.address);
 
       // prepare more funds than are used
       await expect(await inbox.connect(root).multicall([{
@@ -840,7 +840,7 @@ describe("VirtualKeyAddress", function () {
       // use the locksmith to soulbind a key to the virtual inbox
       await expect(locksmith.connect(root).copyKey(0, 0, inbox.address, true))
         .to.emit(locksmith, 'keyMinted')
-        .withArgs(root.address, 0, 0, stb('root'), inbox.address);
+        .withArgs(root.address, 0, 0, stb('Master Key'), inbox.address);
 
       // an attacker would trick the key holder to un-bind the key on the inbox
       // but will fail.

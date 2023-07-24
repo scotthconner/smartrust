@@ -183,7 +183,7 @@ contract Locksmith is ILocksmith, Initializable, OwnableUpgradeable, UUPSUpgrade
         // add the root key to the pool mapping, and associate
         // the key with the trust
         t.keys.add(t.rootKeyId);
-        t.keyNames[t.rootKeyId] = 'root';
+        t.keyNames[t.rootKeyId] = 'Master Key';
         keyTrustAssociations[t.rootKeyId] = t.id;
 
         // re-entrant

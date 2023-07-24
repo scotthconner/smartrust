@@ -120,14 +120,14 @@ describe("Locksmith", function () {
 
       // we want to ensure that a trust event was created
       await expect(await locksmith.connect(root).createTrustAndRootKey(stb("Conner Trust"), root.address))
-        .to.emit(locksmith, "keyMinted").withArgs(root.address, 0, 0, stb('root'), root.address)
+        .to.emit(locksmith, "keyMinted").withArgs(root.address, 0, 0, stb('Master Key'), root.address)
         .to.emit(locksmith, "trustCreated").withArgs(root.address, 0, stb("Conner Trust"), root.address);
 
       // check that the key list is accurate
       await expect(await keyVault.getKeys(root.address)).eql([bn(0)]);
 
       // will trust count be correct?
-      await assertKey(locksmith, root, 0, true, stb('root'), 0, true);
+      await assertKey(locksmith, root, 0, true, stb('Master Key'), 0, true);
       
       // ensure that the account now holds a root key for the first trust, and 
       // that we didn't accidentally send it somewhere else, or to everyone
@@ -149,15 +149,15 @@ describe("Locksmith", function () {
 
       // create two trusts, and ensure their events emit properly
       await expect(await locksmith.connect(root).createTrustAndRootKey(stb("Conner Trust"), root.address))
-        .to.emit(locksmith, "keyMinted").withArgs(root.address, 0, 0, stb('root'), root.address)
+        .to.emit(locksmith, "keyMinted").withArgs(root.address, 0, 0, stb('Master Key'), root.address)
         .to.emit(locksmith, "trustCreated").withArgs(root.address, 0, stb("Conner Trust"), root.address);
       await expect(await locksmith.connect(second).createTrustAndRootKey(stb("SmartTrust"), second.address))
-        .to.emit(locksmith, "keyMinted").withArgs(second.address, 1, 1, stb('root'), second.address)
+        .to.emit(locksmith, "keyMinted").withArgs(second.address, 1, 1, stb('Master Key'), second.address)
         .to.emit(locksmith, "trustCreated").withArgs(second.address, 1, stb("SmartTrust"), second.address);
       
       // are there two root keys (two trusts?) 
-      await assertKey(locksmith, root, 0, true, stb('root'), 0, true);
-      await assertKey(locksmith, root, 1, true, stb('root'), 1, true);
+      await assertKey(locksmith, root, 0, true, stb('Master Key'), 0, true);
+      await assertKey(locksmith, root, 1, true, stb('Master Key'), 1, true);
       
       // ensure the keys end up the right spots
       expect(await keyVault.balanceOf(root.address, 0)).to.equal(1);
@@ -239,7 +239,7 @@ describe("Locksmith", function () {
       // make a second trust
       await expect(await locksmith.connect(second).createTrustAndRootKey(stb("SmartTrust"), second.address))
         .to.emit(locksmith, "keyMinted")
-        .withArgs(second.address, 1, 1, stb('root'), second.address)
+        .withArgs(second.address, 1, 1, stb('Master Key'), second.address)
         .to.emit(locksmith, "trustCreated").withArgs(second.address, 1, stb("SmartTrust"), second.address);
 
       // assert key ownership pre-conditions
@@ -251,8 +251,8 @@ describe("Locksmith", function () {
       expect(await keyVault.balanceOf(third.address, 5)).to.equal(0);
       
       // assert key properties pre-conditions 
-      await assertKey(locksmith, root, 0, true, stb('root'), 0, true);
-      await assertKey(locksmith, root, 1, true, stb('root'), 1, true);
+      await assertKey(locksmith, root, 0, true, stb('Master Key'), 0, true);
+      await assertKey(locksmith, root, 1, true, stb('Master Key'), 1, true);
       await assertKey(locksmith, root, 2, false, stb(''), 0, false);
       await assertKey(locksmith, root, 3, false, stb(''), 0, false);
       await assertKey(locksmith, root, 4, false, stb(''), 0, false);
@@ -287,8 +287,8 @@ describe("Locksmith", function () {
       expect(await keyVault.balanceOf(third.address, 5)).to.equal(1);
 
       // inspect the key properties
-      await assertKey(locksmith, root, 0, true, stb('root'), 0, true);
-      await assertKey(locksmith, root, 1, true, stb('root'), 1, true);
+      await assertKey(locksmith, root, 0, true, stb('Master Key'), 0, true);
+      await assertKey(locksmith, root, 1, true, stb('Master Key'), 1, true);
       await assertKey(locksmith, root, 2, true, stb('two'), 0, false);
       await assertKey(locksmith, root, 3, true, stb('three'), 1, false);
       await assertKey(locksmith, root, 4, true, stb('four'), 1, false);
@@ -365,7 +365,7 @@ describe("Locksmith", function () {
       
       // make a second trust
       await expect(await locksmith.connect(second).createTrustAndRootKey(stb("SmartTrust"), second.address))
-        .to.emit(locksmith, "keyMinted").withArgs(second.address, 1, 1, stb('root'), second.address)
+        .to.emit(locksmith, "keyMinted").withArgs(second.address, 1, 1, stb('Master Key'), second.address)
         .to.emit(locksmith, "trustCreated").withArgs(second.address, 1, stb("SmartTrust"), second.address);
    
       // try to copy that key using the root of the first trust
@@ -650,7 +650,7 @@ describe("Locksmith", function () {
     
       // build a second trust
       await expect(await locksmith.connect(second).createTrustAndRootKey(stb("SmartTrust"), second.address))
-        .to.emit(locksmith, "keyMinted").withArgs(second.address, 1, 1, stb('root'), second.address)
+        .to.emit(locksmith, "keyMinted").withArgs(second.address, 1, 1, stb('Master Key'), second.address)
         .to.emit(locksmith, "trustCreated").withArgs(second.address, 1, stb("SmartTrust"), second.address);
 
       // try to use the first trust root key to burn the second
