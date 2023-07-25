@@ -28,8 +28,19 @@ module.exports = {
   etherscan: {
     apiKey: {
       goerli: `${process.env.ETHERSCAN_API_KEY}`,
-      polygonMumbai: `${process.env.POLYGONSCAN_API_KEY}`
-    }
+      polygonMumbai: `${process.env.POLYGONSCAN_API_KEY}`,
+      base: `${process.env.BASE_API_KEY}`
+    },
+    customChains: [
+     {
+       network: "base",
+       chainId: 8453,
+       urls: {
+        apiURL: "https://api.basescan.org/api",
+        browserURL: "https://api.basescan.org"
+       }
+     }
+   ]
   },
   networks: {
     goerli: {
@@ -41,10 +52,12 @@ module.exports = {
       accounts: [`${process.env.MY_PRIVATE_KEY}`],
     },
     base: {
+      url: 'https://developer-access-mainnet.base.org',
+      gasPrice: 1000000000,
       ledgerAccounts: [
         '0xB617dFa5Cf63C55F5E3f351A70488cE34EDcc9C6'
       ]
-    }
+    },
     mumbai: {
       url: `${process.env.ALCHEMY_MUMBAI_URL}`,
       accounts: [`${process.env.MY_PRIVATE_KEY}`],
