@@ -2,5 +2,9 @@
   "KeyVault": {
     "address": "0x282E8217B960e8F041987279f9B07C9dABB8860c",
     "codeHash": "0x6205509c7cb7942cac9020a414f5fd490e71e620b421e438a4ebad6dc5a0d21f"
+  },
+  "Locksmith": {
+    "address": "0x386Feab4F603Ba573ff4de774ba15Beb18C6Ed49",
+    "codeHash": "0xc156c1ef7cd60d7c92ec9e0be7e8d9dbbcfce1cd90436fce7efbd21a662fb146"
   }
 }
