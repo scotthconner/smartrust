@@ -1,6 +1,7 @@
 require('hardhat-contract-sizer');
 require("@nomicfoundation/hardhat-toolbox");
 require('@openzeppelin/hardhat-upgrades');
+require("@nomicfoundation/hardhat-ledger");
 require("hardhat-gas-reporter");
 require("dotenv").config();
 require("@nomiclabs/hardhat-etherscan");
@@ -39,6 +40,11 @@ module.exports = {
       url: 'https://goerli.base.org',
       accounts: [`${process.env.MY_PRIVATE_KEY}`],
     },
+    base: {
+      ledgerAccounts: [
+        '0xB617dFa5Cf63C55F5E3f351A70488cE34EDcc9C6'
+      ]
+    }
     mumbai: {
       url: `${process.env.ALCHEMY_MUMBAI_URL}`,
       accounts: [`${process.env.MY_PRIVATE_KEY}`],

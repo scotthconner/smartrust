@@ -6,10 +6,12 @@
     "@openzeppelin/contracts-upgradeable": "^4.7.3",
     "dotenv": "^16.0.3",
     "hardhat": "^2.12.1-ir.0",
-    "hardhat-contract-sizer": "^2.6.1"
+    "hardhat-contract-sizer": "^2.6.1",
+    "@ledgerhq/hw-app-eth": "6.33.6"
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-chai-matchers": "^1.0.6",
+    "@nomicfoundation/hardhat-ledger": "^1.0.0",
     "@nomicfoundation/hardhat-network-helpers": "^1.0.4",
     "@nomiclabs/hardhat-ethers": "^2.1.1",
     "@nomiclabs/hardhat-etherscan": "^3.1.2",

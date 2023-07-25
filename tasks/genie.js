@@ -81,8 +81,12 @@ const sortDependencies = async function(alias) {
 // https://github.com/NomicFoundation/hardhat/issues/3418
 ///////////////////////////////////////////
 const patchOwner = async function() {
-  const [signer] = await ethers.getSigners();
-  
+  const signers = await hre.ethers.getSigners();
+
+  // determine if its a ledger configuration or not?
+  // TODO: this is a bit of a hack it seems
+  const signer = signers.length > 20 ? signers[20] : signers[0];
+
   // for networks that absolutely require type 2 transactions, avoid
   // the hardhat signer by creating a wallet.
   if ((await signer.getChainId()).toString().match(/3141/)) {
