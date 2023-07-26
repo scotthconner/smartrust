@@ -70,10 +70,6 @@ module.exports = {
       url: 'http://127.0.0.1:1234/rpc/v1',
       accounts: [`${process.env.MY_PRIVATE_KEY}`],
     },
-    hyperspace: {
-      url: 'https://api.hyperspace.node.glif.io/rpc/v1',
-      accounts: [`${process.env.MY_PRIVATE_KEY}`],
-    },
     calibration: {
       url: 'https://api.calibration.node.glif.io/rpc/v1',
       accounts: [`${process.env.MY_PRIVATE_KEY}`],
