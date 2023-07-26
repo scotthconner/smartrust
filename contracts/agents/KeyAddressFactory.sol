@@ -108,6 +108,10 @@ contract KeyAddressFactory is ERC1155Holder, Initializable, OwnableUpgradeable, 
         public virtual override returns (bytes4) {
         
         // make sure the count is exactly 1 of whatever it is.
+        // NOTE: We don't explicitly check that the key sent is a root key.
+        //       This seems like a good thing to do upfront, but the #copyKey
+        //       method will fail if keyId isn't root and the transaction will
+        //       revert.
         require(count == 1, 'IMPROPER_KEY_INPUT');
      
         // recover the dependencies 
