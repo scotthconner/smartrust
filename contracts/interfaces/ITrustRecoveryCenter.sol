@@ -67,7 +67,7 @@ interface ITrustRecoveryCenter {
         bytes32[] events);
 
     /**
-     * guardianChanged
+     * guardiansChanged
      *
      * This event fires when a root key holder changes the guardian
      * configuration to either add or remove an address from the
@@ -75,17 +75,17 @@ interface ITrustRecoveryCenter {
      *
      * @param operator the key operator that changed the scheme
      * @param rootKeyId the root key id used to change the recovery scheme
-     * @param guardian the guardian address that was operated on
+     * @param guardians the guardian address that was operated on
      * @param added true if the guardian was added, false if removed
      */
-    event guardianChanged(
-        address operator,
-        uint256 rootKeyId,
-        address guardian,
-        bool    added);
+    event guardiansChanged(
+        address   operator,
+        uint256   rootKeyId,
+        address[] guardians,
+        bool[]    added);
 
     /**
-     * eventChanged 
+     * eventsChanged 
      *
      * This event fires when a root key holder changes the event 
      * configuration to either add or remove an event from the
@@ -93,14 +93,14 @@ interface ITrustRecoveryCenter {
      *
      * @param operator the key operator that changed the scheme
      * @param rootKeyId the root key id used to change the recovery scheme
-     * @param eventId the event id that was operated on
+     * @param eventIds the event id that was operated on
      * @param added true if the event was added, false if removed
      */
-    event eventChanged(
-        address operator,
-        uint256 rootKeyId,
-        bytes32 eventId,
-        bool    added);
+    event eventsChanged(
+        address   operator,
+        uint256   rootKeyId,
+        bytes32[] eventIds,
+        bool[]    added);
 
     /**
      * keyRecovered 
@@ -133,7 +133,7 @@ interface ITrustRecoveryCenter {
      * @return an array of guardian addresses that can redeem the key
      * @return an array of event IDs that are required for redemption
      */
-    function getRecoveryPolicy(uint256 rootKeyId) external returns (bool, address[] memory, bytes32[] memory);
+    function getRecoveryPolicy(uint256 rootKeyId) external view returns (bool, address[] memory, bytes32[] memory);
 
     /**
      * getGuardianPolicies
@@ -144,7 +144,7 @@ interface ITrustRecoveryCenter {
      * @param guardian the address in question
      * @return an array of key Ids that have policies with the address as a guardian
      */
-    function getGuardianPolicies(address guardian) external returns (uint256[] memory);
+    function getGuardianPolicies(address guardian) external view returns (uint256[] memory);
 
     ////////////////////////////////////////////////////////
     // Management Functions
@@ -154,7 +154,7 @@ interface ITrustRecoveryCenter {
     ////////////////////////////////////////////////////////
    
     /**
-     * changeGuardian
+     * changeGuardians
      *
      * A root key holder will call this method to change the status
      * of a guardian address. The transaction will revert if the
@@ -167,7 +167,7 @@ interface ITrustRecoveryCenter {
     function changeGuardians(uint256 rootKeyId, address[] calldata guardians, bool[] calldata add) external;
 
     /**
-     * changeEvent
+     * changeEvents
      *
      * A root key holder will call his method to add or remove
      * an event from the requirements for recovery
