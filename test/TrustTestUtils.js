@@ -560,16 +560,36 @@ TrustTestFixtures = (function() {
         owner, root, second, third};
     },
     //////////////////////////////////////////////////////////
+    // Added Recovery Center 
+    //
+    //////////////////////////////////////////////////////////
+    addedRecoveryCenter: async function() {
+      const { keyVault, locksmith, allowance, distributor,
+        notary, ledger, vault, tokenVault, coin, inbox, postOffice,
+        events, trustee, keyOracle, alarmClock, addressFactory, megaKey,
+        owner, root, second, third } = await TrustTestFixtures.addedDistributor();
+
+      // deploy the inbox
+      const Recovery = await ethers.getContractFactory("TrustRecoveryCenter");
+      const recovery = await upgrades.deployProxy(Recovery, [locksmith.address, events.address]);
+      await recovery.deployed();
+
+      return {keyVault, locksmith, allowance, distributor, recovery,
+        notary, ledger, vault, tokenVault, coin, inbox, postOffice,
+        events, trustee, keyOracle, alarmClock, addressFactory, megaKey,
+        owner, root, second, third};
+    },
+    //////////////////////////////////////////////////////////
     // Added creator
     //
     // Adds a contract that feeds an orchestration of
     // a default trust.
     //////////////////////////////////////////////////////////
     addedCreator: async function() {
-      const { keyVault, locksmith, allowance,
-        notary, ledger, vault, tokenVault, coin, inbox, postOffice, distributor,
+      const { keyVault, locksmith, allowance, distributor, recovery,
+        notary, ledger, vault, tokenVault, coin, inbox, postOffice,
         events, trustee, keyOracle, alarmClock, addressFactory, megaKey,
-        owner, root, second, third } = await TrustTestFixtures.addedDistributor();
+        owner, root, second, third } = await TrustTestFixtures.addedRecoveryCenter();
 
       // deploy the creator
       const Creator = await ethers.getContractFactory("TrustCreator");
@@ -581,7 +601,7 @@ TrustTestFixtures = (function() {
       await creator.deployed();
 
       return { keyVault, locksmith, creator, megaKey, allowance, distributor,
-        notary, ledger, vault, tokenVault, coin, inbox, postOffice,
+        recovery, notary, ledger, vault, tokenVault, coin, inbox, postOffice,
         events, trustee, keyOracle, alarmClock, addressFactory,
         owner, root, second, third };
     },
