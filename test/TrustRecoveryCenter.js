@@ -610,13 +610,215 @@ describe("TrustRecoveryCenter", function () {
       await expect(recovery.connect(second).recoverKey(0)).to.be.revertedWith('MISSING_EVENT');
     });
     
-    it("Successful Recovery with no events", async function() {
+    it("Successful Multi-cycle Recovery with no events", async function() {
+      const { keyVault, locksmith, postOffice, addressFactory, distributor,
+        recovery, notary, ledger, vault, tokenVault, coin, inbox, megaKey,
+        events, trustee, keyOracle, alarmClock,
+        owner, root, second, third} = await loadFixture(TrustTestFixtures.addedRecoveryCenter);
+
+      // encode the data
+      var data = ethers.utils.defaultAbiCoder.encode(
+        ['address[]','bytes32[]'],
+        [[owner.address, second.address],[]]);
+
+      // check pre-conditions
+      await expect(await recovery.getRecoveryPolicy(0)).eql([false, [], []]);
+      await expect(await recovery.getGuardianPolicies(owner.address)).eql([]);
+      await expect(await keyVault.keyBalanceOf(root.address, 0, false)).eq(bn(1));
+      await expect(await keyVault.keyBalanceOf(recovery.address, 0, false)).eq(bn(0));
+
+      // create the policy
+      await expect(keyVault.connect(root).safeTransferFrom(root.address, recovery.address, 0, 1, data))
+        .to.emit(recovery, 'recoveryCreated').withArgs(root.address, 0, [owner.address, second.address],
+          []);
+
+      // precondition check
+      await expect(await keyVault.keyBalanceOf(owner.address, 0, false)).eql(bn(0));
+      await expect(await keyVault.keyBalanceOf(recovery.address, 0, false)).eql(bn(1));
+
+      // attempt to recover it as the bitter third that was left out, but it
+      // won't work. We want to make sure guardian requirements are held even
+      // when the key redemption is active. Code coverage wise, this is redundant,
+      // but from a use case perspective we need it
+      await expect(recovery.connect(third).recoverKey(0))
+        .to.be.revertedWith('INVALID_GUARDIAN');
+
+      // try to recover as owner, which is a guardian
+      await expect(await recovery.connect(owner).recoverKey(0))
+        .to.emit(recovery, 'keyRecovered')
+        .withArgs(owner.address, 0, []);
+
+      // confirm that the owner actually holds that key
+      await expect(await keyVault.keyBalanceOf(owner.address, 0, false)).eql(bn(1));
+
+      // confirm that the recovery center doesn't have it anymore.
+      await expect(await keyVault.keyBalanceOf(recovery.address, 0, false)).eql(bn(0));
+
+      // confirm that the policy is gone
+      await expect(await recovery.getRecoveryPolicy(0)).eql([false, [], []]);
+
+      // try to recovery the policy again, but it really is actually gone, bro.
+      await expect(recovery.connect(owner).recoverKey(0))
+        .to.be.revertedWith('INVALID_POLICY');
+
+      // ah-ha! successfully create it again once its been redeemed.
+      // encode the data
+      var data2 = ethers.utils.defaultAbiCoder.encode(
+        ['address[]','bytes32[]'],
+        [[second.address],[]]);
+      await expect(keyVault.connect(owner).safeTransferFrom(owner.address, recovery.address, 0, 1, data2))
+        .to.emit(recovery, 'recoveryCreated').withArgs(owner.address, 0, [second.address], []);
+
+      // a new policy awaits
+      await expect(await recovery.getRecoveryPolicy(0)).eql([true, [second.address], []]);
+      await expect(await keyVault.keyBalanceOf(second.address, 0, false)).eql(bn(0));
+      await expect(await keyVault.keyBalanceOf(recovery.address, 0, false)).eql(bn(1));
+      
+      // recover this new policy
+      await expect(await recovery.connect(second).recoverKey(0))
+        .to.emit(recovery, 'keyRecovered')
+        .withArgs(second.address, 0, []);
+     
+      // confirm the policy is gone, and everything is cleaned up again
+      await expect(await recovery.getRecoveryPolicy(0)).eql([false, [], []]);
+      await expect(await keyVault.keyBalanceOf(second.address, 0, false)).eql(bn(1));
+      await expect(await keyVault.keyBalanceOf(recovery.address, 0, false)).eql(bn(0));
     });
     
-    it("Successful Recovery", async function() {
+    it("Successful Recovery with multiple events", async function() {
+      const { keyVault, locksmith, postOffice, addressFactory, distributor,
+        recovery, notary, ledger, vault, tokenVault, coin, inbox, megaKey,
+        events, trustee, keyOracle, alarmClock,
+        owner, root, second, third} = await loadFixture(TrustTestFixtures.addedRecoveryCenter);
+
+      // create a key oracle event
+      await keyOracle.connect(root).createKeyOracle(0, 0, stb('because'));
+      await keyOracle.connect(root).createKeyOracle(0, 0, stb('again'));
+
+      const keyEvents = await keyOracle.getOracleKeyEvents(0);
+
+      // encode the data
+      var data = ethers.utils.defaultAbiCoder.encode(
+        ['address[]','bytes32[]'],
+        [[owner.address, second.address], keyEvents]);
+
+      // check pre-conditions
+      await expect(await recovery.getRecoveryPolicy(0)).eql([false, [], []]);
+      await expect(await recovery.getGuardianPolicies(owner.address)).eql([]);
+      await expect(await keyVault.keyBalanceOf(root.address, 0, false)).eq(bn(1));
+      await expect(await keyVault.keyBalanceOf(recovery.address, 0, false)).eq(bn(0));
+
+      // create the policy
+      await expect(keyVault.connect(root).safeTransferFrom(root.address, recovery.address, 0, 1, data))
+        .to.emit(recovery, 'recoveryCreated').withArgs(root.address, 0, [owner.address, second.address],
+          keyEvents);
+
+      // precondition check
+      await expect(await keyVault.keyBalanceOf(owner.address, 0, false)).eql(bn(0));
+      await expect(await keyVault.keyBalanceOf(recovery.address, 0, false)).eql(bn(1));
+
+      //  attempt to recovery the policy but it will fail
+      //  because the key oracle hasn't triggered
+      await expect(recovery.connect(second).recoverKey(0))
+        .to.be.revertedWith('MISSING_EVENT');
+
+      // now trigger the key oracle
+      await keyOracle.connect(root).fireKeyOracleEvent(0, keyEvents[0]);
+      
+      // but there is still another event
+      await expect(recovery.connect(second).recoverKey(0))
+        .to.be.revertedWith('MISSING_EVENT');
+      
+      // trigger the second oracle
+      await keyOracle.connect(root).fireKeyOracleEvent(0, keyEvents[1]);
+
+      // try again, and it will be successful!
+      await expect(await recovery.connect(second).recoverKey(0))
+        .to.emit(recovery, 'keyRecovered')
+        .withArgs(second.address, 0, keyEvents);
+      
+      // post-conditions
+      await expect(await recovery.getRecoveryPolicy(0)).eql([false, [], []]);
+      await expect(await keyVault.keyBalanceOf(second.address, 0, false)).eql(bn(1));
+      await expect(await keyVault.keyBalanceOf(recovery.address, 0, false)).eql(bn(0));
     });
     
+    it("Successful Recovery with multiple events, plus checking", async function() {
+    });
+
     it("Successful Recovery with Multi-Policy Guardian", async function() {
+      const { keyVault, locksmith, postOffice, addressFactory, distributor,
+        recovery, notary, ledger, vault, tokenVault, coin, inbox, megaKey,
+        events, trustee, keyOracle, alarmClock,
+        owner, root, second, third} = await loadFixture(TrustTestFixtures.addedRecoveryCenter);
+
+      // create two distinct events
+      await keyOracle.connect(root).createKeyOracle(0, 0, stb('because'));
+      await keyOracle.connect(root).createKeyOracle(0, 0, stb('again'));
+      const keyEvents = await keyOracle.getOracleKeyEvents(0);
+
+      // check guardian index
+      await expect(await recovery.getGuardianPolicies(owner.address)).eql([]);
+
+      // we will need another trust here
+      await locksmith.connect(second).createTrustAndRootKey(stb('My Trust'), second.address);
+
+      // create two policies with the same guardian, check
+      var data = ethers.utils.defaultAbiCoder.encode(
+        ['address[]','bytes32[]'],
+        [[owner.address], [keyEvents[0]]]);
+      var data2 = ethers.utils.defaultAbiCoder.encode(
+        ['address[]','bytes32[]'],
+        [[owner.address, second.address], [keyEvents[1]]]);
+      await expect(keyVault.connect(root).safeTransferFrom(root.address, recovery.address, 0, 1, data))
+        .to.emit(recovery, 'recoveryCreated').withArgs(root.address, 0, [owner.address],
+          [keyEvents[0]]);
+      await expect(keyVault.connect(second).safeTransferFrom(second.address, recovery.address, 4, 1, data2))
+        .to.emit(recovery, 'recoveryCreated').withArgs(second.address, 4, [owner.address],
+          [keyEvents[1]]);
+      
+      // check guardian index
+      await expect(await recovery.getGuardianPolicies(owner.address)).eql([bn(0), bn(4)]);
+      
+      // fail to recover them both
+      await expect(recovery.connect(owner).recoverKey(0))
+        .to.be.revertedWith('MISSING_EVENT');
+      await expect(recovery.connect(owner).recoverKey(4))
+        .to.be.revertedWith('MISSING_EVENT');
+      
+      // check guardian index
+      await expect(await recovery.getGuardianPolicies(owner.address)).eql([bn(0), bn(4)]);
+      
+      // fire one, fail to recover one, success on the other
+      await keyOracle.connect(root).fireKeyOracleEvent(0, keyEvents[0]);
+      await expect(recovery.connect(owner).recoverKey(4))
+        .to.be.revertedWith('MISSING_EVENT');
+      await expect(await recovery.connect(owner).recoverKey(0))
+        .to.emit(recovery, 'keyRecovered')
+        .withArgs(owner.address, 0, [keyEvents[0]]);
+      
+      // post-conditions
+      await expect(await recovery.getRecoveryPolicy(0)).eql([false, [], []]);
+      await expect(await keyVault.keyBalanceOf(owner.address, 0, false)).eql(bn(1));
+      await expect(await keyVault.keyBalanceOf(recovery.address, 0, false)).eql(bn(0));
+      await expect(await recovery.getGuardianPolicies(owner.address)).eql([bn(4)]);
+
+      // fire the other one, success on the final
+      await keyOracle.connect(root).fireKeyOracleEvent(0, keyEvents[1]);
+      await expect(await recovery.connect(owner).recoverKey(4))
+        .to.emit(recovery, 'keyRecovered')
+        .withArgs(owner.address, 4, [keyEvents[1]]);
+     
+      // check guardian index
+      await expect(await recovery.getGuardianPolicies(owner.address)).eql([]);
+
+      // post conditions
+      await expect(await recovery.getRecoveryPolicy(0)).eql([false, [], []]);
+      await expect(await recovery.getRecoveryPolicy(4)).eql([false, [], []]);
+      await expect(await keyVault.keyBalanceOf(owner.address, 0, false)).eql(bn(1));
+      await expect(await keyVault.keyBalanceOf(owner.address, 4, false)).eql(bn(1));
+      await expect(await keyVault.keyBalanceOf(recovery.address, 0, false)).eql(bn(0));
+      await expect(await keyVault.keyBalanceOf(recovery.address, 4, false)).eql(bn(0));
     });
   });
 });
