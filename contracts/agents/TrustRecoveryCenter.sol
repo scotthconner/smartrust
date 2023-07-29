@@ -33,7 +33,6 @@ import '../interfaces/ILocksmith.sol';
 import '../interfaces/IKeyVault.sol';
 import '../interfaces/ITrustEventLog.sol';
 import '../interfaces/ITrustRecoveryCenter.sol';
-
 ///////////////////////////////////////////////////////////
 
 contract TrustRecoveryCenter is ITrustRecoveryCenter, ERC1155Holder, Initializable, OwnableUpgradeable, UUPSUpgradeable {
@@ -193,6 +192,13 @@ contract TrustRecoveryCenter is ITrustRecoveryCenter, ERC1155Holder, Initializab
             }
         }
 
+        // Note: While it's not possible to create a policy without a guardian,
+        //       I'm making the design choice to enable the owner to remove
+        //       all guardians after creation. This effectively "disables"
+        //       the policy and likely has use cases. The user might not want
+        //       to delete the policy or get rid of the key, but might have
+        //       a gap in guardian configuration, for whatever reason.
+
         // emit the event so we can say what happened.
         emit guardiansChanged(msg.sender, rootKeyId, guardians, add);
     }
@@ -324,13 +330,12 @@ contract TrustRecoveryCenter is ITrustRecoveryCenter, ERC1155Holder, Initializab
      * 2) From the Locksmith contract when it mints a copy of the root key.
      * 3) Anything else that is arbitrary, which will be rejected.
      *
-     * @param operator the message sender, aka the KeyVault NFT contract, hopefully
      * @param from     where the token is coming from
      * @param keyId    the id of the token that was deposited
      * @param count    the number of keys sent
      * @return the function selector to prove valid response
      */
-    function onERC1155Received(address operator, address from, uint256 keyId, uint256 count, bytes memory data)
+    function onERC1155Received(address, address from, uint256 keyId, uint256 count, bytes memory data)
         public virtual override returns (bytes4) {
         
         // make sure the count is exactly 1 of whatever it is,
@@ -340,7 +345,7 @@ contract TrustRecoveryCenter is ITrustRecoveryCenter, ERC1155Holder, Initializab
         // we only accept keys from the trusted locksmith.
         // revert the transaction if the operator (the NFT contract) is anyone
         // but who we expect it to be
-        require((operator == locksmith.getKeyVault()), 'UNKNOWN_KEY_TYPE'); 
+        require((msg.sender == locksmith.getKeyVault()), 'UNKNOWN_KEY_TYPE'); 
 
         // if we are awaiting a key, ensure that it is in fact the key we expect.
         // this contract is designed to reject any key that isn't the one it expects
@@ -370,12 +375,19 @@ contract TrustRecoveryCenter is ITrustRecoveryCenter, ERC1155Holder, Initializab
         }
 
         // We received a single valid locksmith key, so we assume they are 
-        // making a CreatePolicyRequest. We are going to decode the request
-        // and attempt to copy the key. This will fail if the key we are using
-        // isn't root. There is no need to waste gas verifying it here.
+        // making a CreatePolicyRequest. This means we can require that
+        // no existing policy exists.
+        require((!policies[keyId].isValid), 'DUPLICATE_POLICY');
+
+        // We are going to decode the request and attempt to copy the key.
+        // This will fail if the key we are using isn't root. There is no 
+        // need to waste gas verifying it here.
         (address[] memory guardians, bytes32[] memory events)
             = abi.decode(data, (address[], bytes32[]));
-        
+       
+        // guardians can't be empty upon creation, but events can.
+        require(guardians.length > 0, 'MISSING_GUARDIANS');
+
         // create the key, hoping keyId is root. otherwise fail.
         // this code will re-enter this call back and we will store it above.
         // we will also invariant check our balance on the way out.
