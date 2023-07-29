@@ -29,7 +29,7 @@
   },
   "KeyOracle": {
     "address": "0x9A4585c3c38Ff0fa60Dc684cc4F10b9C6dd73947",
-    "codeHash": "0x6cbf928ecdbbc63423020d06d38f412fd84e1fdd1ecd5e5fb8159e40ab029662"
+    "codeHash": "0xfb7bb9889f46858c3a55dc5af11cba9bf35aeef88f74a152ca026d311ab533c0"
   },
   "AlarmClock": {
     "address": "0x6Ae3B7A6E599606b360C141CFAF32878E4519a4F",

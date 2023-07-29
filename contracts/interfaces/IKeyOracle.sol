@@ -77,8 +77,9 @@ interface IKeyOracle {
      * @param rootKeyId   the root key to use to create the event.
      * @param keyId       the trust to associate the event with
      * @param description a small description of the event
+     * @return the event hash
      */
-    function createKeyOracle(uint256 rootKeyId, uint256 keyId, bytes32 description) external;
+    function createKeyOracle(uint256 rootKeyId, uint256 keyId, bytes32 description) external returns (bytes32);
     
     ////////////////////////////////////////////////////////
     // Key Oracle Methods 

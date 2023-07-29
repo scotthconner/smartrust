@@ -33,7 +33,7 @@
   },
   "KeyOracle": {
     "address": "0x8219ce9f581Be909a6AD82Fc69E0572890cb1B24",
-    "codeHash": "0x6cbf928ecdbbc63423020d06d38f412fd84e1fdd1ecd5e5fb8159e40ab029662"
+    "codeHash": "0xfb7bb9889f46858c3a55dc5af11cba9bf35aeef88f74a152ca026d311ab533c0"
   },
   "Trustee": {
     "address": "0x18F05f0608A1C0EcFD19420F2bE964cB69ffB486",

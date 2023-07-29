@@ -139,7 +139,7 @@ contract KeyOracle is IKeyOracle, Initializable, OwnableUpgradeable, UUPSUpgrade
      * @param keyId       the trust to associate the event with
      * @param description a small description of the event
      */
-    function createKeyOracle(uint256 rootKeyId, uint256 keyId, bytes32 description) external {
+    function createKeyOracle(uint256 rootKeyId, uint256 keyId, bytes32 description) external returns (bytes32) {
         // ensure the caller is holding the rootKey
         require(IKeyVault(locksmith.getKeyVault()).keyBalanceOf(msg.sender, rootKeyId, false) > 0, 'KEY_NOT_HELD');
         require(locksmith.isRootKey(rootKeyId), "KEY_NOT_ROOT");
@@ -162,6 +162,8 @@ contract KeyOracle is IKeyOracle, Initializable, OwnableUpgradeable, UUPSUpgrade
 
         // emit the oracle creation event
         emit keyOracleRegistered(msg.sender, rootTrustId, rootKeyId, keyId, finalHash);
+
+        return finalHash;
     }
     
     ////////////////////////////////////////////////////////

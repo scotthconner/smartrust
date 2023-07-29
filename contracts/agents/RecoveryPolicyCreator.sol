@@ -54,6 +54,7 @@ contract RecoveryPolicyCreator is ERC1155Holder, Initializable, OwnableUpgradeab
         address[] guardians;
 
         // deadman switch configuration
+        bool    useDeadman;
         bytes32 deadmanDescription;
         uint256 alarmTime;
         uint256 snoozeInterval;
@@ -131,18 +132,33 @@ contract RecoveryPolicyCreator is ERC1155Holder, Initializable, OwnableUpgradeab
     function onERC1155Received(address, address from, uint256 keyId, uint256 count, bytes memory data)
         public virtual override returns (bytes4) {
 
+        bytes32 deadmanHash;
+
         // make sure the count is exactly 1 of whatever it is.
         require(count == 1, 'IMPROPER_KEY_INPUT');
 
         // make sure the key came from our known locksmith, simply
         // for sanity sake, we want to ensure the keys and events don't shear
-        // for some reason.
+        require((msg.sender == locksmith.getKeyVault()), 'UNKNOWN_KEY_TYPE');
 
         // grab the encoded information
         (RecoveryPolicyConfiguration memory config) 
             = abi.decode(data, (RecoveryPolicyConfiguration));
 
+        // at this point we just assume the key has the permissions to create
+        // events, if it doesn't it will revert
+
         // create events as needed 
+        if (config.useDeadman) {
+            deadmanHash = alarmClock.createAlarm(keyId, 
+                config.deadmanDescription,
+                config.alarmTime,
+                config.snoozeInterval,
+                config.snoozeKeyId);
+        }
+        for(uint256 x = 0; x < config.keyOracles.length; x++) {
+            
+        }
 
         // create the policy
         //IERC1155(msg.sender).safeTransferFrom(address(this), keyAddressFactory, keyId, 1,
