@@ -24,6 +24,7 @@ import '../interfaces/ITrustEventLog.sol';
 // key's authenticity via the trusted Locksmith.
 import '../interfaces/IKeyVault.sol';
 import '../interfaces/ILocksmith.sol';
+import '../interfaces/IKeyOracle.sol';
 
 // We want to be able to keep track of all key oracles for
 // a given key.
@@ -47,28 +48,7 @@ using EnumerableSet for EnumerableSet.Bytes32Set;
  * different dispatcher that utilizes other business logic or on-chain oracle
  * verification.
  */
-contract KeyOracle is Initializable, OwnableUpgradeable, UUPSUpgradeable {
-    ////////////////////////////////////////////////////////
-    // Events
-    //
-    // This is going to help indexers and web applications
-    // watch and respond to blocks that contain trust transactions.
-    ////////////////////////////////////////////////////////
-
-    /**
-     * keyOracleRegistered 
-     *
-     * This event is emitted when a dispatcher registers
-     * itself as the origin for a future event.
-     *
-     * @param operator         the message sender that initaited the oracle creation.
-     * @param trustId          the trust the event is associated with
-     * @param rootKeyId        the verified root key that was used to generate the oracle
-     * @param keyId            the key that was anointed as event oracle.
-     * @param eventHash        the event hash the dispatcher will log.
-     */
-    event keyOracleRegistered(address operator, uint256 trustId, uint256 rootKeyId, uint256 keyId, bytes32 eventHash);
-
+contract KeyOracle is IKeyOracle, Initializable, OwnableUpgradeable, UUPSUpgradeable {
     ///////////////////////////////////////////////////////
     // Storage
     ///////////////////////////////////////////////////////
@@ -133,7 +113,7 @@ contract KeyOracle is Initializable, OwnableUpgradeable, UUPSUpgradeable {
      * @param keyId the oracle key you want the event hashes for
      * @return an array of event hashes that can be looked up in the TrustEventLog
      */
-    function getOracleKeyEvents(uint256 keyId) public view returns (bytes32[] memory) {
+    function getOracleKeyEvents(uint256 keyId) external view returns (bytes32[] memory) {
         return oracleKeyEvents[keyId].values();
     }
 
