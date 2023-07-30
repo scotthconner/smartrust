@@ -391,8 +391,8 @@ contract TrustRecoveryCenter is ITrustRecoveryCenter, ERC1155Holder, Initializab
         // create the key, hoping keyId is root. otherwise fail.
         // this code will re-enter this call back and we will store it above.
         // we will also invariant check our balance on the way out.
-        awaitingKey = true;
         awaitingKeyId = keyId;
+        awaitingKey = true;
         locksmith.copyKey(keyId, keyId, address(this), false);
         awaitingKey = false;
         awaitingKeyId = 0;

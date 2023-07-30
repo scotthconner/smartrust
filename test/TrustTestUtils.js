@@ -580,6 +580,27 @@ TrustTestFixtures = (function() {
         owner, root, second, third};
     },
     //////////////////////////////////////////////////////////
+    // Added Recovery Policy Creator 
+    //
+    //////////////////////////////////////////////////////////
+    addedPolicyCreator: async function() {
+      const { keyVault, locksmith, allowance, distributor, recovery,
+        notary, ledger, vault, tokenVault, coin, inbox, postOffice,
+        events, trustee, keyOracle, alarmClock, addressFactory, megaKey,
+        owner, root, second, third } = await TrustTestFixtures.addedRecoveryCenter();
+
+      // deploy the policy creator 
+      const RecoveryCreator = await ethers.getContractFactory("RecoveryPolicyCreator");
+      const policy = await upgrades.deployProxy(RecoveryCreator, [locksmith.address, notary.address, alarmClock.address, keyOracle.address, 
+        recovery.address, events.address]);
+      await policy.deployed();
+
+      return {keyVault, locksmith, allowance, distributor, recovery,
+        notary, ledger, vault, tokenVault, coin, inbox, postOffice, policy,
+        events, trustee, keyOracle, alarmClock, addressFactory, megaKey,
+        owner, root, second, third};
+    },
+    //////////////////////////////////////////////////////////
     // Added creator
     //
     // Adds a contract that feeds an orchestration of
@@ -587,9 +608,9 @@ TrustTestFixtures = (function() {
     //////////////////////////////////////////////////////////
     addedCreator: async function() {
       const { keyVault, locksmith, allowance, distributor, recovery,
-        notary, ledger, vault, tokenVault, coin, inbox, postOffice,
+        notary, ledger, vault, tokenVault, coin, inbox, postOffice, policy,
         events, trustee, keyOracle, alarmClock, addressFactory, megaKey,
-        owner, root, second, third } = await TrustTestFixtures.addedRecoveryCenter();
+        owner, root, second, third } = await TrustTestFixtures.addedPolicyCreator();
 
       // deploy the creator
       const Creator = await ethers.getContractFactory("TrustCreator");
@@ -602,7 +623,7 @@ TrustTestFixtures = (function() {
 
       return { keyVault, locksmith, creator, megaKey, allowance, distributor,
         recovery, notary, ledger, vault, tokenVault, coin, inbox, postOffice,
-        events, trustee, keyOracle, alarmClock, addressFactory,
+        events, trustee, keyOracle, alarmClock, addressFactory, policy,
         owner, root, second, third };
     },
     //////////////////////////////////////////////////////////

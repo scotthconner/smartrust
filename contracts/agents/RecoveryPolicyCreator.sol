@@ -30,7 +30,6 @@ import '../interfaces/IKeyOracle.sol';
 import '../interfaces/IAlarmClock.sol';
 import '../interfaces/ITrustEventLog.sol';
 import '../interfaces/ITrustRecoveryCenter.sol';
-
 ///////////////////////////////////////////////////////////
 
 /**
@@ -91,6 +90,9 @@ contract RecoveryPolicyCreator is ERC1155Holder, Initializable, OwnableUpgradeab
     INotary        public notary;
     ITrustEventLog public trustEventLog;
     ITrustRecoveryCenter public trustRecoveryCenter;
+
+    bool awaitingKey;
+    uint256 awaitingKeyId;
 
     ///////////////////////////////////////////////////////
     // Constructor and Upgrade Methods
@@ -161,10 +163,16 @@ contract RecoveryPolicyCreator is ERC1155Holder, Initializable, OwnableUpgradeab
         // for sanity sake, we want to ensure the keys and events don't shear
         require((msg.sender == locksmith.getKeyVault()), 'UNKNOWN_KEY_TYPE');
 
+        // swallow the key if we are expecting it, otherwise panic. we don't
+        // want this contract to hold two keys at the same time.
+        if (awaitingKey) {
+            assert(keyId == awaitingKeyId);
+            return this.onERC1155Received.selector;
+        }
+
         // grab the encoded information
-        (RecoveryPolicyConfiguration memory config) 
-            = abi.decode(data, (RecoveryPolicyConfiguration));
-        
+        RecoveryPolicyConfiguration memory config = abi.decode(data, (RecoveryPolicyConfiguration));
+
         bytes32[] memory events = new bytes32[](config.deadmen.length + config.keyOracles.length);
         uint256 eventCount = 0;
 
@@ -197,9 +205,14 @@ contract RecoveryPolicyCreator is ERC1155Holder, Initializable, OwnableUpgradeab
                 config.keyOracles[x].description);
         }
 
-        // create the policy
+        // create the policy. This is going to re-enter this code
+        // when sending the key back, so lets latch it
+        awaitingKeyId = keyId;
+        awaitingKey = true;
         IERC1155(msg.sender).safeTransferFrom(address(this), address(trustRecoveryCenter), keyId, 1,
             abi.encode(config.guardians, events));
+        awaitingKey = false;
+        awaitingKeyId = 0;
 
         // send the root key back
         IERC1155(msg.sender).safeTransferFrom(address(this), from, keyId, 1, ""); 
