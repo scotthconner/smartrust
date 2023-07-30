@@ -465,5 +465,7 @@ task("blast", "Degenerately deploy the entire platform, assuming a clean slate."
     await run("deploy", {contract: 'KeyAddressFactory'});
     await run("deploy", {contract: 'MegaKeyCreator'});
     await run("deploy", {contract: 'TrustCreator'});
+    await run("deploy", {contract: 'TrustRecoveryCenter'});
+    await run("deploy", {contract: 'RecoveryPolicyCreator'});
     await run("respect");
   });

@@ -18,6 +18,8 @@ LocksmithRegistry = (function() {
     'KeyAddressFactory',
     'MegaKeyCreator',
     'TrustCreator',
+    'TrustRecoveryCenter',
+    'RecoveryPolicyCreator',
   ];
 
   /////////////////////////////////////////////
