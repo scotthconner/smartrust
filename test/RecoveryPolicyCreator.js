@@ -140,6 +140,15 @@ describe("RecoveryPolicyCreator", function () {
       // the trust already has the notary entries 
       await expect(keyVault.connect(root).safeTransferFrom(root.address, policy.address, 0, 1, data))
         .to.be.revertedWith('REDUNDANT_PROVISION');
+
+      // encode the data
+      data = ethers.utils.defaultAbiCoder.encode(
+        ['tuple(bool,bool,address[],tuple(bytes32,uint256,uint256,uint256)[],tuple(bytes32,uint256)[])'],
+        [[false, true, [], [], []]]);
+
+      // the trust already has the notary entries
+      await expect(keyVault.connect(root).safeTransferFrom(root.address, policy.address, 0, 1, data))
+        .to.be.revertedWith('REDUNDANT_PROVISION');
     });
 
     it("Policy needs at least one guardian", async function() {
@@ -182,6 +191,130 @@ describe("RecoveryPolicyCreator", function () {
       await expect(await recovery.getRecoveryPolicy(0)).eql([true, [owner.address], []]);
       await expect(await keyVault.keyBalanceOf(root.address, 0, false)).eql(bn(1));
       await expect(await keyVault.keyBalanceOf(recovery.address, 0, false)).eql(bn(1));
+    });
+    
+    it("Generation with both event types", async function() {
+      const { keyVault, locksmith, postOffice, addressFactory, distributor,
+        recovery, notary, ledger, vault, tokenVault, coin, inbox, megaKey,
+        events, trustee, keyOracle, alarmClock, policy,
+        owner, root, second, third} = await loadFixture(TrustTestFixtures.addedPolicyCreator);
+
+      // encode the data
+      const time = await now();
+      var data = ethers.utils.defaultAbiCoder.encode(
+        ['tuple(bool,bool,address[],tuple(bytes32,uint256,uint256,uint256)[],tuple(bytes32,uint256)[])'],
+        [[false, false, [owner.address], [
+          // deadmen configuration, lets do two
+          [stb('always'), time, bn(10), bn(0)],
+          [stb('death'), time, bn(10000), bn(0)]
+        ], [
+          // key oracle configuration, lets do two
+          [stb('one'), bn(0)],
+          [stb('two'), bn(0)]
+        ]]]);
+
+      // pre-conditions
+      await expect(await recovery.getRecoveryPolicy(0)).eql([false, [], []]);
+      await expect(await keyVault.keyBalanceOf(root.address, 0, false)).eql(bn(1));
+      await expect(await keyVault.keyBalanceOf(recovery.address, 0, false)).eql(bn(0));
+      await expect(await events.getRegisteredTrustEvents(0, alarmClock.address)).eql([]);
+      await expect(await events.getRegisteredTrustEvents(0, keyOracle.address)).eql([]);
+
+      // create! 
+      await expect(await keyVault.connect(root).safeTransferFrom(root.address, policy.address, 0, 1, data))
+        .to.emit(recovery, 'recoveryCreated') // I cant easily determine the event hashes yet
+        .to.emit(locksmith, 'keyMinted').withArgs(recovery.address, 0, 0, stb('Master Key'), recovery.address);
+     
+      // grab the events, I'm fairly certain I can predict the order
+      const deadHashes = await events.getRegisteredTrustEvents(0, alarmClock.address);
+      const keyHashes = await events.getRegisteredTrustEvents(0, keyOracle.address);
+      const eventHashes = [deadHashes, keyHashes].flat(2);
+
+      // post-conditions
+      await expect(await recovery.getRecoveryPolicy(0)).eql([true, [owner.address], eventHashes]);
+      await expect(await keyVault.keyBalanceOf(root.address, 0, false)).eql(bn(1));
+      await expect(await keyVault.keyBalanceOf(recovery.address, 0, false)).eql(bn(1));
+      await expect(await events.getRegisteredTrustEvents(0, alarmClock.address)).eql(deadHashes);
+      await expect(await events.getRegisteredTrustEvents(0, keyOracle.address)).eql(keyHashes);
+
+      // claiming this will fail with missing events
+      await expect(recovery.connect(owner).recoverKey(0)).to.be.revertedWith('MISSING_EVENT');
+    });
+
+    it("Generation that requires notary work", async function() {
+      const {keyVault, locksmith, notary, creator, allowance, distributor, alarmClock, policy,
+        recovery, keyOracle, ledger, vault, tokenVault, trustee, owner, root, events } =
+        await loadFixture(TrustTestFixtures.addedCreator);
+     
+      // this will generate key 4
+      await expect(await creator.connect(root).spawnTrust(stb('Easy Trust'), [], [],[],
+        [distributor.address, allowance.address],
+        [stb('Distributor Program'), stb('Allowance Program')],
+        [],[])).to.emit(locksmith, 'trustCreated')
+          .withArgs(creator.address, 1, stb('Easy Trust'), creator.address)
+          .to.emit(locksmith, 'keyMinted')
+          .withArgs(creator.address, 1, 4, stb('Master Key'), creator.address);
+
+      // now that we have a trust without any dispatchers, lets successfully
+      // create a policy that requires the notary entries.
+      const time = await now();
+      var data = ethers.utils.defaultAbiCoder.encode(
+        ['tuple(bool,bool,address[],tuple(bytes32,uint256,uint256,uint256)[],tuple(bytes32,uint256)[])'],
+        [[true, true, [owner.address], [
+          // deadmen configuration, lets do two
+          [stb('always'), time, bn(10), bn(4)],
+          [stb('death'), time, bn(10000), bn(4)]
+        ], [
+          // key oracle configuration, lets do two
+          [stb('one'), bn(4)],
+          [stb('two'), bn(4)]
+        ]]]);
+
+      // pre-conditions
+      await expect(await recovery.getRecoveryPolicy(4)).eql([false, [], []]);
+      await expect(await keyVault.keyBalanceOf(root.address, 4, false)).eql(bn(1));
+      await expect(await keyVault.keyBalanceOf(recovery.address, 4, false)).eql(bn(0));
+      await expect(await events.getRegisteredTrustEvents(0, alarmClock.address)).eql([]);
+      await expect(await events.getRegisteredTrustEvents(0, keyOracle.address)).eql([]);
+
+      // create!
+      await expect(await keyVault.connect(root).safeTransferFrom(root.address, policy.address, 4, 1, data))
+        .to.emit(recovery, 'recoveryCreated') // I cant easily determine the event hashes yet
+        .to.emit(locksmith, 'keyMinted').withArgs(recovery.address, 1, 4, stb('Master Key'), recovery.address); 
+
+      // post conditions
+      const deadHashes = await events.getRegisteredTrustEvents(1, alarmClock.address);
+      const keyHashes = await events.getRegisteredTrustEvents(1, keyOracle.address);
+      const eventHashes = [deadHashes, keyHashes].flat(2);
+
+      // post-conditions
+      await expect(await recovery.getRecoveryPolicy(4)).eql([true, [owner.address], eventHashes]);
+      await expect(await keyVault.keyBalanceOf(root.address, 4, false)).eql(bn(1));
+      await expect(await keyVault.keyBalanceOf(recovery.address, 4, false)).eql(bn(1));
+      await expect(await events.getRegisteredTrustEvents(1, alarmClock.address)).eql(deadHashes);
+      await expect(await events.getRegisteredTrustEvents(1, keyOracle.address)).eql(keyHashes);
+
+      // fail to recover
+      await expect(recovery.connect(owner).recoverKey(4)).to.be.revertedWith('MISSING_EVENT');
+
+      // to be sure everything is set up properly, let's fire
+      // two of each event to ensure its all good
+      await expect(await keyOracle.connect(root).fireKeyOracleEvent(4, keyHashes[0]))
+        .to.emit(events, 'trustEventLogged').withArgs(keyOracle.address, keyHashes[0]);
+      await expect(await keyOracle.connect(root).fireKeyOracleEvent(4, keyHashes[1]))
+        .to.emit(events, 'trustEventLogged').withArgs(keyOracle.address, keyHashes[1]);
+      await expect(await alarmClock.connect(owner).challengeAlarm(deadHashes[0]))
+        .to.emit(events, 'trustEventLogged').withArgs(alarmClock.address, deadHashes[0]);
+
+      // fail to recover again
+      await expect(recovery.connect(owner).recoverKey(4)).to.be.revertedWith('MISSING_EVENT');
+
+      await expect(await alarmClock.connect(owner).challengeAlarm(deadHashes[1]))
+        .to.emit(events, 'trustEventLogged').withArgs(alarmClock.address, deadHashes[1]);
+
+      // success!
+      await expect(recovery.connect(owner).recoverKey(4)).to.emit(recovery, 'keyRecovered')
+        .withArgs(owner.address, 4, eventHashes); 
     });
   });
 });

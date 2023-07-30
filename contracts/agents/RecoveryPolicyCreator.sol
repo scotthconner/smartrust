@@ -179,6 +179,7 @@ contract RecoveryPolicyCreator is ERC1155Holder, Initializable, OwnableUpgradeab
         // ensure we have notary access for the alarm clock deadman
         if(config.needAlarmNotary) {
             // this will fail if the key isn't root
+            // or the notary already has this entry
             notary.setTrustedLedgerRole(keyId, 2, address(trustEventLog), address(alarmClock),
                 true, stringToBytes32('Alarm Clock'));
         }
@@ -194,7 +195,8 @@ contract RecoveryPolicyCreator is ERC1155Holder, Initializable, OwnableUpgradeab
         
         // ensure we have notary access for the key oracle 
         if(config.needOracleNotary) {
-            // this will fail if the key isn't root
+            // this will fail if the key isn't root,
+            // or the notary already has this entry
             notary.setTrustedLedgerRole(keyId, 2, address(trustEventLog), address(keyOracle),
                 true, stringToBytes32('Key Oracle'));
         }
