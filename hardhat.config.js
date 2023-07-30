@@ -49,6 +49,7 @@ module.exports = {
     },
     basegoerli: {
       url: 'https://goerli.base.org',
+      gasPrice: 1000000000,
       accounts: [`${process.env.MY_PRIVATE_KEY}`],
     },
     base: {

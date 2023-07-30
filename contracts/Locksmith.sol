@@ -65,13 +65,13 @@ contract Locksmith is ILocksmith, Initializable, OwnableUpgradeable, UUPSUpgrade
 
     // the global trust registry
     mapping(uint256 => Trust) private trustRegistry;
-    uint256 private trustCount; // total number of trusts
+    uint256 public trustCount; // total number of trusts
 
     // a reverse mapping that keeps a top level association
     // between a key and it's trust. This enables O(1) key
     // to trust resolution
     mapping(uint256 => uint256) private keyTrustAssociations;
-    uint256 private keyCount; // the total number of keys
+    uint256 public keyCount; // the total number of keys
 
     ///////////////////////////////////////////////////////
     // Constructor and Upgrade Methods
