@@ -407,6 +407,40 @@ task("respect", "Make the current registry's key vault respect the current locks
     }
   });
 
+task("metrics", "Take a look at high level metrics for this deployment.")
+  .setAction(async (taskArgs) => {
+    const owner = await patchOwner();
+    const chainId = await owner.getChainId();
+
+    console.log(greenText, '\n==== GENIE, METRICS! ====\n');
+    console.log(JSON.stringify(taskArgs, null, 2));
+    console.log(greenText, "\n=== SIGNER INFO ===\n");
+    console.log(" Signer Network Chain ID: " + chainId);
+    console.log(" Signer Wallet Address: " + owner.address);
+
+    console.log(greenText, "\n=== CONTRACT INFO ===\n");
+    var keyVaultAddress = LocksmithRegistry.getContractAddress(chainId, 'KeyVault');
+    var locksmithAddress = LocksmithRegistry.getContractAddress(chainId, 'Locksmith');
+    console.log(keyVaultAddress ? greenText : redText, " KeyVault: " + keyVaultAddress);
+    console.log(locksmithAddress ? greenText : redText, " Locksmith: " + locksmithAddress);
+    
+    console.log(greenText, "\n=== LOCKSMITH INFO ===\n");
+    var locksmithContract = await ethers.getContractFactory('Locksmith');
+    var trusts = await locksmithContract 
+        .attach(locksmithAddress)
+        .trustCount();
+    console.log(" Trust Count: " + trusts);
+    var keys = await locksmithContract 
+        .attach(locksmithAddress)
+        .keyCount();
+    console.log(" Key Count: " + keys);
+    
+    console.log(greenText, "\n=== VAULT INFO ===\n");
+    var etherVaultAddress = LocksmithRegistry.getContractAddress(chainId, 'EtherVault');
+    var tvl = await ethers.provider.getBalance(etherVaultAddress);
+    console.log(" Ether Vault TVL (eth): " + ethers.utils.formatEther(tvl));
+  });
+
 task("assets", "Degenerately spam the network with ERC20s.")
   .setAction(async (taskArgs) => {
     await run("shadow", {alias: 'usdc', ticker: 'USDC', amount: 100000});
