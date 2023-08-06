@@ -149,12 +149,18 @@ describe("TrustEventLog", function () {
       // trust the dispatcher
       await notary.connect(root).setTrustedLedgerRole(0, DISPATCHER(), events.address, 
         owner.address, true, stb('owner'));
+      
+      // check the getter
+      await expect(await events.getEventInfo(hash)).eql([false, ethers.constants.HashZero, ethers.constants.AddressZero, false]);
 
       // event registration
       await expect(await events.connect(owner).registerTrustEvent(0, stb('death'), stb('Kenny dies')))
         .to.emit(events, 'trustEventRegistered')
         .withArgs(owner.address, 0, hash, stb('Kenny dies'));
- 
+
+      // check the getter
+      await expect(await events.getEventInfo(hash)).eql([true, stb('Kenny dies'), owner.address, false]);
+
       // the owner signer can act as an anonymous dispatcher
       await expect(await events.connect(owner).logTrustEvent(hash))
         .to.emit(events, 'trustEventLogged')
@@ -162,6 +168,9 @@ describe("TrustEventLog", function () {
 
       // the event can be seen as fired
       await expect(await events.firedEvents(hash)).to.equal(true);
+      
+      // check the getter
+      await expect(await events.getEventInfo(hash)).eql([true, stb('Kenny dies'), owner.address, true]);
 
       // trying to do it again will revert
       await expect(events.connect(owner).logTrustEvent(hash))

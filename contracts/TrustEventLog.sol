@@ -134,6 +134,24 @@ contract TrustEventLog is ITrustEventLog, Initializable, OwnableUpgradeable, UUP
         return dispatcher == address(0) ? trustEventRegistry[trustId] : trustDispatcherEvents[trustId][dispatcher];
     }
 
+    /**
+     * getEventInfo
+     *
+     * Given an event ID, provides all active metadata associated with it.
+     *
+     * @param eventHash the hash of the event you want metadata for
+     * @return true if a valid hash, false otherwise
+     * @return the encoded event description
+     * @return the address of the dispatcher
+     * @return true if the event has been fired
+     */
+    function getEventInfo(bytes32 eventHash) external view returns(bool, bytes32, address, bool) {
+        return ( eventDispatchers[eventHash] != address(0), 
+                 eventDescriptions[eventHash],
+                 eventDispatchers[eventHash],
+                 firedEvents[eventHash] );
+    }
+
     ////////////////////////////////////////////////////////
     // Dispatcher Methods
     //
