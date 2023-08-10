@@ -16,6 +16,7 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 // KeyVault Interface - implemented to keep bytecode clean across upgrade tracking
 // also used nicely for platform building.
 import './interfaces/IKeyVault.sol';
+import './interfaces/ILocksmith.sol';
 
 // We are going to use the Enumerable Set to keep track of where
 // the keys are going and who owns what
@@ -140,6 +141,42 @@ contract KeyVault is IKeyVault, ERC1155Upgradeable, UUPSUpgradeable {
      */
     function keyBalanceOf(address account, uint256 id, bool soulbound) external view returns (uint256) {
         return soulbound ? soulboundKeyAmounts[account][id] : this.balanceOf(account, id);
+    }
+
+    /**
+     * uri 
+     *
+     * This method overrides the ERC1155 interface to provide 
+     * a minimal view into the NFTs in a user's wallet.
+     * 
+     * Later we should encode these to be per-key, but for
+     * now let's at least ensure master keys and accounts
+     * show up properly.
+     *
+     * @param id the id of the NFT we want to inspect
+     */
+    function uri(uint256 id) public view virtual override returns (string memory) {
+        // I'll be honest, there's two things I don't like here:
+        // 1) Calling back to the locksmith to check if its root. This is bad.
+        //    I should be generating the metadata pre-transaction and taking
+        //    it as input upon mint. This would enable me to set the account name
+        //    as an attribute. This must come later as I am pressed for time.
+        // 2) Hard-coding it. It's just a waste of bytes. But its fast.
+        if(ILocksmith(locksmith).isRootKey(id)) {
+            return "https://bafkreid6zaapx5572ect2t2awlrocbrj5qzwrbhcpuziifuys4f6t3jhli.ipfs.nftstorage.link";
+        } else {
+            return "https://bafkreicfiix7nnedfg3mk5lqt2dpsiuzjkfywft4dawgbyftczqwfg2qnq.ipfs.nftstorage.link";
+        }
+    }
+
+    /**
+     * name
+     * 
+     * We want the collection name to show up, but we don't want to
+     * change the storage format of the contract.
+     */
+    function name() public pure returns (string memory) {
+        return "Locksmith Wallet";
     }
 
     ////////////////////////////////////////////////////////

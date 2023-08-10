@@ -128,7 +128,10 @@ describe("Locksmith", function () {
 
       // will trust count be correct?
       await assertKey(locksmith, root, 0, true, stb('Master Key'), 0, true);
-      
+   
+      await expect(await locksmith.getTrustInfo(0)).eql([bn(0), stb('Conner Trust'), bn(0), bn(1)]);
+      await expect(await keyVault.name()).eql("Locksmith Wallet");
+      await expect(await keyVault.uri(0)).eql("https://bafkreid6zaapx5572ect2t2awlrocbrj5qzwrbhcpuziifuys4f6t3jhli.ipfs.nftstorage.link");
       // ensure that the account now holds a root key for the first trust, and 
       // that we didn't accidentally send it somewhere else, or to everyone
       expect(await keyVault.balanceOf(root.address, 0)).to.equal(1);
@@ -216,6 +219,8 @@ describe("Locksmith", function () {
         .createKey(0, stb('beneficiary'), second.address, false))
         .to.emit(locksmith, "keyMinted")
         .withArgs(root.address, 0, 1, stb('beneficiary'), second.address);
+      
+      await expect(await keyVault.uri(1)).eql("https://bafkreicfiix7nnedfg3mk5lqt2dpsiuzjkfywft4dawgbyftczqwfg2qnq.ipfs.nftstorage.link");
 
       // ensure that the key is not actually a root
       expect(await keyVault.balanceOf(second.address, 1)).to.equal(1);
