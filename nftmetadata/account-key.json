@@ -1,0 +1,11 @@
+{
+    "name": "Locksmith Permission",
+    "description": "A permission to a Locksmith Account.",
+    "image": "https://bafybeieqyhlfdsdqjmo3uhblgwmzdvx25z3uojiy42gzrrzf47ag3pgmqu.ipfs.nftstorage.link",
+    "attributes": [
+      {
+          "trait_type": "Permission Type",
+          "value": "Account Key"
+      }
+    ]
+}

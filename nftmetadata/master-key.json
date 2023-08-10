@@ -1,0 +1,11 @@
+{
+    "name": "Locksmith Permission",
+    "description": "A Master Key to a Locksmith Trust.",
+    "image": "https://bafybeia77qixuowrx5qtisytvgyxdhxp2yspthlhox6wus36hyk7glinle.ipfs.nftstorage.link",
+    "attributes": [
+      {
+          "trait_type": "Permission Type",
+          "value": "Master Key"
+      }
+    ]
+}
