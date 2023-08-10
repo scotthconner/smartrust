@@ -175,7 +175,7 @@ contract KeyVault is IKeyVault, ERC1155Upgradeable, UUPSUpgradeable {
      * We want the collection name to show up, but we don't want to
      * change the storage format of the contract.
      */
-    function name() public pure returns (string memory) {
+    function name() external pure returns (string memory) {
         return "Locksmith Wallet";
     }
 
