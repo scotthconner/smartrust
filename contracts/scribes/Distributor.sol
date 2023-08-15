@@ -116,8 +116,7 @@ contract Distributor is IDistributor, Initializable, OwnableUpgradeable, UUPSUpg
         external returns (uint256) {
 
         // make sure that the caller is holding the declared root key
-        require(IKeyVault(locksmith.getKeyVault()).keyBalanceOf(msg.sender, sourceKeyId, false) > 0,
-            "KEY_NOT_HELD");
+        require(locksmith.hasKeyOrTrustRoot(msg.sender, sourceKeyId), "KEY_NOT_HELD");
 
         // go straight to the ledger. The notary will validate the rest of the input
         return ledger.distribute(provider, arn, sourceKeyId, keys, amounts);

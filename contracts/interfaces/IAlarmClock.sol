@@ -132,7 +132,6 @@ interface IAlarmClock {
      *
      * - the eventHash isn't registered as an alarm with this contract     (INVALID_ALARM_EVENT)
      * - if the alarm cannot be snoozed (snoozeInterval == 0)              (UNSNOOZABLE_ALARM)
-     * - if the snooze key used is not the correct one for the alarm       (WRONG_SNOOZE_KEY)
      * - the message sender does not have possession of the snooze Key Id  (KEY_NOT_HELD)
      * - if the event has already been fired                               (LATE_SNOOZE)
      * - if the caller is attempting to snooze too early                   (TOO_EARLY)
@@ -153,10 +152,9 @@ interface IAlarmClock {
      * Essentially, this method can only be called once per snoozeInterval.
      * 
      * @param eventHash   the event you want to snooze the alarm for.
-     * @param snoozeKeyId the key the message sender is presenting for permission to snooze.
      * @return the resulting snooze time, if successful.
      */
-    function snoozeAlarm(bytes32 eventHash, uint256 snoozeKeyId) external returns (uint256);
+    function snoozeAlarm(bytes32 eventHash) external returns (uint256);
 
     ////////////////////////////////////////////////////////
     // Public methods 

@@ -228,7 +228,7 @@ contract Notary is INotary, Initializable, OwnableUpgradeable, UUPSUpgradeable {
      */
     function setWithdrawalAllowance(address ledger, address provider, uint256 keyId, bytes32 arn, uint256 amount) external {
         // panic if the message sender isn't the key holder
-        require(IKeyVault(locksmith.getKeyVault()).keyBalanceOf(msg.sender, keyId, false) > 0, 'KEY_NOT_HELD');
+        require(locksmith.hasKeyOrTrustRoot(msg.sender, keyId), 'KEY_NOT_HELD');
         withdrawalAllowances[ledger][keyId][provider][arn] = amount;    
         emit withdrawalAllowanceAssigned(msg.sender, keyId, ledger, provider, arn, amount); 
     }

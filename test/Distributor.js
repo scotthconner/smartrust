@@ -70,7 +70,7 @@ describe("Distributor", function () {
         events, trustee, keyOracle, alarmClock, creator, allowance, distributor,
         owner, root, second, third} = await loadFixture(TrustTestFixtures.addedDistributor);
   
-      await expect(distributor.connect(root).distribute(vault.address, ethArn(),
+      await expect(distributor.connect(third).distribute(vault.address, ethArn(),
         1, [0], [eth(1)])).to.be.revertedWith('KEY_NOT_HELD');
     });
     
@@ -151,6 +151,14 @@ describe("Distributor", function () {
 
       // check the key balance
       await expect(await ledger.getContextArnBalances(2, 1, vault.address, [ethArn()])).eql([eth(1)]);
+    
+      // make sure root doesn't hold
+      await expect(await keyVault.keyBalanceOf(root.address, 1, false)).eql(bn(0));
+
+      // do this with root escalation
+      await expect(await distributor.connect(root).distribute(vault.address, ethArn(), 1, [0], [eth(1)]))
+        .to.emit(notary, 'notaryDistributionApproval')
+        .to.emit(ledger, 'ledgerTransferOccurred');
     });
   });
 });

@@ -220,7 +220,7 @@ describe("AlarmClock", function () {
       const {alarmClock, locksmith, events, owner, root, second} =
         await loadFixture(TrustTestFixtures.addedAlarmClock);
 
-       await expect(alarmClock.connect(root).snoozeAlarm(stb('invalid'), 0))
+       await expect(alarmClock.connect(root).snoozeAlarm(stb('invalid')))
         .to.be.revertedWith('INVALID_ALARM_EVENT');
     });
 
@@ -237,29 +237,12 @@ describe("AlarmClock", function () {
         .to.emit(alarmClock, 'alarmClockRegistered')
         .withArgs(root.address, 0, 0, time, 0, 1, hash);
 
-      await expect(alarmClock.connect(root).snoozeAlarm(hash, 0))
+      await expect(alarmClock.connect(root).snoozeAlarm(hash))
         .to.be.revertedWith('UNSNOOZABLE_ALARM');
     });
 
-    it("Require alarm snoozing to use correct snooze key", async function() {
-      const {alarmClock, locksmith, events, owner, root, second} =
-        await loadFixture(TrustTestFixtures.addedAlarmClock);
-
-      const time = await now();
-      const hash = expectedEventHash(alarmClock.address, ethers.utils.keccak256(ethers.utils.defaultAbiCoder.encode(
-        ['uint256','bytes32','uint256','uint256','uint256'],
-        [bn(0), stb('proof-of-life'), time, bn(100), bn(1)])));
-
-      await expect(await alarmClock.connect(root).createAlarm(0, stb("proof-of-life"), time, 100, 1))
-        .to.emit(alarmClock, 'alarmClockRegistered')
-        .withArgs(root.address, 0, 0, time, 100, 1, hash);
-
-      await expect(alarmClock.connect(root).snoozeAlarm(hash, 0))
-        .to.be.revertedWith('WRONG_SNOOZE_KEY'); 
-    });
-
     it("Require caller to be holding correct snooze key", async function() {
-      const {alarmClock, locksmith, events, owner, root, second} =
+      const {alarmClock, locksmith, keyVault, events, owner, root, second} =
         await loadFixture(TrustTestFixtures.addedAlarmClock);
 
       const time = await now();
@@ -271,8 +254,15 @@ describe("AlarmClock", function () {
         .to.emit(alarmClock, 'alarmClockRegistered')
         .withArgs(root.address, 0, 0, time, 100, 1, hash);
 
-      await expect(alarmClock.connect(root).snoozeAlarm(hash, 1))
+      await expect(alarmClock.connect(second).snoozeAlarm(hash))
         .to.be.revertedWith('KEY_NOT_HELD');
+
+      // make sure the root doesn't have 1
+      await expect(await keyVault.keyBalanceOf(root.address, 1, false)).eql(bn(0));
+
+      // but this will work because its root
+      await expect(alarmClock.connect(root).snoozeAlarm(hash))
+        .to.emit(alarmClock, 'alarmClockSnoozed')
     });
 
     it("Require alarm has not already been successfully challenged", async function() {
@@ -297,7 +287,7 @@ describe("AlarmClock", function () {
         .to.emit(events, 'trustEventLogged')
         .withArgs(alarmClock.address, hash);
 
-      await expect(alarmClock.connect(owner).snoozeAlarm(hash, 1))
+      await expect(alarmClock.connect(owner).snoozeAlarm(hash))
         .to.be.revertedWith('OVERSNOOZE');
     });
 
@@ -314,7 +304,7 @@ describe("AlarmClock", function () {
         .to.emit(alarmClock, 'alarmClockRegistered')
         .withArgs(root.address, 0, 0, time, 100, 1, hash);
 
-      await expect(alarmClock.connect(owner).snoozeAlarm(hash, 1))
+      await expect(alarmClock.connect(owner).snoozeAlarm(hash))
         .to.be.revertedWith('TOO_EARLY');
     });
 
@@ -331,7 +321,7 @@ describe("AlarmClock", function () {
         .to.emit(alarmClock, 'alarmClockRegistered')
         .withArgs(root.address, 0, 0, time, 100, 1, hash);
 
-      await expect(await alarmClock.connect(owner).snoozeAlarm(hash, 1))
+      await expect(await alarmClock.connect(owner).snoozeAlarm(hash))
         .to.emit(alarmClock, 'alarmClockSnoozed')
         .withArgs(owner.address, hash, 1, bn(time+100));
     });
@@ -352,7 +342,7 @@ describe("AlarmClock", function () {
       // fast forward the block chain
       await ethers.provider.send("evm_setNextBlockTimestamp", [time + 61]);
 
-      await expect(await alarmClock.connect(owner).snoozeAlarm(hash, 1))
+      await expect(await alarmClock.connect(owner).snoozeAlarm(hash))
         .to.emit(alarmClock, 'alarmClockSnoozed')
         .withArgs(owner.address, hash, 1, bn(time+61+100))
     });

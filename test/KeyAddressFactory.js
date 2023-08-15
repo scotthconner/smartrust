@@ -244,13 +244,23 @@ describe("KeyAddressFactory", function () {
       const VirtualAddress = await ethers.getContractFactory("VirtualKeyAddress");
       await expect(await VirtualAddress.attach(inboxes[0]).ownerKeyId()).eql(bn(0));
 
-      // make sure the inbox has a copy of the root key
+      // make sure the inbox has a copy of the key
       await expect(await keyVault.keyBalanceOf(inboxes[0], 1, false)).eql(bn(1));
       await expect(await keyVault.keyBalanceOf(inboxes[0], 1, true)).eql(bn(1));
 
       // should fail because it already exists for the key 
       await expect(keyVault.connect(root).safeTransferFrom(root.address, addressFactory.address, 0, 1, data))
         .to.be.revertedWith('DUPLICATE_KEY_REGISTRATION');
+
+      // root doesn't have the key
+      await expect(await keyVault.keyBalanceOf(root.address, 1, false)).eql(bn(0));
+
+      await expect(await vault.connect(owner).deposit(1, {value: eth(2)}));
+
+      // root can do things
+      await expect(await VirtualAddress.attach(inboxes[0]).connect(root).send(vault.address, eth(1), third.address))
+        .to.emit(VirtualAddress.attach(inboxes[0]), 'addressTransaction')
+        .withArgs(1, root.address, third.address, vault.address, ethArn(), eth(1), bn(1));
     });
   });
 });

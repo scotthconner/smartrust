@@ -150,6 +150,13 @@ describe("Locksmith", function () {
       expect(await keyVault.balanceOf(root.address, 0)).to.equal(0);
       expect(await keyVault.balanceOf(second.address, 0)).to.equal(0);
 
+      // someone doesn't hold a key that doesn't exist
+      expect(await locksmith.hasKeyOrTrustRoot(owner.address, 0)).eql(false); 
+      
+      // pre-conditions
+      expect(await locksmith.hasKeyOrTrustRoot(root.address, 0)).eql(false); 
+      expect(await locksmith.hasKeyOrTrustRoot(second.address, 1)).eql(false); 
+
       // create two trusts, and ensure their events emit properly
       await expect(await locksmith.connect(root).createTrustAndRootKey(stb("Conner Trust"), root.address))
         .to.emit(locksmith, "keyMinted").withArgs(root.address, 0, 0, stb('Master Key'), root.address)
@@ -173,6 +180,10 @@ describe("Locksmith", function () {
 
       await expect(await keyVault.getHolders(0)).eql([root.address]);
       await expect(await keyVault.getHolders(1)).eql([second.address]);
+
+      // check for root escalation
+      expect(await locksmith.hasKeyOrTrustRoot(root.address, 0)).eql(true); 
+      expect(await locksmith.hasKeyOrTrustRoot(second.address, 1)).eql(true); 
     });
   });
   
@@ -290,6 +301,18 @@ describe("Locksmith", function () {
       expect(await keyVault.balanceOf(root.address, 3)).to.equal(1);
       expect(await keyVault.balanceOf(second.address, 4)).to.equal(1);
       expect(await keyVault.balanceOf(third.address, 5)).to.equal(1);
+      expect(await keyVault.balanceOf(second.address, 5)).to.equal(0);
+      expect(await keyVault.balanceOf(root.address, 2)).to.equal(0);
+
+      // try root key escalation
+      expect(await locksmith.hasKeyOrTrustRoot(root.address, 1)).eql(false); 
+      expect(await locksmith.hasKeyOrTrustRoot(root.address, 2)).eql(true); 
+      expect(await locksmith.hasKeyOrTrustRoot(second.address, 1)).eql(true);
+      expect(await locksmith.hasKeyOrTrustRoot(second.address, 3)).eql(true);
+      expect(await locksmith.hasKeyOrTrustRoot(root.address, 4)).eql(false); 
+      expect(await locksmith.hasKeyOrTrustRoot(second.address, 4)).eql(true); 
+      expect(await locksmith.hasKeyOrTrustRoot(root.address, 5)).eql(true); 
+      expect(await locksmith.hasKeyOrTrustRoot(second.address, 5)).eql(false); 
 
       // inspect the key properties
       await assertKey(locksmith, root, 0, true, stb('Master Key'), 0, true);

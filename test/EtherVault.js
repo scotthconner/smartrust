@@ -148,7 +148,11 @@ describe("EtherVault", function () {
 
       // try to deposit as a beneficiary
       await expect(await vault.connect(second).deposit(1, {value: eth(10)}))
-        .to.emit(ledger, "depositOccurred");     
+        .to.emit(ledger, "depositOccurred");
+
+      // can deposit to the second key as root
+      await expect(await vault.connect(root).deposit(1, {value: eth(10)}))
+        .to.emit(ledger, "depositOccurred");
     })
   });
 
@@ -235,6 +239,21 @@ describe("EtherVault", function () {
 
       // check balance of vault isn't changed.
       expect(await ethers.provider.getBalance(vault.address)).to.equal(eth(60));
+
+      // now mint another key on the second trust, deposit, and withdrawal as root
+      await locksmith.connect(second).createKey(1, stb('key 2'), root.address, false);
+
+      // put money into the second trust, as the second key
+      await expect(await vault.connect(root).deposit(2, {value: eth(19)}))
+        .to.emit(ledger, "depositOccurred")
+        .withArgs(vault.address, 1, 2, ethArn(), eth(19), eth(19), eth(39), eth(79));
+
+      await notary.connect(root).setWithdrawalAllowance(
+        vault.ledger(), vault.address, 2, ethArn(), eth(100));
+
+      // withdrawl as the root holder proxied
+      await expect(vault.connect(second).withdrawal(2, eth(1)))
+        .to.emit(ledger, "withdrawalOccurred")
     });
 
     it("Can't withdrawal without owning key used", async function() {

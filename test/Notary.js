@@ -182,6 +182,18 @@ describe("Notary", function () {
         owner.address, third.address, 1, stb('ether'), eth(1)))
         .to.be.revertedWith('KEY_NOT_HELD');
     });
+    
+    it("Can set withdrawal allowance for secondary key with root", async function() {
+      const { locksmith, notary, owner, root, second, third } = 
+        await loadFixture(TrustTestFixtures.freshNotaryProxy);
+
+      await locksmith.connect(root).createKey(0, stb('1'), third.address, false);
+
+      await expect(notary.connect(root).setWithdrawalAllowance(
+        owner.address, third.address, 1, stb('ether'), eth(1)))
+          .to.emit(notary, 'withdrawalAllowanceAssigned')
+          .withArgs(root.address, 1, owner.address, third.address, stb('ether'), eth(1));
+    });
 
     it("Withdrawal allowance is set/reset and events emitted", async function() {
       const { locksmith, notary, owner, root, second, third } = 

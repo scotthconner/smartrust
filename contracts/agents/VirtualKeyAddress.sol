@@ -122,8 +122,7 @@ contract VirtualKeyAddress is IVirtualAddress, ERC1155Holder, Initializable, UUP
      */
     modifier requiresKey(uint256 key) {
         assert(keyInitialized);
-        require(IERC1155(ILocksmith(locksmith).getKeyVault()).balanceOf(msg.sender, key) > 0,
-            'INVALID_OPERATOR');
+        require(ILocksmith(locksmith).hasKeyOrTrustRoot(msg.sender, key), 'INVALID_OPERATOR');
         _;
     }
 

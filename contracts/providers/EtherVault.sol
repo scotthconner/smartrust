@@ -143,8 +143,7 @@ contract EtherVault is IEtherCollateralProvider, Initializable, OwnableUpgradeab
      */
     function deposit(uint256 keyId) payable external {
         // Make sure the depositor is holding the key in question
-        require(IKeyVault(locksmith.getKeyVault()).keyBalanceOf(msg.sender, keyId, false) > 0, 
-            'KEY_NOT_HELD');
+        require(locksmith.hasKeyOrTrustRoot(msg.sender, keyId), 'KEY_NOT_HELD');
 
         // keep track of the ether balance here as well.
         // we can't rely on address(this).balance due to
@@ -213,8 +212,7 @@ contract EtherVault is IEtherCollateralProvider, Initializable, OwnableUpgradeab
      */
     function _withdrawal(uint256 keyId, uint256 amount) internal {
         // stop right now if the message sender doesn't hold the key
-        require(IKeyVault(locksmith.getKeyVault()).keyBalanceOf(msg.sender, keyId, false) > 0,
-            'KEY_NOT_HELD');
+        require(locksmith.hasKeyOrTrustRoot(msg.sender, keyId), 'KEY_NOT_HELD');
         
         // withdrawal from the ledger *first*. if there is an overdraft,
         // the entire transaction will revert.

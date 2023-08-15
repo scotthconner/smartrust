@@ -196,7 +196,6 @@ contract AlarmClock is IAlarmClock, Initializable, OwnableUpgradeable, UUPSUpgra
      *
      * - the eventHash isn't registered as an alarm with this contract     (INVALID_ALARM_EVENT)
      * - if the alarm cannot be snoozed (snoozeInterval == 0)              (UNSNOOZABLE_ALARM)
-     * - if the snooze key used is not the correct one for the alarm       (WRONG_SNOOZE_KEY)
      * - the message sender does not have possession of the snooze Key Id  (KEY_NOT_HELD)
      * - if the event has already been fired                               (LATE_SNOOZE)
      * - if the caller is attempting to snooze too early                   (TOO_EARLY)
@@ -217,10 +216,9 @@ contract AlarmClock is IAlarmClock, Initializable, OwnableUpgradeable, UUPSUpgra
      * Essentially, this method can only be called once per snoozeInterval.
      * 
      * @param eventHash   the event you want to snooze the alarm for.
-     * @param snoozeKeyId the key the message sender is presenting for permission to snooze.
      * @return the resulting snooze time, if successful.
      */
-    function snoozeAlarm(bytes32 eventHash, uint256 snoozeKeyId) external returns (uint256) {
+    function snoozeAlarm(bytes32 eventHash) external returns (uint256) {
         Alarm storage alarm = alarms[eventHash];
 
         // ensure that the alarm for the event is valid
@@ -229,11 +227,8 @@ contract AlarmClock is IAlarmClock, Initializable, OwnableUpgradeable, UUPSUpgra
         // ensure that the alarm can be snoozed
         require(alarm.snoozeInterval > 0, 'UNSNOOZABLE_ALARM');
             
-        // ensure the snooze key used by the caller is the correct one
-        require(alarm.snoozeKeyId == snoozeKeyId, 'WRONG_SNOOZE_KEY');
-
         // ensure the caller is holding the proper snooze key
-        require(IKeyVault(locksmith.getKeyVault()).keyBalanceOf(msg.sender, snoozeKeyId, false) > 0, 'KEY_NOT_HELD');
+        require(locksmith.hasKeyOrTrustRoot(msg.sender, alarm.snoozeKeyId), 'KEY_NOT_HELD');
 
         // ensure the event isn't already fired
         require(!trustEventLog.firedEvents(eventHash), 'OVERSNOOZE');
@@ -250,7 +245,7 @@ contract AlarmClock is IAlarmClock, Initializable, OwnableUpgradeable, UUPSUpgra
             block.timestamp : alarm.alarmTime);
       
         // the alarm has been snoozed.
-        emit alarmClockSnoozed(msg.sender, eventHash, snoozeKeyId, alarm.alarmTime);
+        emit alarmClockSnoozed(msg.sender, eventHash, alarm.snoozeKeyId, alarm.alarmTime);
         return alarm.alarmTime;
     }
 

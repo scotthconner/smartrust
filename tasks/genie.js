@@ -448,24 +448,27 @@ task("assets", "Degenerately spam the network with ERC20s.")
   });
 
 task("blast", "Degenerately deploy the entire platform, assuming a clean slate.")
+  .addOptionalParam('upgrade', 'Flag to do an upgrade deployment even if there\'s and existing address.', false, types.boolean)
   .setAction(async (taskArgs) => {
-    await run("deploy", {contract: 'KeyVault'});
-    await run("deploy", {contract: 'Locksmith'});
-    await run("deploy", {contract: 'Notary'});
-    await run("deploy", {contract: 'Ledger'});
-    await run("deploy", {contract: 'EtherVault'});
-    await run("deploy", {contract: 'TokenVault'});
-    await run("deploy", {contract: 'TrustEventLog'});
-    await run("deploy", {contract: 'AlarmClock'});
-    await run("deploy", {contract: 'KeyOracle'});
-    await run("deploy", {contract: 'Trustee'});
-    await run("deploy", {contract: 'Allowance'});
-    await run("deploy", {contract: 'Distributor'});
-    await run("deploy", {contract: 'PostOffice'});
-    await run("deploy", {contract: 'KeyAddressFactory'});
-    await run("deploy", {contract: 'MegaKeyCreator'});
-    await run("deploy", {contract: 'TrustCreator'});
-    await run("deploy", {contract: 'TrustRecoveryCenter'});
-    await run("deploy", {contract: 'RecoveryPolicyCreator'});
-    await run("respect");
+    await run("deploy", {contract: 'KeyVault', upgrade: taskArgs['upgrade']});
+    await run("deploy", {contract: 'Locksmith', upgrade: taskArgs['upgrade']});
+    await run("deploy", {contract: 'Notary', upgrade: taskArgs['upgrade']});
+    await run("deploy", {contract: 'Ledger', upgrade: taskArgs['upgrade']});
+    await run("deploy", {contract: 'EtherVault', upgrade: taskArgs['upgrade']});
+    await run("deploy", {contract: 'TokenVault', upgrade: taskArgs['upgrade']});
+    await run("deploy", {contract: 'TrustEventLog', upgrade: taskArgs['upgrade']});
+    await run("deploy", {contract: 'AlarmClock', upgrade: taskArgs['upgrade']});
+    await run("deploy", {contract: 'KeyOracle', upgrade: taskArgs['upgrade']});
+    await run("deploy", {contract: 'Trustee', upgrade: taskArgs['upgrade']});
+    await run("deploy", {contract: 'Allowance', upgrade: taskArgs['upgrade']});
+    await run("deploy", {contract: 'Distributor', upgrade: taskArgs['upgrade']});
+    await run("deploy", {contract: 'PostOffice', upgrade: taskArgs['upgrade']});
+    await run("deploy", {contract: 'KeyAddressFactory', upgrade: taskArgs['upgrade']});
+    await run("deploy", {contract: 'MegaKeyCreator', upgrade: taskArgs['upgrade']});
+    await run("deploy", {contract: 'TrustCreator', upgrade: taskArgs['upgrade']});
+    await run("deploy", {contract: 'TrustRecoveryCenter', upgrade: taskArgs['upgrade']});
+    await run("deploy", {contract: 'RecoveryPolicyCreator', upgrade: taskArgs['upgrade']});
+    if(taskArgs['upgrade'] === null) {
+      await run("respect");
+    }
   });

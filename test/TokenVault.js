@@ -86,6 +86,9 @@ describe("TokenVault", function () {
       // create a second trust with a different owner
       await locksmith.connect(second).createTrustAndRootKey(stb("Second Trust"), second.address);
 
+      // create a secondary key on that trust
+      await locksmith.connect(second).createKey(1, stb('2'), third.address, false);
+
       // have the owner deposit some tokens into the account
       await expect(tokenVault.connect(second)
         .deposit(1, coin.address, eth(3))) 
@@ -106,6 +109,16 @@ describe("TokenVault", function () {
       expect(await coin.balanceOf(tokenVault.address)).to.equal(eth(3));
       expect(await ledger.getContextArnBalances(TRUST(), 1, tokenVault.address, [tokenArn(coin.address)]))
         .eql([eth(3)]);
+
+      // root key holder can deposit on behalf of a key in  trust
+      await expect(await tokenVault.connect(second).deposit(2, coin.address, eth(3)) )
+        .to.emit(ledger, "depositOccurred");
+
+      // check to make sure the root holder can also withdawal on behalf
+      await notary.connect(second).setWithdrawalAllowance(ledger.address, tokenVault.address, 
+        2, tokenArn(coin.address), eth(10000));
+      await expect(await tokenVault.connect(second).withdrawal(2, coin.address, eth(3)))
+        .to.emit(ledger, "withdrawalOccurred");
     });
 
     it("Require to hold key used for deposit", async function() {

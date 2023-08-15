@@ -144,7 +144,7 @@ contract TokenVault is ITokenCollateralProvider, Initializable, OwnableUpgradeab
      */
     function deposit(uint256 keyId, address token, uint256 amount) external {
         // stop right now if the message sender doesn't hold the key
-        require(IKeyVault(locksmith.getKeyVault()).keyBalanceOf(msg.sender, keyId, false) > 0, 'KEY_NOT_HELD');
+        require(locksmith.hasKeyOrTrustRoot(msg.sender, keyId), 'KEY_NOT_HELD');
 
         // generate the token arn
         bytes32 tokenArn = AssetResourceName.AssetType({
@@ -258,7 +258,7 @@ contract TokenVault is ITokenCollateralProvider, Initializable, OwnableUpgradeab
      */
     function _withdrawal(uint256 keyId, bytes32 arn, address token, uint256 amount) internal {
         // stop right now if the message sender doesn't hold the key
-        require(IKeyVault(locksmith.getKeyVault()).keyBalanceOf(msg.sender, keyId, false) > 0, 'KEY_NOT_HELD');
+        require(locksmith.hasKeyOrTrustRoot(msg.sender, keyId), 'KEY_NOT_HELD');
 
         // withdrawal from the ledger *first*. if there is an overdraft,
         // the entire transaction will revert.

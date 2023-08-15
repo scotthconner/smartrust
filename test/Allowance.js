@@ -749,9 +749,11 @@ describe("Allowance", function () {
       let aid = (await allowance.getKeyAllowances([bn(1)]))[0][0][0];
 
       await expect(await allowance.getRedeemableTrancheCount(aid)).eql(bn(5)); 
-      await expect(await allowance.connect(owner).redeemAllowance(aid))
+      
+      // we are going to do this with the root to make sure it works
+      await expect(await allowance.connect(root).redeemAllowance(aid))
         .to.emit(allowance, 'allowanceAwarded')
-        .withArgs(owner.address, aid, 5, time + 500)
+        .withArgs(root.address, aid, 5, time + 500)
         .to.emit(notary, 'notaryDistributionApproval')
         .withArgs(ledger.address, vault.address, allowance.address, ethArn(), 0, 0, [1], [eth(5)])
         .to.emit(notary, 'notaryDistributionApproval')

@@ -207,5 +207,29 @@ describe("KeyOracle", function () {
       // check state
       expect(await events.firedEvents(hash)).eql(true);
     });
+
+     it("Root key can fire oracles", async function() {
+      const {keyVault, keyOracle, locksmith, events, owner, root, second} =
+        await loadFixture(TrustTestFixtures.addedKeyOracle);
+
+      // calculate hash
+      var hash = expectedEventHash(keyOracle.address, ethers.utils.keccak256(ethers.utils.defaultAbiCoder.encode(
+        ['uint256','uint256','bytes32'],
+        [0, 1, stb('dead')])));
+
+      // register the event
+      await expect(await keyOracle.connect(root).createKeyOracle(0, 1, stb('dead')))
+        .to.emit(keyOracle, 'keyOracleRegistered')
+
+      // make sure that root doesn't actually hold the key
+      await expect(await keyVault.keyBalanceOf(root.address, 1, false)).eql(bn(0));
+
+      // success!
+      await expect(keyOracle.connect(root).fireKeyOracleEvent(1, hash))
+        .to.emit(events, 'trustEventLogged').withArgs(keyOracle.address, hash);
+
+      // check state
+      expect(await events.firedEvents(hash)).eql(true);
+    });
   });
 });

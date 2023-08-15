@@ -185,7 +185,7 @@ contract KeyOracle is IKeyOracle, Initializable, OwnableUpgradeable, UUPSUpgrade
      */
     function fireKeyOracleEvent(uint256 keyId, bytes32 eventHash) external {
         // ensure the caller holders the key Id
-        require(IKeyVault(locksmith.getKeyVault()).keyBalanceOf(msg.sender, keyId, false) > 0, 'KEY_NOT_HELD');
+        require(locksmith.hasKeyOrTrustRoot(msg.sender, keyId), 'KEY_NOT_HELD');
 
         // make sure the event hash is registered to the given key
         require(oracleKeyEvents[keyId].contains(eventHash), 'MISSING_KEY_EVENT');

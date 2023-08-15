@@ -192,6 +192,22 @@ interface ILocksmith {
     function inspectKey(uint256 keyId) external view returns (bool, bytes32, uint256, bool, uint256[] memory);
 
     /**
+     * hasKeyOrTrustRoot
+     *
+     * Determines if the given address holders either the key specified,
+     * or the key's trust root key.
+     *
+     * This is used by contracts to enable root-key privledge escalation,
+     * and prevents the need for root key holders to hold every key to
+     * operate as an admin.
+     *
+     * @param keyHolder the address of the keyholder to check
+     * @param keyId the key you want to check they are holding
+     * @return true if keyHolder has either keyId, or the keyId's associated root key.
+     */
+    function hasKeyOrTrustRoot(address keyHolder, uint256 keyId) external view returns (bool);
+
+    /**
      * validateKeyRing
      *
      * Contracts can call this method to determine if a set

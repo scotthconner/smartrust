@@ -322,9 +322,8 @@ contract Allowance is IAllowance, Initializable, OwnableUpgradeable, UUPSUpgrade
         // ensure that the allowance is valid
         require(a.entitlements.length > 0, 'INVALID_ALLOWANCE_ID');
 
-        // ensure that the caller holds the recipient key
-        require(IKeyVault(locksmith.getKeyVault()).keyBalanceOf(msg.sender, a.recipientKeyId, false) > 0, 
-            "KEY_NOT_HELD");
+        // ensure that the caller holds the recipient key or root
+        require(locksmith.hasKeyOrTrustRoot(msg.sender, a.recipientKeyId), 'KEY_NOT_HELD');
 
         // make sure that it is time for a distribution
         require(block.timestamp >= a.nextVestTime, 'TOO_EARLY');
