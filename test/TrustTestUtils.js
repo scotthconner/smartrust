@@ -617,7 +617,7 @@ TrustTestFixtures = (function() {
       const creator = await upgrades.deployProxy(Creator, [
         locksmith.address, notary.address,
         ledger.address, vault.address, tokenVault.address,
-        addressFactory.address, events.address
+        addressFactory.address, events.address, postOffice.address
       ]);
       await creator.deployed();
 

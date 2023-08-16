@@ -23,11 +23,11 @@ describe("TrustCreator", function () {
   describe("Contract deployment", function () {
     it("Should not fail the deployment", async function () {
       const { keyVault, locksmith, notary, ledger, alarmClock, events, allowance, distributor, 
-        vault, tokenVault, keyOracle, trustee, creator, addressFactory } = await loadFixture(TrustTestFixtures.addedCreator);
+        postOffice, vault, tokenVault, keyOracle, trustee, creator, addressFactory } = await loadFixture(TrustTestFixtures.addedCreator);
       
       await expect(creator.initialize(locksmith.address, notary.address,
         ledger.address, vault.address, tokenVault.address, 
-        addressFactory.address, events.address))
+        addressFactory.address, events.address, postOffice.address))
         .to.be.revertedWith("Initializable: contract is already initialized");
       expect(true);
     });
@@ -41,14 +41,14 @@ describe("TrustCreator", function () {
   ////////////////////////////////////////////////////////////
   describe("Contract upgrade", function() {
     it("Should be able to upgrade", async function() {
-      const { keyVault, locksmith, notary, creator, keyOracle, events, allowance,
+      const { keyVault, locksmith, notary, creator, keyOracle, events, allowance, postOffice,
         ledger, vault, tokenVault, trustee, addressFactory, root } = await loadFixture(TrustTestFixtures.addedCreator);
 
       const contract = await ethers.getContractFactory("TrustCreator")
       const v2 = await upgrades.upgradeProxy(creator.address, contract, 
           [locksmith.address, notary.address,
           ledger.address, vault.address, tokenVault.address, 
-          addressFactory.address, events.address]);
+          addressFactory.address, events.address, postOffice]);
       await v2.deployed();
 
       // try to upgrade if you're not the owner
@@ -74,15 +74,6 @@ describe("TrustCreator", function () {
           .to.be.revertedWith("KEY_ALIAS_RECEIVER_DIMENSION_MISMATCH");
     });
     
-    it("Soulbound length must match key receiver length", async function() {
-      const {keyVault, locksmith, notary, creator,
-        ledger, vault, tokenVault, trustee, owner, root } = 
-        await loadFixture(TrustTestFixtures.addedCreator);
-
-        await expect(creator.spawnTrust(stb('Easy Trust'), [], [],[true],[],[],[],[]))
-          .to.be.revertedWith("KEY_ALIAS_SOULBOUND_DIMENSION_MISMATCH");
-    });
-
     it("Successfully creates a trust with no keys", async function() {
       const {keyVault, locksmith, notary, creator, allowance, distributor, alarmClock,
         keyOracle, ledger, vault, tokenVault, trustee, owner, root, events } = 
@@ -91,7 +82,7 @@ describe("TrustCreator", function () {
       // make sure we don't hold the key
       expect(await keyVault.balanceOf(root.address, 4)).eql(bn(0));
      
-      await expect(await creator.connect(root).spawnTrust(stb('Easy Trust'), [], [],[],
+      await expect(await creator.connect(root).spawnTrust(stb('Easy Trust'), [], [],
         [distributor.address, allowance.address],
         [stb('Distributor Program'), stb('Allowance Program')],
         [alarmClock.address, keyOracle.address],
@@ -155,9 +146,8 @@ describe("TrustCreator", function () {
       expect(await keyVault.balanceOf(root.address, 4)).eql(bn(0));
 
       await expect(await creator.connect(root).spawnTrust(stb('Multi-Trust'), 
-          [owner.address, second.address, third.address],
+          [[owner.address], [second.address], [third.address]],
           [stb('Larry'), stb('Curly'), stb('Moe')], 
-          [true, true, false],
           [distributor.address, allowance.address],
           [stb('Distributor Program'), stb('Allowance Program')],
           [alarmClock.address, keyOracle.address],
@@ -203,7 +193,7 @@ describe("TrustCreator", function () {
       // check the soulboundness of the keys
       expect(await keyVault.keyBalanceOf(owner.address, 5, true)).eql(bn(1));
       expect(await keyVault.keyBalanceOf(second.address, 6, true)).eql(bn(1));
-      expect(await keyVault.keyBalanceOf(third.address, 7, false)).eql(bn(1));
+      expect(await keyVault.keyBalanceOf(third.address, 7, true)).eql(bn(1));
 
       // inspect the sanity of the trust created
       expect(await locksmith.getTrustInfo(1)).to.eql([
@@ -218,7 +208,60 @@ describe("TrustCreator", function () {
 
       // check the post office for a virtual key address
       var inboxes = await postOffice.getInboxesForKey(4);
-      expect(inboxes).to.have.length(4);
+      expect(inboxes).to.have.length(3);
+    });
+
+    it("Successfully creates a trust with secondary account", async function() {
+      const {keyVault, locksmith, notary, creator, allowance, distributor, alarmClock,
+        postOffice, keyOracle, ledger, vault, tokenVault, trustee, owner, root, events } =
+        await loadFixture(TrustTestFixtures.addedCreator);
+
+      // make sure we don't hold the key
+      expect(await keyVault.balanceOf(root.address, 4)).eql(bn(0));
+
+      await expect(await creator.connect(root).spawnTrust(stb('Easy Trust'), [[]], [stb('Curly')],
+        [distributor.address, allowance.address],
+        [stb('Distributor Program'), stb('Allowance Program')],
+        [alarmClock.address, keyOracle.address],
+        [stb('Alarm Clock'), stb('Key Oracle')]))
+          .to.emit(locksmith, 'trustCreated')
+          .withArgs(creator.address, 1, stb('Easy Trust'), creator.address)
+          .to.emit(locksmith, 'keyMinted')
+          .withArgs(creator.address, 1, 4, stb('Master Key'), creator.address)
+          .to.emit(locksmith, 'keyMinted')
+          .withArgs(creator.address, 1, 5, stb('Curly'), creator.address)
+          .to.emit(notary, 'trustedRoleChange')
+          .withArgs(creator.address, 1, 4, events.address, alarmClock.address, true, 2)
+          .to.emit(notary, 'trustedRoleChange')
+          .withArgs(creator.address, 1, 4, events.address, keyOracle.address, true, 2)
+          .to.emit(notary, 'trustedRoleChange')
+          .withArgs(creator.address, 1, 4, ledger.address, distributor.address, true, 1)
+          .to.emit(notary, 'trustedRoleChange')
+          .withArgs(creator.address, 1, 4, ledger.address, allowance.address, true, 1)
+          .to.emit(notary, 'trustedRoleChange')
+          .withArgs(creator.address, 1, 4, ledger.address, tokenVault.address, true, 0)
+          .to.emit(notary, 'trustedRoleChange')
+          .withArgs(creator.address, 1, 4, ledger.address, vault.address, true, 0)
+          .to.emit(notary, 'trustedRoleChange');
+
+      // grab the inbox
+      await expect(await postOffice.getKeyInbox(4)).eql(ethers.constants.AddressZero);
+      const inboxAddress = await postOffice.getKeyInbox(5); 
+
+      // make sure the contract doesn't have one still
+      // Note: this is obviously where the caller has to trust this contract.
+      // You would also want to check key inventory afterwards
+      expect(await keyVault.balanceOf(creator.address, 4)).eql(bn(0));
+      expect(await keyVault.balanceOf(creator.address, 5)).eql(bn(0));
+
+      // assert that the key receivers actually hold their keys
+      expect(await keyVault.balanceOf(root.address, 4)).eql(bn(1));
+      expect(await keyVault.balanceOf(inboxAddress, 5)).eql(bn(1));
+
+      // check the soulboundness of the keys
+      expect(await keyVault.getHolders(4)).eql([root.address]);
+      expect(await keyVault.getHolders(5)).eql([inboxAddress]);
+      expect(await keyVault.keyBalanceOf(inboxAddress, 5, true)).eql(bn(1));
     });
   });
 });

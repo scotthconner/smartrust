@@ -30,7 +30,7 @@ import '../interfaces/ILedger.sol';
 import '../interfaces/IAlarmClock.sol';
 import '../interfaces/ITrustee.sol';
 import '../interfaces/IVirtualAddress.sol';
-
+import '../interfaces/IPostOffice.sol';
 ///////////////////////////////////////////////////////////
 
 /**
@@ -61,6 +61,7 @@ contract TrustCreator is ERC1155Holder, Initializable, OwnableUpgradeable, UUPSU
     address     public keyVault;
     INotary     public notary;
     address     public keyAddressFactory;
+    IPostOffice public postOffice;
 
     // permission registry: add these to the notary
     // upon trust creation using the new ROOT key.
@@ -88,7 +89,7 @@ contract TrustCreator is ERC1155Holder, Initializable, OwnableUpgradeable, UUPSU
      *
      */
     function initialize(address _Locksmith, address _Notary, address _Ledger, 
-        address _EtherVault, address _TokenVault, address _KeyAddressFactory, address _TrustEventLog) initializer public {
+        address _EtherVault, address _TokenVault, address _KeyAddressFactory, address _TrustEventLog, address _PostOffice) initializer public {
         __Ownable_init();
         __UUPSUpgradeable_init();
         locksmith = ILocksmith(_Locksmith);
@@ -99,6 +100,7 @@ contract TrustCreator is ERC1155Holder, Initializable, OwnableUpgradeable, UUPSU
         tokenVault = _TokenVault;
         keyAddressFactory = _KeyAddressFactory;
         trustEventLog = _TrustEventLog;
+        postOffice = IPostOffice(_PostOffice);
     }
 
     /**
@@ -131,7 +133,6 @@ contract TrustCreator is ERC1155Holder, Initializable, OwnableUpgradeable, UUPSU
      * @param trustName       the name of the trust to create, like 'My Living Will'
      * @param keyReceivers    the wallet addresses to send each new key
      * @param keyAliases      key names, like "Rebecca" or "Coinbase Trustee"
-     * @param isSoulbound     if each key you want to be soulbound
      * @param scribes         contract addresses you want to add as trusted scribes to the notary,
      * @param scribeAliases   the string aliases for the scribes encoded in bytes32
      * @param dispatchers     contract addresses you want to add as trusted dispatchers to the event log
@@ -140,9 +141,8 @@ contract TrustCreator is ERC1155Holder, Initializable, OwnableUpgradeable, UUPSU
      * @return the ID of the root key that was created
      */
     function spawnTrust(bytes32 trustName,
-        address[] memory keyReceivers,
+        address[][] memory keyReceivers,
         bytes32[] memory keyAliases,
-        bool[] memory isSoulbound,
         address[] memory scribes,
         bytes32[] memory scribeAliases,
         address[] memory dispatchers,
@@ -151,7 +151,7 @@ contract TrustCreator is ERC1155Holder, Initializable, OwnableUpgradeable, UUPSU
 
         // use the internal method to create the trust
         (uint256 trustId, uint256 rootKeyId,) = createDefaultTrust(trustName,
-            keyReceivers, keyAliases, isSoulbound);
+            keyReceivers, keyAliases);
 
         // finalize the notary here
         for(uint256 x = 0; x < scribes.length; x++) {
@@ -185,20 +185,17 @@ contract TrustCreator is ERC1155Holder, Initializable, OwnableUpgradeable, UUPSU
      * @param trustName       the name of the trust to create, like 'My Living Will'
      * @param keyReceivers    the wallet addresses to send each new key
      * @param keyAliases      key names, like "Rebecca" or "Coinbase Trustee"
-     * @param isSoulbound     if each key you want to be soulbound
      * @return the ID of the trust that was created
      * @return the ID of the root key that was created
      * @return the in-order IDs of the keys that were created
      */
     function createDefaultTrust(bytes32 trustName,
-        address[] memory keyReceivers,
-        bytes32[] memory keyAliases,
-        bool[] memory isSoulbound)
+        address[][] memory keyReceivers,
+        bytes32[] memory keyAliases)
             internal returns (uint256, uint256, uint256[] memory) {
 
         // validate to make sure the input has the right dimensions
         require(keyAliases.length == keyReceivers.length, 'KEY_ALIAS_RECEIVER_DIMENSION_MISMATCH');
-        require(keyAliases.length == isSoulbound.length, 'KEY_ALIAS_SOULBOUND_DIMENSION_MISMATCH');
         
         // create the trust
         (uint256 trustId, uint256 rootKeyId) = locksmith.createTrustAndRootKey(trustName, address(this));
@@ -210,21 +207,31 @@ contract TrustCreator is ERC1155Holder, Initializable, OwnableUpgradeable, UUPSU
 
         // create all of the keys
         for(uint256 x = 0; x < keyReceivers.length; x++) {
-            keyIDs[x] = locksmith.createKey(rootKeyId, keyAliases[x], keyReceivers[x], isSoulbound[x]); 
-        
-            // create their inboxes, too.
+            // send the key here
+            keyIDs[x] = locksmith.createKey(rootKeyId, keyAliases[x], address(this), false); 
+            
+            // create the inbox without copying it
             IERC1155(keyVault).safeTransferFrom(address(this), keyAddressFactory, rootKeyId, 1, 
-                abi.encode(keyIDs[x], etherVault));
+              abi.encode(keyIDs[x], etherVault, false));
+
+            // get the inbox address
+            address inbox = postOffice.getKeyInbox(keyIDs[x]);
+
+            // send the originally minted key to the inbox
+            IERC1155(keyVault).safeTransferFrom(address(this), inbox, keyIDs[x], 1, ''); 
+           
+            // soulbind it to the inbox
+            locksmith.soulbindKey(rootKeyId, inbox, keyIDs[x], 1);
+
+            // service the rest of the receivers
+            for(uint256 y = 0; y < keyReceivers[x].length; y++) {
+                locksmith.copyKey(rootKeyId, keyIDs[x], keyReceivers[x][y], true);
+            }
         }
 
         // trust the ledger actors
         notary.setTrustedLedgerRole(rootKeyId, 0, ledger, etherVault, true, stringToBytes32('Ether Vault')); 
         notary.setTrustedLedgerRole(rootKeyId, 0, ledger, tokenVault, true, stringToBytes32('Token Vault'));
-
-        // create the virtual inbox by giving the root key
-        // to the factory agent
-        IERC1155(keyVault).safeTransferFrom(address(this), keyAddressFactory, rootKeyId, 1, 
-            abi.encode(rootKeyId, etherVault));
 
         // return the trustID and the rootKeyId
         return (trustId, rootKeyId, keyIDs);

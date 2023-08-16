@@ -47,8 +47,9 @@ contract KeyAddressFactory is ERC1155Holder, Initializable, OwnableUpgradeable, 
 
     // structure used to pass in data for inbox creation
     struct InboxRequest {
-        uint256 virtualKeyId;
-        address defaultEthDepositProvider;
+        uint256 virtualKeyId;               // the key we are virtualizing
+        address defaultEthDepositProvider;  // where eth goes by default
+        bool    copyKey;                    // do we copy the key into the inbox, or leave it to the caller?
     }
 
     ///////////////////////////////////////////////////////
@@ -130,7 +131,9 @@ contract KeyAddressFactory is ERC1155Holder, Initializable, OwnableUpgradeable, 
                 locksmith, request.defaultEthDepositProvider, keyId, request.virtualKeyId)); 
 
         // mint a soul-bound key into the new proxy
-        ILocksmith(locksmith).copyKey(keyId, request.virtualKeyId, address(proxy), true);
+        if(request.copyKey) {
+            ILocksmith(locksmith).copyKey(keyId, request.virtualKeyId, address(proxy), true);
+        }
 
         // add the proxy to the registry - this will revert
         // the transaction if its a duplicate. this will also revert
@@ -142,8 +145,4 @@ contract KeyAddressFactory is ERC1155Holder, Initializable, OwnableUpgradeable, 
 
         return this.onERC1155Received.selector;
     }
-
-    ////////////////////////////////////////////////////////
-    // Internal Methods 
-    ////////////////////////////////////////////////////////
 }

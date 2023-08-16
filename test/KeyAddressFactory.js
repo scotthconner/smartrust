@@ -130,8 +130,8 @@ describe("KeyAddressFactory", function () {
 
       // encode the data
       var data = ethers.utils.defaultAbiCoder.encode(
-        ['uint256','address'],
-        [0, vault.address]);
+        ['uint256','address','bool'],
+        [0, vault.address, true]);
 
       // owner doesn't hold the root key 
       await expect(keyVault.connect(owner).safeTransferFrom(owner.address, addressFactory.address, 1, 1, data))
@@ -149,8 +149,8 @@ describe("KeyAddressFactory", function () {
 
       // encode the data, invalid key
       var data = ethers.utils.defaultAbiCoder.encode(
-        ['uint256','address'],
-        [4, vault.address]);
+        ['uint256','address','bool'],
+        [4, vault.address, true]);
 
       // outside trust, valid. instead of failing on the logic
       // inside of the key factory itself, it will fail at the post office.
@@ -161,8 +161,8 @@ describe("KeyAddressFactory", function () {
       // outside trust, invalid, fails for the same reason technically above -
       // in that the key count minted for that trust is zero.
       data = ethers.utils.defaultAbiCoder.encode(
-        ['uint256','address'],
-        [99, vault.address]);
+        ['uint256','address','bool'],
+        [99, vault.address, true]);
       await expect(keyVault.connect(root).safeTransferFrom(root.address, addressFactory.address, 0, 1, data))
         .to.be.revertedWith('TRUST_KEY_NOT_FOUND');
     });
@@ -175,8 +175,8 @@ describe("KeyAddressFactory", function () {
 
       // encode the data
       var data = ethers.utils.defaultAbiCoder.encode(
-        ['uint256','address'],
-        [0, vault.address]);
+        ['uint256','address', 'bool'],
+        [0, vault.address, true]);
 
       // should be successful? 
       await expect(await keyVault.connect(root).safeTransferFrom(root.address, addressFactory.address, 0, 1, data))
@@ -229,8 +229,8 @@ describe("KeyAddressFactory", function () {
 
       // encode the data
       var data = ethers.utils.defaultAbiCoder.encode(
-        ['uint256','address'],
-        [1, vault.address]);
+        ['uint256','address','bool'],
+        [1, vault.address, true]);
 
       // should be successful?
       await expect(keyVault.connect(root).safeTransferFrom(root.address, addressFactory.address, 0, 1, data))
@@ -261,6 +261,51 @@ describe("KeyAddressFactory", function () {
       await expect(await VirtualAddress.attach(inboxes[0]).connect(root).send(vault.address, eth(1), third.address))
         .to.emit(VirtualAddress.attach(inboxes[0]), 'addressTransaction')
         .withArgs(1, root.address, third.address, vault.address, ethArn(), eth(1), bn(1));
+    });
+
+    it("Create KeyLess Inbox", async function() {
+      const {keyVault, locksmith, postOffice, addressFactory,
+        notary, ledger, vault, tokenVault, coin, inbox,
+        events, trustee, keyOracle, alarmClock, creator,
+        owner, root, second, third} = await loadFixture(TrustTestFixtures.addedKeyAddressFactory);
+
+      // encode the data, no key inside
+      var data = ethers.utils.defaultAbiCoder.encode(
+        ['uint256','address','bool'],
+        [1, vault.address, false]);
+
+      // should be successful?
+      await expect(keyVault.connect(root).safeTransferFrom(root.address, addressFactory.address, 0, 1, data))
+        .to.emit(postOffice, 'keyAddressRegistration');
+
+      // check the post office
+      var inboxes = await postOffice.getInboxesForKey(0);
+      expect(inboxes).to.have.length(1);
+
+      // check the actual inbox to ensure its owned properly
+      const VirtualAddress = await ethers.getContractFactory("VirtualKeyAddress");
+      await expect(await VirtualAddress.attach(inboxes[0]).ownerKeyId()).eql(bn(0));
+
+      // make sure the inbox DOES NOT have a copy of the key
+      await expect(await keyVault.keyBalanceOf(inboxes[0], 1, false)).eql(bn(0));
+
+      // confirm its essentially broken 
+      await expect(VirtualAddress.attach(inboxes[0]).connect(root).send(vault.address, eth(1), third.address))
+        .to.be.revertedWith('KEY_NOT_HELD');
+
+      // copy the key into the inbox
+      await locksmith.connect(root).copyKey(0, 1, inboxes[0], true);
+      
+      // make sure the inbox does have a copy of the key
+      await expect(await keyVault.keyBalanceOf(inboxes[0], 1, false)).eql(bn(1));
+      
+      // deposit some shiz
+      await expect(await vault.connect(owner).deposit(1, {value: eth(2)}));
+      
+      // user can do things
+      await expect(await VirtualAddress.attach(inboxes[0]).connect(owner).send(vault.address, eth(1), third.address))
+        .to.emit(VirtualAddress.attach(inboxes[0]), 'addressTransaction')
+        .withArgs(1, owner.address, third.address, vault.address, ethArn(), eth(1), bn(1));
     });
   });
 });

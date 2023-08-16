@@ -183,6 +183,7 @@ describe("Locksmith", function () {
 
       // check for root escalation
       expect(await locksmith.hasKeyOrTrustRoot(root.address, 0)).eql(true); 
+      expect(await locksmith.hasKeyOrTrustRoot(root.address, 99)).eql(false); 
       expect(await locksmith.hasKeyOrTrustRoot(second.address, 1)).eql(true); 
     });
   });

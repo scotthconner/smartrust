@@ -126,7 +126,7 @@ contract MegaKeyCreator is ERC1155Holder, Initializable, OwnableUpgradeable, UUP
         // this will generate the inbox and register it
         // with the post office
         IERC1155(msg.sender).safeTransferFrom(address(this), keyAddressFactory, keyId, 1,
-            abi.encode(newKeyId, provider));
+            abi.encode(newKeyId, provider, true));
 
         // send the root key back
         IERC1155(msg.sender).safeTransferFrom(address(this), from, keyId, 1, ""); 

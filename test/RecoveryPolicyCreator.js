@@ -247,7 +247,7 @@ describe("RecoveryPolicyCreator", function () {
         await loadFixture(TrustTestFixtures.addedCreator);
      
       // this will generate key 4
-      await expect(await creator.connect(root).spawnTrust(stb('Easy Trust'), [], [],[],
+      await expect(await creator.connect(root).spawnTrust(stb('Easy Trust'), [], [],
         [distributor.address, allowance.address],
         [stb('Distributor Program'), stb('Allowance Program')],
         [],[])).to.emit(locksmith, 'trustCreated')
