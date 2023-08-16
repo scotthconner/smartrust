@@ -49,15 +49,15 @@
   },
   "KeyAddressFactory": {
     "address": "0x309C1D48b7AeabfE03b53d6dB0700E4B8ECd91Aa",
-    "codeHash": "0x27eaaeeff086946b15e3340c54b6e08657381f68119fa9961a9bb9d34132df79"
+    "codeHash": "0xe9642227b0f2956f298f9393431fb791fedda4c3f6378c7acffc552f63ff0817"
   },
   "MegaKeyCreator": {
     "address": "0x2DeA68eB5cA2A0F80eC4E75A7b91E6d824888d74",
-    "codeHash": "0x93e6e429963c6ba4211ea0c6dabc917e2c1d9267d02cd355f3724027cdbb9fe6"
+    "codeHash": "0xcf36e1393d0a993d0471502d5beee4b812662288b61bbacff373cf6ce446cc72"
   },
   "TrustCreator": {
-    "address": "0x50157979eA086272570d0F449AdE891677D65e9d",
-    "codeHash": "0xa5600bdf3c6a85dc6a562a95644423bccb55b4c43db1443945d6640229f37844"
+    "address": "0x9bB2583eA01040eCCF6E5b95cC3e7BDc2A335D00",
+    "codeHash": "0x86ac85e36fa5ccec8c223e8ccbc8e58b4e0c3e1583aae9e1e06287bbb680087a"
   },
   "Distributor": {
     "address": "0xa6B6145D49a82C8a1a8eBdfEaF8EA997ad0E74b7",
