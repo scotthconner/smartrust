@@ -62,15 +62,6 @@ contract KeyLocker is IKeyLocker, Initializable, OwnableUpgradeable, UUPSUpgrade
     }
     
     ///////////////////////////////////////////////////////
-    // Storage
-    ///////////////////////////////////////////////////////
-    // this mapping stores the number of active
-    // key loans. the end of every transaction
-    // this should be zero.
-    // [keyId => activeKeyLoanCount]
-    mapping(uint256 => uint256) private activeKeyLoanCount;
-
-    ///////////////////////////////////////////////////////
     // Constructor and Upgrade Methods
     //
     // This section is specifically for upgrades and inherited
@@ -183,6 +174,9 @@ contract KeyLocker is IKeyLocker, Initializable, OwnableUpgradeable, UUPSUpgrade
      * @param keyId the key ID to redeem.
      */
     function redeemKeys(address locksmith, uint256 rootKeyId, uint256 keyId, uint256 amount) external {
+        // can't send zero
+        require(amount > 0, 'INVALID_AMOUNT');
+
         // ensure the key balance actually exists in the contract. 
         require(IKeyVault(ILocksmith(locksmith).getKeyVault()).keyBalanceOf(address(this), keyId, false) >= amount,
             'INSUFFICIENT_KEYS');
@@ -233,13 +227,14 @@ contract KeyLocker is IKeyLocker, Initializable, OwnableUpgradeable, UUPSUpgrade
     function onERC1155Received(address, address from, uint256 keyId, uint256 count, bytes memory data)
         public virtual override returns (bytes4) {
         // we are going to accept this key no matter what.
-        // woe to the operator who sends something that isn't a locksmith key.
-        emit keyLockerDeposit(from, msg.sender, keyId, count);
+        emit keyLockerDeposit(from, IKeyVault(msg.sender).locksmith(), keyId, count);
 
         // However, sadly, there exist root keys out there that are not soulbound.
         // If the caller chooses, we are going to "heal" their situation by:
         // - copying and soulbinding a root key to the "from" person.
         // - calling useKey with information decoded from data.
+        // note: if the ERC1155 sent here isn't a valid locksmith key, the transaction
+        //       will fail doing this test. This prevents incompatible NFT deposits.
         if (ILocksmith(IKeyVault(msg.sender).locksmith()).isRootKey(keyId) && data.length > 0) {
             RootKeyLockerInstructions memory action = abi.decode(data, (RootKeyLockerInstructions));
 
@@ -247,7 +242,7 @@ contract KeyLocker is IKeyLocker, Initializable, OwnableUpgradeable, UUPSUpgrade
             ILocksmith(IKeyVault(msg.sender).locksmith()).copyKey(keyId, keyId, from, true);
 
             // call useKey to do what they need
-            _useKeys(from, msg.sender, keyId, count, action.destination, action.data);
+            _useKeys(from, IKeyVault(msg.sender).locksmith(), keyId, count, action.destination, action.data);
         }
 
         // success
@@ -276,7 +271,8 @@ contract KeyLocker is IKeyLocker, Initializable, OwnableUpgradeable, UUPSUpgrade
         // in the same transaction, and then return the borrowed key. This is a trade-off against only
         // being able to locker one key at a time. In this above "bug" scenario, the operator should return
         // the borrowed key before redeeming the rest.
-        uint256 startKeyBalance = IKeyVault(ILocksmith(locksmith).getKeyVault()).keyBalanceOf(address(this), keyId, false);
+        uint256 startKeyBalance  = IKeyVault(ILocksmith(locksmith).getKeyVault()).keyBalanceOf(address(this), keyId, false);
+        uint256 startUserBalance = IKeyVault(ILocksmith(locksmith).getKeyVault()).keyBalanceOf(operator, keyId, false);
 
         // ensure that the locker key even exists
         require(startKeyBalance >= amount, 'INSUFFICIENT_KEYS');
@@ -292,9 +288,16 @@ contract KeyLocker is IKeyLocker, Initializable, OwnableUpgradeable, UUPSUpgrade
 
         // ensure that the key has been returned. we define this by having at least as many keys as we started with,
         // allowing additional keys of that type to be deposited during the loan, for whatever reason.
-        // also ensure the operator hasn't been stripped of their key. 
+        // also ensure the operator hasn't been stripped of their keys.
+        // this limits the user of the locker to have the ability to reduce your permission count
+        // for instance, if I have two root keys, I can't use the root key in the locker to burn a root key out of
+        // my wallet. this applies when holding a root key - but to the key in question and not root. if
+        // a key could be used to escalate back to generic root permissions (via a use of a contractbound root key), 
+        // that would enable the destination to remove the root key from the caller. Giving ring keys unfettered 
+        // root escalation or specifically to key management functions needs to be considered with care and isn't advised.
         require(IKeyVault(ILocksmith(locksmith).getKeyVault()).keyBalanceOf(address(this), keyId, false) >= startKeyBalance, 
             'KEY_NOT_RETURNED');
-        require(IKeyVault(ILocksmith(locksmith).getKeyVault()).keyBalanceOf(operator, keyId, false) > 0, 'CALLER_KEY_STRIPPED');
+        require(IKeyVault(ILocksmith(locksmith).getKeyVault()).keyBalanceOf(operator, keyId, false) >= startUserBalance, 
+            'CALLER_KEY_STRIPPED');
     }
 }

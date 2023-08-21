@@ -66,7 +66,7 @@ describe("TrustCreator", function () {
   ////////////////////////////////////////////////////////////
   describe("Spawn Trust Scenarios", function () {
     it("Key Receivers length must match key aliases length", async function() {
-      const {keyVault, locksmith, notary, creator,
+      const {keyVault, locksmith, notary, creator, keyLocker,
         ledger, vault, tokenVault, trustee, owner, root } = 
         await loadFixture(TrustTestFixtures.addedCreator);
 
@@ -76,11 +76,12 @@ describe("TrustCreator", function () {
     
     it("Successfully creates a trust with no keys", async function() {
       const {keyVault, locksmith, notary, creator, allowance, distributor, alarmClock,
-        keyOracle, ledger, vault, tokenVault, trustee, owner, root, events } = 
+        keyLocker, keyOracle, ledger, vault, tokenVault, trustee, owner, root, events } = 
         await loadFixture(TrustTestFixtures.addedCreator);
 
       // make sure we don't hold the key
-      expect(await keyVault.balanceOf(root.address, 4)).eql(bn(0));
+      await expect(await keyVault.balanceOf(root.address, 4)).eql(bn(0));
+      await expect(await keyVault.balanceOf(keyLocker.address, 4)).eql(bn(0));
      
       await expect(await creator.connect(root).spawnTrust(stb('Easy Trust'), [], [],
         [distributor.address, allowance.address],
@@ -108,42 +109,47 @@ describe("TrustCreator", function () {
       // make sure the contract doesn't have one still
       // Note: this is obviously where the caller has to trust this contract.
       // You would also want to check key inventory afterwards
-      expect(await keyVault.balanceOf(creator.address, 4)).eql(bn(0));
+      await expect(await keyVault.balanceOf(creator.address, 4)).eql(bn(0));
 
       // assert that the caller actually holds the root key
-      expect(await keyVault.balanceOf(root.address, 3)).eql(bn(0)); // sanity
-      expect(await keyVault.balanceOf(root.address, 4)).eql(bn(1));
-      expect(await keyVault.balanceOf(root.address, 5)).eql(bn(0)); // sanity
+      await expect(await keyVault.balanceOf(root.address, 3)).eql(bn(0)); // sanity
+      await expect(await keyVault.balanceOf(root.address, 4)).eql(bn(1));
+      await expect(await keyVault.keyBalanceOf(root.address, 4, true)).eql(bn(1)); // it needs to be soulbound
+      await expect(await keyVault.balanceOf(root.address, 5)).eql(bn(0)); // sanity
+
+      // check that a root key is in the locker.
+      await expect(await keyVault.balanceOf(keyLocker.address, 4)).eql(bn(1));
 
       // inspect the sanity of the trust created
-      expect(await locksmith.getTrustInfo(1)).to.eql([
+      await expect(await locksmith.getTrustInfo(1)).to.eql([
         bn(1), stb('Easy Trust'), bn(4), bn(1)
       ]);
 
       // ensure that the notary sees the default actors
-      expect(await notary.getTrustedActors(ledger.address, 1, 0))
+      await expect(await notary.getTrustedActors(ledger.address, 1, 0))
         .eql([vault.address, tokenVault.address]);
-      expect(await notary.getTrustedActors(ledger.address, 1, 1))
+      await expect(await notary.getTrustedActors(ledger.address, 1, 1))
         .eql([distributor.address, allowance.address]);
       
       // test to ensure the names were encoded correctly
-      expect(await notary.actorAliases(ledger.address, 1, 0, vault.address))
+      await expect(await notary.actorAliases(ledger.address, 1, 0, vault.address))
         .eql(stb('Ether Vault'));
-      expect(await notary.actorAliases(ledger.address, 1, 0, tokenVault.address))
+      await expect(await notary.actorAliases(ledger.address, 1, 0, tokenVault.address))
         .eql(stb('Token Vault'));
-      expect(await notary.actorAliases(ledger.address, 1, 1, distributor.address))
+      await expect(await notary.actorAliases(ledger.address, 1, 1, distributor.address))
         .eql(stb('Distributor Program'));
-      expect(await notary.actorAliases(ledger.address, 1, 1, allowance.address))
+      await expect(await notary.actorAliases(ledger.address, 1, 1, allowance.address))
         .eql(stb('Allowance Program'));
     });
 
     it("Successfully creates a trust with multiple keys", async function() {
       const {keyVault, locksmith, notary, creator, postOffice, allowance, distributor, events,
-        keyOracle, alarmClock, ledger, vault, tokenVault, trustee, owner, root, second, third } =
+        keyLocker, keyOracle, alarmClock, ledger, vault, tokenVault, trustee, owner, root, second, third } =
         await loadFixture(TrustTestFixtures.addedCreator);
 
       // make sure we don't hold the key
-      expect(await keyVault.balanceOf(root.address, 4)).eql(bn(0));
+      await expect(await keyVault.balanceOf(root.address, 4)).eql(bn(0));
+      await expect(await keyVault.balanceOf(keyLocker.address, 4)).eql(bn(0));
 
       await expect(await creator.connect(root).spawnTrust(stb('Multi-Trust'), 
           [[owner.address], [second.address], [third.address]],
@@ -179,36 +185,46 @@ describe("TrustCreator", function () {
       // make sure the contract doesn't have one still
       // Note: this is obviously where the caller has to trust this contract.
       // You would also want to check key inventory afterwards
-      expect(await keyVault.balanceOf(creator.address, 4)).eql(bn(0));
-      expect(await keyVault.balanceOf(creator.address, 5)).eql(bn(0));
-      expect(await keyVault.balanceOf(creator.address, 6)).eql(bn(0));
-      expect(await keyVault.balanceOf(creator.address, 7)).eql(bn(0));
+      await expect(await keyVault.balanceOf(creator.address, 4)).eql(bn(0));
+      await expect(await keyVault.balanceOf(creator.address, 5)).eql(bn(0));
+      await expect(await keyVault.balanceOf(creator.address, 6)).eql(bn(0));
+      await expect(await keyVault.balanceOf(creator.address, 7)).eql(bn(0));
 
       // assert that the key receivers actually hold their keys 
-      expect(await keyVault.balanceOf(root.address, 4)).eql(bn(1));
-      expect(await keyVault.balanceOf(owner.address, 5)).eql(bn(1));
-      expect(await keyVault.balanceOf(second.address, 6)).eql(bn(1));
-      expect(await keyVault.balanceOf(third.address, 7)).eql(bn(1));
+      await expect(await keyVault.balanceOf(root.address, 4)).eql(bn(1));
+      await expect(await keyVault.balanceOf(owner.address, 5)).eql(bn(1));
+      await expect(await keyVault.balanceOf(second.address, 6)).eql(bn(1));
+      await expect(await keyVault.balanceOf(third.address, 7)).eql(bn(1));
 
       // check the soulboundness of the keys
-      expect(await keyVault.keyBalanceOf(owner.address, 5, true)).eql(bn(1));
-      expect(await keyVault.keyBalanceOf(second.address, 6, true)).eql(bn(1));
-      expect(await keyVault.keyBalanceOf(third.address, 7, true)).eql(bn(1));
+      await expect(await keyVault.keyBalanceOf(root.address, 4, true)).eql(bn(1));
+      await expect(await keyVault.keyBalanceOf(owner.address, 5, true)).eql(bn(1));
+      await expect(await keyVault.keyBalanceOf(second.address, 6, true)).eql(bn(1));
+      await expect(await keyVault.keyBalanceOf(third.address, 7, true)).eql(bn(1));
+
+      // check the key locker
+      await expect(await keyVault.balanceOf(keyLocker.address, 4)).eql(bn(1));
+      await expect(await keyVault.balanceOf(keyLocker.address, 5)).eql(bn(0));
+      await expect(await keyVault.balanceOf(keyLocker.address, 6)).eql(bn(0));
+      await expect(await keyVault.balanceOf(keyLocker.address, 7)).eql(bn(0));
 
       // inspect the sanity of the trust created
-      expect(await locksmith.getTrustInfo(1)).to.eql([
+      await expect(await locksmith.getTrustInfo(1)).to.eql([
         bn(1), stb('Multi-Trust'), bn(4), bn(4)
       ]);
 
       // ensure that the notary sees the default actors
-      expect(await notary.getTrustedActors(ledger.address, 1, 0))
+      await expect(await notary.getTrustedActors(ledger.address, 1, 0))
         .eql([vault.address, tokenVault.address]);
-      expect(await notary.getTrustedActors(ledger.address, 1, 1))
+      await expect(await notary.getTrustedActors(ledger.address, 1, 1))
         .eql([distributor.address, allowance.address]);
 
       // check the post office for a virtual key address
       var inboxes = await postOffice.getInboxesForKey(4);
-      expect(inboxes).to.have.length(3);
+      await expect(inboxes).to.have.length(3);
+
+      // check the key locker
+      await expect(await keyVault.balanceOf(keyLocker.address, 4)).eql(bn(1));
     });
 
     it("Successfully creates a trust with secondary account", async function() {
@@ -217,7 +233,7 @@ describe("TrustCreator", function () {
         await loadFixture(TrustTestFixtures.addedCreator);
 
       // make sure we don't hold the key
-      expect(await keyVault.balanceOf(root.address, 4)).eql(bn(0));
+      await expect(await keyVault.balanceOf(root.address, 4)).eql(bn(0));
 
       await expect(await creator.connect(root).spawnTrust(stb('Easy Trust'), [[]], [stb('Curly')],
         [distributor.address, allowance.address],
@@ -251,17 +267,18 @@ describe("TrustCreator", function () {
       // make sure the contract doesn't have one still
       // Note: this is obviously where the caller has to trust this contract.
       // You would also want to check key inventory afterwards
-      expect(await keyVault.balanceOf(creator.address, 4)).eql(bn(0));
-      expect(await keyVault.balanceOf(creator.address, 5)).eql(bn(0));
+      await expect(await keyVault.balanceOf(creator.address, 4)).eql(bn(0));
+      await expect(await keyVault.balanceOf(creator.address, 5)).eql(bn(0));
 
       // assert that the key receivers actually hold their keys
-      expect(await keyVault.balanceOf(root.address, 4)).eql(bn(1));
-      expect(await keyVault.balanceOf(inboxAddress, 5)).eql(bn(1));
+      await expect(await keyVault.balanceOf(root.address, 4)).eql(bn(1));
+      await expect(await keyVault.balanceOf(inboxAddress, 5)).eql(bn(1));
 
       // check the soulboundness of the keys
-      expect(await keyVault.getHolders(4)).eql([keyLocker.address, root.address]);
-      expect(await keyVault.getHolders(5)).eql([inboxAddress]);
-      expect(await keyVault.keyBalanceOf(inboxAddress, 5, true)).eql(bn(1));
+      await expect(await keyVault.getHolders(4)).eql([keyLocker.address, root.address]);
+      await expect(await keyVault.getHolders(5)).eql([inboxAddress]);
+      await expect(await keyVault.keyBalanceOf(inboxAddress, 5, true)).eql(bn(1));
+      await expect(await keyVault.keyBalanceOf(root.address, 4, true)).eql(bn(1));
     });
   });
 });
