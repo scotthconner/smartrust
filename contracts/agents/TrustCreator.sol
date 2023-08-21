@@ -62,6 +62,7 @@ contract TrustCreator is ERC1155Holder, Initializable, OwnableUpgradeable, UUPSU
     INotary     public notary;
     address     public keyAddressFactory;
     IPostOffice public postOffice;
+    address     public keyLocker;
 
     // permission registry: add these to the notary
     // upon trust creation using the new ROOT key.
@@ -89,7 +90,7 @@ contract TrustCreator is ERC1155Holder, Initializable, OwnableUpgradeable, UUPSU
      *
      */
     function initialize(address _Locksmith, address _Notary, address _Ledger, 
-        address _EtherVault, address _TokenVault, address _KeyAddressFactory, address _TrustEventLog, address _PostOffice) initializer public {
+        address _EtherVault, address _TokenVault, address _KeyAddressFactory, address _TrustEventLog, address _PostOffice, address _KeyLocker) initializer public {
         __Ownable_init();
         __UUPSUpgradeable_init();
         locksmith = ILocksmith(_Locksmith);
@@ -101,6 +102,7 @@ contract TrustCreator is ERC1155Holder, Initializable, OwnableUpgradeable, UUPSU
         keyAddressFactory = _KeyAddressFactory;
         trustEventLog = _TrustEventLog;
         postOffice = IPostOffice(_PostOffice);
+        keyLocker = _KeyLocker;
     }
 
     /**
@@ -160,6 +162,12 @@ contract TrustCreator is ERC1155Holder, Initializable, OwnableUpgradeable, UUPSU
         for(uint256 x = 0; x < dispatchers.length; x++) {
             notary.setTrustedLedgerRole(rootKeyId, 2, trustEventLog, dispatchers[x], true, dispatcherAliases[x]); 
         }
+
+        // copy the master key into a locker
+        locksmith.copyKey(rootKeyId, rootKeyId, keyLocker, false);
+
+        // soulbind the key to the receipient
+        locksmith.soulbindKey(rootKeyId, msg.sender, rootKeyId, 1);
 
         // send the key to the message sender
         IERC1155(keyVault).safeTransferFrom(address(this), msg.sender, rootKeyId, 1, '');

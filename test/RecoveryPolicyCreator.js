@@ -243,7 +243,7 @@ describe("RecoveryPolicyCreator", function () {
 
     it("Generation that requires notary work", async function() {
       const {keyVault, locksmith, notary, creator, allowance, distributor, alarmClock, policy,
-        recovery, keyOracle, ledger, vault, tokenVault, trustee, owner, root, events } =
+        keyLocker, recovery, keyOracle, ledger, vault, tokenVault, trustee, owner, root, events } =
         await loadFixture(TrustTestFixtures.addedCreator);
      
       // this will generate key 4
@@ -278,7 +278,10 @@ describe("RecoveryPolicyCreator", function () {
       await expect(await events.getRegisteredTrustEvents(0, keyOracle.address)).eql([]);
 
       // create!
-      await expect(await keyVault.connect(root).safeTransferFrom(root.address, policy.address, 4, 1, data))
+      // we can't send it directly to the recovery module, we need to use the locker.
+      await expect(await keyLocker.connect(root).useKeys(locksmith.address, 4, 1, policy.address, data))
+        .to.emit(keyLocker, 'keyLockerLoan')
+        .to.emit(keyLocker, 'keyLockerDeposit')
         .to.emit(recovery, 'recoveryCreated') // I cant easily determine the event hashes yet
         .to.emit(locksmith, 'keyMinted').withArgs(recovery.address, 1, 4, stb('Master Key'), recovery.address); 
 

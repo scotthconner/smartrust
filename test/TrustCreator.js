@@ -22,12 +22,12 @@ describe("TrustCreator", function () {
   ////////////////////////////////////////////////////////////
   describe("Contract deployment", function () {
     it("Should not fail the deployment", async function () {
-      const { keyVault, locksmith, notary, ledger, alarmClock, events, allowance, distributor, 
+      const { keyVault, locksmith, notary, ledger, alarmClock, events, allowance, distributor, keyLocker, 
         postOffice, vault, tokenVault, keyOracle, trustee, creator, addressFactory } = await loadFixture(TrustTestFixtures.addedCreator);
       
       await expect(creator.initialize(locksmith.address, notary.address,
         ledger.address, vault.address, tokenVault.address, 
-        addressFactory.address, events.address, postOffice.address))
+        addressFactory.address, events.address, postOffice.address, keyLocker.address))
         .to.be.revertedWith("Initializable: contract is already initialized");
       expect(true);
     });
@@ -41,14 +41,14 @@ describe("TrustCreator", function () {
   ////////////////////////////////////////////////////////////
   describe("Contract upgrade", function() {
     it("Should be able to upgrade", async function() {
-      const { keyVault, locksmith, notary, creator, keyOracle, events, allowance, postOffice,
+      const { keyVault, locksmith, notary, creator, keyOracle, events, allowance, postOffice, keyLocker,
         ledger, vault, tokenVault, trustee, addressFactory, root } = await loadFixture(TrustTestFixtures.addedCreator);
 
       const contract = await ethers.getContractFactory("TrustCreator")
       const v2 = await upgrades.upgradeProxy(creator.address, contract, 
           [locksmith.address, notary.address,
           ledger.address, vault.address, tokenVault.address, 
-          addressFactory.address, events.address, postOffice]);
+          addressFactory.address, events.address, postOffice.address, keyLocker.address]);
       await v2.deployed();
 
       // try to upgrade if you're not the owner
@@ -212,7 +212,7 @@ describe("TrustCreator", function () {
     });
 
     it("Successfully creates a trust with secondary account", async function() {
-      const {keyVault, locksmith, notary, creator, allowance, distributor, alarmClock,
+      const {keyVault, locksmith, notary, creator, allowance, distributor, alarmClock, keyLocker,
         postOffice, keyOracle, ledger, vault, tokenVault, trustee, owner, root, events } =
         await loadFixture(TrustTestFixtures.addedCreator);
 
@@ -259,7 +259,7 @@ describe("TrustCreator", function () {
       expect(await keyVault.balanceOf(inboxAddress, 5)).eql(bn(1));
 
       // check the soulboundness of the keys
-      expect(await keyVault.getHolders(4)).eql([root.address]);
+      expect(await keyVault.getHolders(4)).eql([keyLocker.address, root.address]);
       expect(await keyVault.getHolders(5)).eql([inboxAddress]);
       expect(await keyVault.keyBalanceOf(inboxAddress, 5, true)).eql(bn(1));
     });

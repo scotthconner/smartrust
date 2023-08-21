@@ -612,18 +612,24 @@ TrustTestFixtures = (function() {
         events, trustee, keyOracle, alarmClock, addressFactory, megaKey,
         owner, root, second, third } = await TrustTestFixtures.addedPolicyCreator();
 
+      // deploy the key locker 
+      const KeyLocker = await ethers.getContractFactory("KeyLocker");
+      const keyLocker = await upgrades.deployProxy(KeyLocker, []);
+      await keyLocker.deployed();
+
       // deploy the creator
       const Creator = await ethers.getContractFactory("TrustCreator");
       const creator = await upgrades.deployProxy(Creator, [
         locksmith.address, notary.address,
         ledger.address, vault.address, tokenVault.address,
-        addressFactory.address, events.address, postOffice.address
+        addressFactory.address, events.address, postOffice.address,
+        keyLocker.address
       ]);
       await creator.deployed();
 
       return { keyVault, locksmith, creator, megaKey, allowance, distributor,
         recovery, notary, ledger, vault, tokenVault, coin, inbox, postOffice,
-        events, trustee, keyOracle, alarmClock, addressFactory, policy,
+        events, trustee, keyOracle, alarmClock, addressFactory, policy, keyLocker,
         owner, root, second, third };
     },
     //////////////////////////////////////////////////////////
