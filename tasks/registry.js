@@ -4,6 +4,7 @@ LocksmithRegistry = (function() {
   const CONTRACTS = [ 
     'KeyVault',
     'Locksmith',
+    'KeyLocker',
     'Notary',
     'Ledger',
     'EtherVault',

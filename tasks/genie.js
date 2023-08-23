@@ -452,6 +452,7 @@ task("blast", "Degenerately deploy the entire platform, assuming a clean slate."
   .setAction(async (taskArgs) => {
     await run("deploy", {contract: 'KeyVault', upgrade: taskArgs['upgrade']});
     await run("deploy", {contract: 'Locksmith', upgrade: taskArgs['upgrade']});
+    await run("deploy", {contract: 'KeyLocker', upgrade: taskArgs['upgrade']});
     await run("deploy", {contract: 'Notary', upgrade: taskArgs['upgrade']});
     await run("deploy", {contract: 'Ledger', upgrade: taskArgs['upgrade']});
     await run("deploy", {contract: 'EtherVault', upgrade: taskArgs['upgrade']});
@@ -468,7 +469,7 @@ task("blast", "Degenerately deploy the entire platform, assuming a clean slate."
     await run("deploy", {contract: 'TrustCreator', upgrade: taskArgs['upgrade']});
     await run("deploy", {contract: 'TrustRecoveryCenter', upgrade: taskArgs['upgrade']});
     await run("deploy", {contract: 'RecoveryPolicyCreator', upgrade: taskArgs['upgrade']});
-    if(taskArgs['upgrade'] === null) {
+    if(!taskArgs['upgrade']) {
       await run("respect");
     }
   });

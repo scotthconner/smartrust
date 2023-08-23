@@ -1,11 +1,8 @@
 {
   "usdc": {
-    "address": "0xf5059a5D33d5853360D16C683c16e67980206f36"
-  },
-  "link": {
     "address": "0x70e0bA845a1A0F2DA3359C97E0285013525FFC49"
   },
-  "ShadowERC": {
+  "link": {
     "address": "0x0E801D84Fa97b50751Dbf25036d067dCf18858bF"
   }
 }
