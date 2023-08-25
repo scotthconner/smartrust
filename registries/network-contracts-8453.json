@@ -66,5 +66,9 @@
   "KeyLocker": {
     "address": "0x4fBe7096Fa051458B677E7C33EDcEC6C31706324",
     "codeHash": "0xdba0e13ec0d1d7e90cc5dedfeb1e1e99fe08274e58fa095c0696a1583544734e"
+  },
+  "TrustRecoveryCenter": {
+    "address": "0xbD5543f5Cb80cdCdc5aC94e4B3F7c22aCa48b553",
+    "codeHash": "0xf447c9379d7befb5b7606b1d060df453311d69e581a4d34b286abf424137f1f1"
   }
 }
