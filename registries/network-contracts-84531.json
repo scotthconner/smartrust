@@ -52,8 +52,8 @@
     "codeHash": "0xe9642227b0f2956f298f9393431fb791fedda4c3f6378c7acffc552f63ff0817"
   },
   "MegaKeyCreator": {
-    "address": "0x2DeA68eB5cA2A0F80eC4E75A7b91E6d824888d74",
-    "codeHash": "0xcf36e1393d0a993d0471502d5beee4b812662288b61bbacff373cf6ce446cc72"
+    "address": "0xFe5058Ba9ef6D64ce7D8EeBc04e884064A3DdcC4",
+    "codeHash": "0x220680be4e0c2aa98bdeffb5e1aec97452357ab0c0a0fcd19a152eba2e777db5"
   },
   "TrustCreator": {
     "address": "0x9bB2583eA01040eCCF6E5b95cC3e7BDc2A335D00",
@@ -62,5 +62,9 @@
   "Distributor": {
     "address": "0xa6B6145D49a82C8a1a8eBdfEaF8EA997ad0E74b7",
     "codeHash": "0xf08322fdc6cdfd3220255cd3bf673feababca5fd27eb0294c0d10d1fd19b21df"
+  },
+  "KeyLocker": {
+    "address": "0xf85F5d3991aeBE17C52ae88524fDBa535F587513",
+    "codeHash": "0xdba0e13ec0d1d7e90cc5dedfeb1e1e99fe08274e58fa095c0696a1583544734e"
   }
 }
