@@ -25,6 +25,7 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 // We need the Locksmith ABI to create trusts 
 import '../interfaces/ILocksmith.sol';
 import '../interfaces/IKeyVault.sol';
+import '../interfaces/IPostOffice.sol';
 
 ///////////////////////////////////////////////////////////
 
@@ -41,6 +42,7 @@ contract MegaKeyCreator is ERC1155Holder, Initializable, OwnableUpgradeable, UUP
     // Storage
     ///////////////////////////////////////////////////////
     address public  keyAddressFactory;
+    address public  postOffice;
     bool    private entrancy; 
 
     ///////////////////////////////////////////////////////
@@ -62,10 +64,11 @@ contract MegaKeyCreator is ERC1155Holder, Initializable, OwnableUpgradeable, UUP
      *
      * @param _KeyAddressFactory the factory we will use to create the key inbox 
      */
-    function initialize(address _KeyAddressFactory) initializer public {
+    function initialize(address _KeyAddressFactory, address _PostOffice) initializer public {
         __Ownable_init();
         __UUPSUpgradeable_init();
         keyAddressFactory = _KeyAddressFactory;
+        postOffice = _PostOffice;
     }
 
     /**
@@ -102,12 +105,18 @@ contract MegaKeyCreator is ERC1155Holder, Initializable, OwnableUpgradeable, UUP
         public virtual override returns (bytes4) {
 
         // this will be called again when the locksmith mints the key for us
+        // note: its possible that this code is re-entered with a different
+        // key while the contract is still holding the previous caller's root key.
+        // this could occur if the receiver of a copied key is a contract accout.
+        // in this case, the code re-enters the full flow, but this is *SAFE* because
+        // all operations either agent the sent key, or operate the locksmith by declaring
+        // the sent key's use. sloppy modification of this contract should never
+        // include calls that use modules of undeclared access control, or declared
+        // access control based on data inputs along with the key.
         if(entrancy) { 
-            return this.onERC1155Received.selector; 
+            // swallow this key and return
+            return this.onERC1155Received.selector;
         }
-
-        // make sure this doesn't trigger when we are sent a key
-        entrancy = true;
 
         // make sure the count is exactly 1 of whatever it is.
         require(count == 1, 'IMPROPER_KEY_INPUT');
@@ -116,23 +125,49 @@ contract MegaKeyCreator is ERC1155Holder, Initializable, OwnableUpgradeable, UUP
         ILocksmith locksmith = ILocksmith(IKeyVault(msg.sender).locksmith());
 
         // grab the encoded information
-        (bytes32 keyAlias, address provider, address receiver, bool bind) 
-            = abi.decode(data, (bytes32, address, address, bool));
+        (bytes32 keyAlias, address provider, address[] memory receivers, bool[] memory bind) 
+            = abi.decode(data, (bytes32, address, address[], bool[]));
+        
+        // ensure the sanity of the inputs
+        require(receivers.length == bind.length, 'DIMENSION_MISMATCH');
 
-        // create the key and send it to the receiver 
-        uint256 newKeyId = locksmith.createKey(keyId, keyAlias, receiver, bind);
-
+        // make sure this doesn't trigger when we are sent a key
+        entrancy = true;
+        
+        // create the key and send it here for the inbox 
+        uint256 newKeyId = locksmith.createKey(keyId, keyAlias, address(this), false);
+ 
         // use this new KeyId to create a new inbox
         // this will generate the inbox and register it
         // with the post office
+        // Note: It will not copy the key
         IERC1155(msg.sender).safeTransferFrom(address(this), keyAddressFactory, keyId, 1,
-            abi.encode(newKeyId, provider, true));
+            abi.encode(newKeyId, provider, false));
+        
+        // success and thanks! this transfer just gave us back that root key.
 
-        // send the root key back
-        IERC1155(msg.sender).safeTransferFrom(address(this), from, keyId, 1, ""); 
+        // soulbind the new key ID to the inbox, since we hold it again 
+        address inbox = IPostOffice(postOffice).getKeyInbox(newKeyId); 
+        assert(inbox != address(0));
+        locksmith.soulbindKey(keyId, inbox, newKeyId, 1);
+       
+        // populate the inbox with the new soulbound key
+        IERC1155(msg.sender).safeTransferFrom(address(this), inbox, newKeyId, 1, "");
 
         // reset the re-entrancy hatch
         entrancy = false;
+        
+        // now, for each receiver, copy and bind as needed. 
+        // THIS IS RE-ENTRANT!!!
+        // malicious receivers could attempt to re-enter this code while it is holding
+        // someone else's root key. however, all calls to the locksmith
+        // explicitly declare their key usage. do not trust decoded inputs
+        for(uint256 x = 0; x < receivers.length; x++) {
+            locksmith.copyKey(keyId, newKeyId, receivers[x], bind[x]);
+        }
+        
+        // send the root key back
+        IERC1155(msg.sender).safeTransferFrom(address(this), from, keyId, 1, ""); 
 
         return this.onERC1155Received.selector;
     }

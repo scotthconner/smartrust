@@ -26,7 +26,7 @@ describe("MegaKeyCreator", function () {
         notary, ledger, vault, tokenVault, coin, inbox, megaKey,
         events, trustee, keyOracle, alarmClock, creator,
         owner, root, second, third} = await loadFixture(TrustTestFixtures.addedMegaKeyCreator); 
-      await expect(megaKey.initialize(addressFactory.address))
+      await expect(megaKey.initialize(addressFactory.address, postOffice.address))
         .to.be.revertedWith("Initializable: contract is already initialized");
       expect(true);
     });
@@ -48,11 +48,11 @@ describe("MegaKeyCreator", function () {
       // this will fail because root doesn't own the contract 
       const contract = await ethers.getContractFactory("MegaKeyCreator", root)
       await expect(upgrades.upgradeProxy(megaKey.address, contract, 
-          [addressFactory.address])).to.be.revertedWith("Ownable: caller is not the owner");
+          [addressFactory.address, postOffice.address])).to.be.revertedWith("Ownable: caller is not the owner");
 
       // this will work because the caller the default signer 
       const success = await ethers.getContractFactory("MegaKeyCreator")
-      const v2 = await upgrades.upgradeProxy(megaKey.address, success, [addressFactory.address]);
+      const v2 = await upgrades.upgradeProxy(megaKey.address, success, [addressFactory.address, postOffice.address]);
       await v2.deployed();
 
       expect(true);
@@ -91,6 +91,22 @@ describe("MegaKeyCreator", function () {
         .to.be.revertedWith('ERC1155: transfer to non ERC1155Receiver implementer');
     });
 
+    it("Sent data must have matching receivers and binding instructions", async function() {
+       const {keyVault, locksmith, postOffice, addressFactory,
+        notary, ledger, vault, tokenVault, coin, inbox, megaKey,
+        events, trustee, keyOracle, alarmClock, creator,
+        owner, root, second, third} = await loadFixture(TrustTestFixtures.addedMegaKeyCreator);
+
+      // encode the data
+      var data = ethers.utils.defaultAbiCoder.encode(
+        ['bytes32','address','address[]','bool[]'],
+        [stb('my key'), vault.address, [owner.address], [true, false]]);
+
+      // owner doesn't hold the root key, so the calls to the locksmith fail
+      await expect(keyVault.connect(owner).safeTransferFrom(owner.address, megaKey.address, 1, 1, data))
+        .to.be.revertedWith('DIMENSION_MISMATCH');
+    });
+
     it("Sent key must be a root key", async function() {
        const {keyVault, locksmith, postOffice, addressFactory,
         notary, ledger, vault, tokenVault, coin, inbox, megaKey,
@@ -99,10 +115,10 @@ describe("MegaKeyCreator", function () {
 
       // encode the data
       var data = ethers.utils.defaultAbiCoder.encode(
-        ['bytes32','address','address','bool'],
-        [stb('my key'), vault.address, owner.address, true]);
+        ['bytes32','address','address[]','bool[]'],
+        [stb('my key'), vault.address, [owner.address], [true]]);
 
-      // owner doesn't hold the root key 
+      // owner doesn't hold the root key, so the calls to the locksmith fail
       await expect(keyVault.connect(owner).safeTransferFrom(owner.address, megaKey.address, 1, 1, data))
         .to.be.revertedWith('KEY_NOT_ROOT');
     });
@@ -115,9 +131,13 @@ describe("MegaKeyCreator", function () {
 
       // encode the data
       var data = ethers.utils.defaultAbiCoder.encode(
-        ['bytes32','address','address','bool'],
-        [stb('my key'), vault.address, owner.address, true]);
+        ['bytes32','address','address[]','bool[]'],
+        [stb('my key'), vault.address, [owner.address], [true]]);
 
+      // pre-conditions
+      await expect(await keyVault.keyBalanceOf(owner.address, 4, false)).eql(bn(0));
+      await expect(await keyVault.keyBalanceOf(owner.address, 4, true)).eql(bn(0));
+      
       // should be successful? 
       await expect(await keyVault.connect(root).safeTransferFrom(root.address, megaKey.address, 0, 1, data))
         .to.emit(postOffice, 'keyAddressRegistration');
@@ -135,7 +155,9 @@ describe("MegaKeyCreator", function () {
       await expect(await keyVault.keyBalanceOf(inboxes[0], 4, true)).eql(bn(1));
 
       // check the holders of the new key
-      await expect(await keyVault.getHolders(4)).eql([owner.address, inboxes[0]]);
+      await expect(await keyVault.getHolders(4)).eql([inboxes[0], owner.address]);
+      await expect(await keyVault.keyBalanceOf(owner.address, 4, true)).eql(bn(1));
+      await expect(await keyVault.keyBalanceOf(owner.address, 4, false)).eql(bn(1));
     });
   });
 });

@@ -531,7 +531,7 @@ TrustTestFixtures = (function() {
 
       // deploy the inbox
       const MegaKeyCreator = await ethers.getContractFactory("MegaKeyCreator");
-      const megaKey = await upgrades.deployProxy(MegaKeyCreator, [addressFactory.address]);
+      const megaKey = await upgrades.deployProxy(MegaKeyCreator, [addressFactory.address, postOffice.address]);
       await megaKey.deployed();
 
       return {keyVault, locksmith, allowance,
