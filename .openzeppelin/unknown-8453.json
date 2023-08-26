@@ -100,6 +100,11 @@
       "address": "0xbD5543f5Cb80cdCdc5aC94e4B3F7c22aCa48b553",
       "txHash": "0xf07dd119d6b839d184590194f06ec41d2f7a2c8355306c0fb5d3cc3f21269391",
       "kind": "uups"
+    },
+    {
+      "address": "0x095d0be985eC24B0aF5D2e65d4397CDB57d60686",
+      "txHash": "0x23b2e7ea2971970aeb269e482adbe81e61d21267e7d87810061b62ba6d873959",
+      "kind": "uups"
     }
   ],
   "impls": {
@@ -5904,6 +5909,189 @@
               }
             ],
             "numberOfBytes": "64"
+          },
+          "t_uint256": {
+            "label": "uint256",
+            "numberOfBytes": "32"
+          },
+          "t_uint8": {
+            "label": "uint8",
+            "numberOfBytes": "1"
+          }
+        }
+      }
+    },
+    "cfb9aa9928b511030dcb06bfc4397a04d0640be54ce111647b409fb62f2e88ee": {
+      "address": "0xE8C57A0953e908D706Da138695FA51616e4DF25d",
+      "txHash": "0x498fc1b44848660db04c6122ac11c413e9e7f8055523cab814e807a63dc5c556",
+      "layout": {
+        "storage": [
+          {
+            "label": "_initialized",
+            "offset": 0,
+            "slot": "0",
+            "type": "t_uint8",
+            "contract": "Initializable",
+            "src": "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol:62",
+            "retypedFrom": "bool"
+          },
+          {
+            "label": "_initializing",
+            "offset": 1,
+            "slot": "0",
+            "type": "t_bool",
+            "contract": "Initializable",
+            "src": "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol:67"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "1",
+            "type": "t_array(t_uint256)50_storage",
+            "contract": "ContextUpgradeable",
+            "src": "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol:36"
+          },
+          {
+            "label": "_owner",
+            "offset": 0,
+            "slot": "51",
+            "type": "t_address",
+            "contract": "OwnableUpgradeable",
+            "src": "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol:22"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "52",
+            "type": "t_array(t_uint256)49_storage",
+            "contract": "OwnableUpgradeable",
+            "src": "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol:94"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "101",
+            "type": "t_array(t_uint256)50_storage",
+            "contract": "ERC1967UpgradeUpgradeable",
+            "src": "@openzeppelin/contracts-upgradeable/proxy/ERC1967/ERC1967UpgradeUpgradeable.sol:211"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "151",
+            "type": "t_array(t_uint256)50_storage",
+            "contract": "UUPSUpgradeable",
+            "src": "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol:107"
+          },
+          {
+            "label": "locksmith",
+            "offset": 0,
+            "slot": "201",
+            "type": "t_contract(ILocksmith)14021",
+            "contract": "TrustCreator",
+            "src": "contracts/agents/TrustCreator.sol:60"
+          },
+          {
+            "label": "keyVault",
+            "offset": 0,
+            "slot": "202",
+            "type": "t_address",
+            "contract": "TrustCreator",
+            "src": "contracts/agents/TrustCreator.sol:61"
+          },
+          {
+            "label": "notary",
+            "offset": 0,
+            "slot": "203",
+            "type": "t_contract(INotary)14225",
+            "contract": "TrustCreator",
+            "src": "contracts/agents/TrustCreator.sol:62"
+          },
+          {
+            "label": "keyAddressFactory",
+            "offset": 0,
+            "slot": "204",
+            "type": "t_address",
+            "contract": "TrustCreator",
+            "src": "contracts/agents/TrustCreator.sol:63"
+          },
+          {
+            "label": "postOffice",
+            "offset": 0,
+            "slot": "205",
+            "type": "t_contract(IPostOffice)14283",
+            "contract": "TrustCreator",
+            "src": "contracts/agents/TrustCreator.sol:64"
+          },
+          {
+            "label": "keyLocker",
+            "offset": 0,
+            "slot": "206",
+            "type": "t_address",
+            "contract": "TrustCreator",
+            "src": "contracts/agents/TrustCreator.sol:65"
+          },
+          {
+            "label": "ledger",
+            "offset": 0,
+            "slot": "207",
+            "type": "t_address",
+            "contract": "TrustCreator",
+            "src": "contracts/agents/TrustCreator.sol:69"
+          },
+          {
+            "label": "trustEventLog",
+            "offset": 0,
+            "slot": "208",
+            "type": "t_address",
+            "contract": "TrustCreator",
+            "src": "contracts/agents/TrustCreator.sol:70"
+          },
+          {
+            "label": "etherVault",
+            "offset": 0,
+            "slot": "209",
+            "type": "t_address",
+            "contract": "TrustCreator",
+            "src": "contracts/agents/TrustCreator.sol:71"
+          },
+          {
+            "label": "tokenVault",
+            "offset": 0,
+            "slot": "210",
+            "type": "t_address",
+            "contract": "TrustCreator",
+            "src": "contracts/agents/TrustCreator.sol:72"
+          }
+        ],
+        "types": {
+          "t_address": {
+            "label": "address",
+            "numberOfBytes": "20"
+          },
+          "t_array(t_uint256)49_storage": {
+            "label": "uint256[49]",
+            "numberOfBytes": "1568"
+          },
+          "t_array(t_uint256)50_storage": {
+            "label": "uint256[50]",
+            "numberOfBytes": "1600"
+          },
+          "t_bool": {
+            "label": "bool",
+            "numberOfBytes": "1"
+          },
+          "t_contract(ILocksmith)14021": {
+            "label": "contract ILocksmith",
+            "numberOfBytes": "20"
+          },
+          "t_contract(INotary)14225": {
+            "label": "contract INotary",
+            "numberOfBytes": "20"
+          },
+          "t_contract(IPostOffice)14283": {
+            "label": "contract IPostOffice",
+            "numberOfBytes": "20"
           },
           "t_uint256": {
             "label": "uint256",

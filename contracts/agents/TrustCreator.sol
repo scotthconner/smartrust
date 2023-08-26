@@ -164,10 +164,10 @@ contract TrustCreator is ERC1155Holder, Initializable, OwnableUpgradeable, UUPSU
         }
 
         // copy the master key into a locker
-        // TODO: locksmith.copyKey(rootKeyId, rootKeyId, keyLocker, false);
+        locksmith.copyKey(rootKeyId, rootKeyId, keyLocker, false);
 
         // soulbind the key to the receipient
-        // TODO: locksmith.soulbindKey(rootKeyId, msg.sender, rootKeyId, 1);
+        locksmith.soulbindKey(rootKeyId, msg.sender, rootKeyId, 1);
 
         // send the key to the message sender
         IERC1155(keyVault).safeTransferFrom(address(this), msg.sender, rootKeyId, 1, '');
