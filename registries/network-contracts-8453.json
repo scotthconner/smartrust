@@ -70,5 +70,9 @@
   "TrustRecoveryCenter": {
     "address": "0xbD5543f5Cb80cdCdc5aC94e4B3F7c22aCa48b553",
     "codeHash": "0xf447c9379d7befb5b7606b1d060df453311d69e581a4d34b286abf424137f1f1"
+  },
+  "RecoveryPolicyCreator": {
+    "address": "0x1B0b086DEb85B099e98Cb775e9169612fAf04Fec",
+    "codeHash": "0xa8b8e65aae3ae2c10f9feb7eeda8e87055368ff57d6f61ed058c007bc72fa7b6"
   }
 }
