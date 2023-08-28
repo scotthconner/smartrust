@@ -66,5 +66,13 @@
   "KeyLocker": {
     "address": "0xf85F5d3991aeBE17C52ae88524fDBa535F587513",
     "codeHash": "0xdba0e13ec0d1d7e90cc5dedfeb1e1e99fe08274e58fa095c0696a1583544734e"
+  },
+  "TrustRecoveryCenter": {
+    "address": "0xd76b7780c1858faFA554460E83B32F7f2e05f18A",
+    "codeHash": "0xf447c9379d7befb5b7606b1d060df453311d69e581a4d34b286abf424137f1f1"
+  },
+  "RecoveryPolicyCreator": {
+    "address": "0xb93C62CD477827E67AC5BC52B0ba1bDa1AE1DE24",
+    "codeHash": "0xa8b8e65aae3ae2c10f9feb7eeda8e87055368ff57d6f61ed058c007bc72fa7b6"
   }
 }
