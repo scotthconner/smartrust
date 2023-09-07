@@ -308,7 +308,7 @@ describe("AlarmClock", function () {
         .to.be.revertedWith('TOO_EARLY');
     });
 
-    it("Successful snooze before the alarm time adds to the alarm time", async function() {
+    it("Successful snooze before the alarm time adds only the snooze interval to the block timestamp", async function() {
       const {alarmClock, locksmith, events, owner, root, second} =
         await loadFixture(TrustTestFixtures.addedAlarmClock);
 
@@ -321,9 +321,10 @@ describe("AlarmClock", function () {
         .to.emit(alarmClock, 'alarmClockRegistered')
         .withArgs(root.address, 0, 0, time, 100, 1, hash);
 
+      const newtime = (await now());
       await expect(await alarmClock.connect(owner).snoozeAlarm(hash))
         .to.emit(alarmClock, 'alarmClockSnoozed')
-        .withArgs(owner.address, hash, 1, bn(time+100));
+        .withArgs(owner.address, hash, 1, bn(newtime+101)); // add one due to the next tick
     });
 
     it("Successful snooze after unchallenged alarm adds to the current block time", async function() {

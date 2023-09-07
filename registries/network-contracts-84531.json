@@ -29,7 +29,7 @@
   },
   "AlarmClock": {
     "address": "0x9b3c306a7f19797dd5380B5Cc069073B318aE766",
-    "codeHash": "0x02b52bb78623e45dfde1c3a4558abf30b415cf4c663a89db81f1e3138564e7a5"
+    "codeHash": "0x880e37dc7755663262960d10abd431272a84e914a1cdaae57f3a7a1416e2c755"
   },
   "KeyOracle": {
     "address": "0x8219ce9f581Be909a6AD82Fc69E0572890cb1B24",

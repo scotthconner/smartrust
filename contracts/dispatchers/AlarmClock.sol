@@ -239,10 +239,9 @@ contract AlarmClock is IAlarmClock, Initializable, OwnableUpgradeable, UUPSUpgra
         require((block.timestamp >= alarm.alarmTime) || 
             (block.timestamp + alarm.snoozeInterval) >= alarm.alarmTime, 'TOO_EARLY'); 
 
-        // determine if the snooze is early, or late, and set the proper
-        // new alarm time given that all requirements have been met.
-        alarm.alarmTime = alarm.snoozeInterval + ((block.timestamp > alarm.alarmTime) ?
-            block.timestamp : alarm.alarmTime);
+        // changed: the new alarm time is always the snooze interval plus the
+        //          block timestamp
+        alarm.alarmTime = alarm.snoozeInterval + block.timestamp; 
       
         // the alarm has been snoozed.
         emit alarmClockSnoozed(msg.sender, eventHash, alarm.snoozeKeyId, alarm.alarmTime);
