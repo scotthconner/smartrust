@@ -29,7 +29,8 @@ module.exports = {
     apiKey: {
       goerli: `${process.env.ETHERSCAN_API_KEY}`,
       polygonMumbai: `${process.env.POLYGONSCAN_API_KEY}`,
-      base: `${process.env.BASE_API_KEY}`
+      base: `${process.env.BASE_API_KEY}`,
+      scrollsepolia: `${process.env.SCROLL_API_KEY}`
     },
     customChains: [
      {
@@ -39,12 +40,24 @@ module.exports = {
         apiURL: "https://api.basescan.org/api",
         browserURL: "https://api.basescan.org"
        }
-     }
+     },
+     {
+       network: 'scrollsepolia',
+       chainId: 534351,
+       urls: {
+         apiURL: 'https://sepolia-blockscout.scroll.io/api',
+         browserURL: 'https://sepolia-blockscout.scroll.io/',
+       },
+    },
    ]
   },
   networks: {
     goerli: {
       url: `${process.env.ALCHEMY_GOERLI_URL}`,
+      accounts: [`${process.env.MY_PRIVATE_KEY}`],
+    },
+    scrollsepolia: {
+      url: 'https://sepolia-rpc.scroll.io',
       accounts: [`${process.env.MY_PRIVATE_KEY}`],
     },
     basegoerli: {
