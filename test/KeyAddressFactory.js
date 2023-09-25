@@ -23,10 +23,10 @@ describe("KeyAddressFactory", function () {
   describe("Contract deployment", function () {
     it("Should not fail the deployment", async function () {
       const {keyVault, locksmith, postOffice, addressFactory,
-        notary, ledger, vault, tokenVault, coin, inbox,
+        notary, ledger, vault, tokenVault, coin, inbox, virtualKeyAddress,
         events, trustee, keyOracle, alarmClock, creator,
         owner, root, second, third} = await loadFixture(TrustTestFixtures.addedKeyAddressFactory); 
-      await expect(addressFactory.initialize(postOffice.address))
+      await expect(addressFactory.initialize(postOffice.address, virtualKeyAddress.address))
         .to.be.revertedWith("Initializable: contract is already initialized");
       expect(true);
     });
@@ -41,18 +41,18 @@ describe("KeyAddressFactory", function () {
   describe("Contract upgrade", function() {
     it("Upgrade requires ownership", async function() {
       const {keyVault, locksmith, postOffice, addressFactory,
-        notary, ledger, vault, tokenVault, coin, inbox,
+        notary, ledger, vault, tokenVault, coin, inbox, virtualKeyAddress,
         events, trustee, keyOracle, alarmClock, creator,
         owner, root, second, third} = await loadFixture(TrustTestFixtures.addedKeyAddressFactory);
 
       // this will fail because root doesn't own the contract 
       const contract = await ethers.getContractFactory("KeyAddressFactory", root)
       await expect(upgrades.upgradeProxy(addressFactory.address, contract, 
-          [postOffice.address])).to.be.revertedWith("Ownable: caller is not the owner");
+          [postOffice.address, virtualKeyAddress.address])).to.be.revertedWith("Ownable: caller is not the owner");
 
       // this will work because the caller the default signer 
       const success = await ethers.getContractFactory("KeyAddressFactory")
-      const v2 = await upgrades.upgradeProxy(addressFactory.address, success, [postOffice.address]);
+      const v2 = await upgrades.upgradeProxy(addressFactory.address, success, [postOffice.address, virtualKeyAddress.address]);
       await v2.deployed();
 
       expect(true);

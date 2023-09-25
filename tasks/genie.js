@@ -40,13 +40,20 @@ const blue   = (s) => '\x1b[34m' + s + '\x1b[0m';
 // parameters are defined in the contracts.
 ///////////////////////////////////////////
 const getContractInitializationDependencies = async function(alias) {
+  // implementation contracts won't have initialization dependencies
+  // because the constructor here is assumed to be empty, so if that
+  // is the case, just return
+  if (LocksmithRegistry.getImplementationList().includes(alias)) {
+    return []; // no initialization dependencies for implementation contracts
+  }
+
   const contract = await ethers.getContractFactory(alias);
   const chainId = await contract.signer.getChainId();
   var dependencies = [];
   for (pt of contract.interface.fragments.filter(f => f.type === 'function' && f.name === 'initialize')[0].inputs) {
     var contractDependency = pt.name.replace(/_/g,'');
-    var contractAddress  = LocksmithRegistry.getContractAddress(chainId, contractDependency);
-    var contractCodeHash = LocksmithRegistry.getContractCodeHash(chainId, contractDependency);
+    var contractAddress  = LocksmithRegistry.findContractAddress(chainId, contractDependency);
+    var contractCodeHash = LocksmithRegistry.findContractCodeHash(chainId, contractDependency);
 
     dependencies.push({ 
       alias: contractDependency,
@@ -122,10 +129,10 @@ task("show", "Show the state of the current genie deployment")
     var totalNeeded = 0;
     
     console.log(greenText, "\n=== CURRENT ===\n");
-    for(const c of LocksmithRegistry.getContractList() ) {
+    for(const c of [LocksmithRegistry.getContractList(), LocksmithRegistry.getImplementationList()].flat(2) ) {
       const contract = await ethers.getContractFactory(c);
-      const currentAddress  = LocksmithRegistry.getContractAddress(chainId, c);
-      const currentCodeHash = LocksmithRegistry.getContractCodeHash(chainId, c);
+      const currentAddress  = LocksmithRegistry.findContractAddress(chainId, c);
+      const currentCodeHash = LocksmithRegistry.findContractCodeHash(chainId, c);
       const localCodeHash = ethers.utils.keccak256(contract.bytecode);
 
       // build the contract and get the dependencies
@@ -247,9 +254,9 @@ task("deploy", "Deploy a specific contract generating a new address for it.")
     console.log(" Signer Wallet Address: " + owner.address);
     console.log(" Signer Balance: " + ethers.utils.formatEther(balance));
 
-    // Create the signer for the mnemonic, connected to the provider with hardcoded fee data
     const contract = await ethers.getContractFactory(taskArgs['contract'], owner);
-    
+    const isImplementation = LocksmithRegistry.getImplementationList().includes(taskArgs['contract']);
+
     console.log(greenText, "\n=== CONTRACT INFO ===\n");
     console.log(" Input alias: " + taskArgs['contract']);
     console.log(" Factory Signer Chain ID: " + await contract.signer.getChainId());
@@ -269,8 +276,8 @@ task("deploy", "Deploy a specific contract generating a new address for it.")
     console.log("\nDetermined Dependencies:");
     console.log(dependencies);
    
-    const currentAddress = LocksmithRegistry.getContractAddress(chainId, taskArgs['contract']);
-    const currentCodeHash = LocksmithRegistry.getContractCodeHash(chainId, taskArgs['contract']);
+    const currentAddress = LocksmithRegistry.findContractAddress(chainId, taskArgs['contract']);
+    const currentCodeHash = LocksmithRegistry.findContractCodeHash(chainId, taskArgs['contract']);
     const localCodeHash = ethers.utils.keccak256(contract.bytecode);
     const hasAddress = currentAddress != null;
 
@@ -323,7 +330,13 @@ task("deploy", "Deploy a specific contract generating a new address for it.")
 
     // upgrade?
     if (taskArgs['upgrade']) {
-
+      // if this is considered an implementation, then there's an error because implementations are
+      // stateless and you shouldn't be updating it
+      if (isImplementation) {
+        console.log(yellowText, "It looks like this contract is a stateless implementaiton, which shouldn't be upgraded.");
+        return 1;
+      }
+  
       // no-op?
       if (currentCodeHash === localCodeHash) {
         console.log(yellowText, "It looks like the code hashes are identical, so the upgrade won't do anything: " + localCodeHash);
@@ -340,18 +353,28 @@ task("deploy", "Deploy a specific contract generating a new address for it.")
       console.log(greenText, "The code hash been saved as well: " + localCodeHash); 
       console.log("Upgrade complete!");
     } else {
-      // nah, just a standard deloyment. forced or otherwise.
-      console.log("Calling upgrades.deployProxy with #initialize([" + preparedArguments + "])"); 
+      // nah, just deploy it, either via proxy, or directly, depending on what registry
+      // it belongs to
+      var deployment = null;
+ 
       try {
-        const deployment = await upgrades.deployProxy(contract, preparedArguments, {
-          timeout: 180000
-        });
+        if (isImplementation) {
+          console.log("Calling contract.deploy()");
+          deployment = await contract.deploy();
+        } else {
+          console.log("Calling upgrades.deployProxy with #initialize([" + preparedArguments + "])"); 
+          deployment = await upgrades.deployProxy(contract, preparedArguments, {
+            timeout: 180000
+          });
+        }
         await deployment.deployed();
       
         console.log(greenText, "Deployment complete! Address: " + deployment.address);
-        LocksmithRegistry.saveContractAddress(chainId, taskArgs['contract'], deployment.address);
+        LocksmithRegistry.saveContractAddress(chainId, taskArgs['contract'], deployment.address,
+          isImplementation ? 'implementations' : 'contracts');
         console.log(greenText, "Address has been successfully saved in the registry!");
-        LocksmithRegistry.saveContractCodeHash(chainId, taskArgs['contract'], localCodeHash);
+        LocksmithRegistry.saveContractCodeHash(chainId, taskArgs['contract'], localCodeHash,
+          isImplementation ? 'implementations' : 'contracts');
         console.log(greenText, "The code hash been saved as well: " + localCodeHash); 
       } catch (error) {
         console.log("oooops!: " + error);
@@ -463,6 +486,7 @@ task("blast", "Degenerately deploy the entire platform, assuming a clean slate."
     await run("deploy", {contract: 'Trustee', upgrade: taskArgs['upgrade']});
     await run("deploy", {contract: 'Allowance', upgrade: taskArgs['upgrade']});
     await run("deploy", {contract: 'Distributor', upgrade: taskArgs['upgrade']});
+    await run("deploy", {contract: 'VirtualKeyAddress', force: true});
     await run("deploy", {contract: 'PostOffice', upgrade: taskArgs['upgrade']});
     await run("deploy", {contract: 'KeyAddressFactory', upgrade: taskArgs['upgrade']});
     await run("deploy", {contract: 'MegaKeyCreator', upgrade: taskArgs['upgrade']});

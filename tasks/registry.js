@@ -21,6 +21,10 @@ LocksmithRegistry = (function() {
     'RecoveryPolicyCreator',
   ];
 
+  const IMPLEMENTATIONS = [
+    'VirtualKeyAddress'
+  ];
+
   /////////////////////////////////////////////
   // getNetworkRegistryFileName
   //
@@ -71,13 +75,22 @@ LocksmithRegistry = (function() {
       return CONTRACTS;
     },
     /////////////////////////////////////////////
+    // getImplementationList
+    //
+    // Produce an array of aliases you can use to
+    // introspect the registry for implementation contracts.
+    /////////////////////////////////////////////
+    getImplementationList: function() {
+      return IMPLEMENTATIONS;
+    },
+    /////////////////////////////////////////////
     // getDeployedDependencyAddress 
     //
     // Given a context of ethers, get the integrity
     // of the given contract alias.
     /////////////////////////////////////////////
     getDeployedDependencyAddress: async function(chainId, alias, dependency) {
-      var address = LocksmithRegistry.getContractAddress(chainId, alias);
+      var address = LocksmithRegistry.findContractAddress(chainId, alias);
       var contract = await ethers.getContractFactory(alias);
 
       // this is a very naughty piece of code, that assumes
@@ -101,6 +114,16 @@ LocksmithRegistry = (function() {
       return (getNetworkRegistry(chainId, registryType).contracts[alias] || {})['address'] || null; 
     },
     /////////////////////////////////////////////
+    // findContractAddress
+    //
+    // Same as getContractAddress, except it will
+    // look in multiple registries.
+    /////////////////////////////////////////////
+    findContractAddress: function(chainId, alias) {
+      return LocksmithRegistry.getContractAddress(chainId, alias, 'contracts') ||
+        LocksmithRegistry.getContractAddress(chainId, alias, 'implementations');
+    },
+    /////////////////////////////////////////////
     // getContractCodeHash
     //
     // Opens the registry, and gets a specific
@@ -108,6 +131,16 @@ LocksmithRegistry = (function() {
     /////////////////////////////////////////////
     getContractCodeHash: function(chainId, alias, registryType = 'contracts') {
       return (getNetworkRegistry(chainId, registryType).contracts[alias]||{})['codeHash'] || null; 
+    },
+    /////////////////////////////////////////////
+    // findContractCodeHash
+    //
+    // Same as getContractCodeHash, except it will
+    // look in multiple registries.
+    /////////////////////////////////////////////
+    findContractCodeHash: function(chainId, alias) {
+      return LocksmithRegistry.getContractCodeHash(chainId, alias, 'contracts') ||
+        LocksmithRegistry.getContractCodeHash(chainId, alias, 'implementations');
     },
     /////////////////////////////////////////////
     // saveContractAddress

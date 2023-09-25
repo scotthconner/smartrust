@@ -507,12 +507,17 @@ TrustTestFixtures = (function() {
         owner, root, second, third} =
         await TrustTestFixtures.addedPostOffice();
 
+      // we want to deploy the implementation contract
+      const VirtualKeyAddress = await ethers.getContractFactory("VirtualKeyAddress");
+      const virtualKeyAddress = await VirtualKeyAddress.deploy();
+      await virtualKeyAddress.deployed();
+
       // deploy the inbox
       const KeyAddressFactory = await ethers.getContractFactory("KeyAddressFactory");
-      const addressFactory = await upgrades.deployProxy(KeyAddressFactory, [postOffice.address]);
+      const addressFactory = await upgrades.deployProxy(KeyAddressFactory, [postOffice.address, virtualKeyAddress.address]);
       await addressFactory.deployed();
 
-      return {keyVault, locksmith, allowance,
+      return {keyVault, locksmith, allowance, virtualKeyAddress,
         notary, ledger, vault, tokenVault, coin, inbox, postOffice,
         events, trustee, keyOracle, alarmClock, addressFactory,
         owner, root, second, third};

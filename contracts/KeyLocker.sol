@@ -176,9 +176,11 @@ contract KeyLocker is IKeyLocker, Initializable, OwnableUpgradeable, UUPSUpgrade
     function redeemKeys(address locksmith, uint256 rootKeyId, uint256 keyId, uint256 amount) external {
         // can't send zero
         require(amount > 0, 'INVALID_AMOUNT');
+        
+        IKeyVault keyVault = IKeyVault(ILocksmith(locksmith).getKeyVault());
 
         // ensure the key balance actually exists in the contract. 
-        require(IKeyVault(ILocksmith(locksmith).getKeyVault()).keyBalanceOf(address(this), keyId, false) >= amount,
+        require(keyVault.keyBalanceOf(address(this), keyId, false) >= amount,
             'INSUFFICIENT_KEYS');
 
         // ensure that the message sender holds the root key for the given key.
@@ -187,11 +189,10 @@ contract KeyLocker is IKeyLocker, Initializable, OwnableUpgradeable, UUPSUpgrade
         (,,uint256 kTrustId,,) = ILocksmith(locksmith).inspectKey(keyId);
         (,,uint256 rTrustId,bool isValidRoot,) = ILocksmith(locksmith).inspectKey(rootKeyId);
         require(isValidRoot && (kTrustId == rTrustId), 'INVALID_ROOT_KEY');
-        require(IKeyVault(ILocksmith(locksmith).getKeyVault()).keyBalanceOf(msg.sender, rootKeyId, false) > 0,
-            'UNAUTHORIZED');
+        require(keyVault.keyBalanceOf(msg.sender, rootKeyId, false) > 0, 'UNAUTHORIZED');
         
         // send the redeemed keys to the message sender. they are not soulbound. 
-        IERC1155(ILocksmith(locksmith).getKeyVault()).safeTransferFrom(address(this), msg.sender, keyId, amount, '');
+        IERC1155(address(keyVault)).safeTransferFrom(address(this), msg.sender, keyId, amount, '');
 
         // emit the final event for records
         emit keyLockerWithdrawal(msg.sender, locksmith, rootKeyId, keyId, amount);
@@ -266,13 +267,15 @@ contract KeyLocker is IKeyLocker, Initializable, OwnableUpgradeable, UUPSUpgrade
      * @param data the encoded calldata to send along with the key to destination.
      */
     function _useKeys(address operator, address locksmith, uint256 keyId, uint256 amount, address destination, bytes memory data) internal {
+        IKeyVault keyVault = IKeyVault(ILocksmith(locksmith).getKeyVault());
+
         // get the start key balance. At the end, we have to have at least this many keys to remain whole.
         // this means that you can't borrow a key, redeem the rest of the same type with the root key 
         // in the same transaction, and then return the borrowed key. This is a trade-off against only
         // being able to locker one key at a time. In this above "bug" scenario, the operator should return
         // the borrowed key before redeeming the rest.
-        uint256 startKeyBalance  = IKeyVault(ILocksmith(locksmith).getKeyVault()).keyBalanceOf(address(this), keyId, false);
-        uint256 startUserBalance = IKeyVault(ILocksmith(locksmith).getKeyVault()).keyBalanceOf(operator, keyId, false);
+        uint256 startKeyBalance  = keyVault.keyBalanceOf(address(this), keyId, false);
+        uint256 startUserBalance = keyVault.keyBalanceOf(operator, keyId, false);
 
         // ensure that the locker key even exists
         require(startKeyBalance >= amount, 'INSUFFICIENT_KEYS');
@@ -284,7 +287,7 @@ contract KeyLocker is IKeyLocker, Initializable, OwnableUpgradeable, UUPSUpgrade
         // note: this is re-entrant as we can't really trust
         // the destination.
         emit keyLockerLoan(operator, locksmith, keyId, amount, destination);
-        IERC1155(ILocksmith(locksmith).getKeyVault()).safeTransferFrom(address(this), destination, keyId, amount, data);
+        IERC1155(address(keyVault)).safeTransferFrom(address(this), destination, keyId, amount, data);
 
         // ensure that the key has been returned. we define this by having at least as many keys as we started with,
         // allowing additional keys of that type to be deposited during the loan, for whatever reason.
@@ -295,9 +298,9 @@ contract KeyLocker is IKeyLocker, Initializable, OwnableUpgradeable, UUPSUpgrade
         // a key could be used to escalate back to generic root permissions (via a use of a contractbound root key), 
         // that would enable the destination to remove the root key from the caller. Giving ring keys unfettered 
         // root escalation or specifically to key management functions needs to be considered with care and isn't advised.
-        require(IKeyVault(ILocksmith(locksmith).getKeyVault()).keyBalanceOf(address(this), keyId, false) >= startKeyBalance, 
+        require(keyVault.keyBalanceOf(address(this), keyId, false) >= startKeyBalance, 
             'KEY_NOT_RETURNED');
-        require(IKeyVault(ILocksmith(locksmith).getKeyVault()).keyBalanceOf(operator, keyId, false) >= startUserBalance, 
+        require(keyVault.keyBalanceOf(operator, keyId, false) >= startUserBalance, 
             'CALLER_KEY_STRIPPED');
     }
 }

@@ -27,9 +27,6 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import '../interfaces/IKeyVault.sol';
 import '../interfaces/ILocksmith.sol';
 import '../interfaces/IPostOffice.sol';
-
-// this is what we are cloning
-import './VirtualKeyAddress.sol';
 ///////////////////////////////////////////////////////////
 
 /**
@@ -44,6 +41,7 @@ contract KeyAddressFactory is ERC1155Holder, Initializable, OwnableUpgradeable, 
     // Storage
     ///////////////////////////////////////////////////////
     IPostOffice public postOffice;
+    address public virtualKeyAddress;
 
     // structure used to pass in data for inbox creation
     struct InboxRequest {
@@ -70,11 +68,13 @@ contract KeyAddressFactory is ERC1155Holder, Initializable, OwnableUpgradeable, 
      * Fundamentally replaces the constructor for an upgradeable contract.
      *
      * @param _PostOffice this factory needs a reference to the post office for registration.
+     * @param _VirtualKeyAddress this factory needs a reference to use for the inbox implementation. 
      */
-    function initialize(address _PostOffice) initializer public {
+    function initialize(address _PostOffice, address _VirtualKeyAddress) initializer public {
          __Ownable_init();
         __UUPSUpgradeable_init();
         postOffice = IPostOffice(_PostOffice);
+        virtualKeyAddress = _VirtualKeyAddress;
     }
 
     /**
@@ -122,11 +122,8 @@ contract KeyAddressFactory is ERC1155Holder, Initializable, OwnableUpgradeable, 
         // grab the encoded information
         InboxRequest memory request = abi.decode(data, (InboxRequest)); 
 
-        // deploy the implementation
-        address inbox = address(new VirtualKeyAddress());    
-
         // deploy the proxy, and call the initialize method through it
-        ERC1967Proxy proxy = new ERC1967Proxy(inbox, 
+        ERC1967Proxy proxy = new ERC1967Proxy(virtualKeyAddress, 
             abi.encodeWithSignature('initialize(address,address,uint256,uint256)', 
                 locksmith, request.defaultEthDepositProvider, keyId, request.virtualKeyId)); 
 
