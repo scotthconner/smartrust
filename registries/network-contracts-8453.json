@@ -56,11 +56,11 @@
     "codeHash": "0x0cbbfbca0f3bc50bde9e2dd5a04005f7d62a184df11924869cc6a18cde0e2f2f"
   },
   "MegaKeyCreator": {
-    "address": "0x870f80D097fF567a40F98FFdC1ac90323960A4F5",
+    "address": "0x48C68e62Cd22618442B2509656dEF9A6CD5d9B68",
     "codeHash": "0x220680be4e0c2aa98bdeffb5e1aec97452357ab0c0a0fcd19a152eba2e777db5"
   },
   "TrustCreator": {
-    "address": "0x095d0be985eC24B0aF5D2e65d4397CDB57d60686",
+    "address": "0xbE9D6c55b61E6579470ddE211dDB4762D28F7ACF",
     "codeHash": "0xca7e8caf44be5df2b6cfc1e7587a34e2c89b467660c8f444a1322cfadbc079a8"
   },
   "KeyLocker": {
