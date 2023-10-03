@@ -27,6 +27,11 @@ const green  = (s) => '\x1b[32m' + s + '\x1b[0m';
 const yellow = (s) => '\x1b[33m' + s + '\x1b[0m';
 const blue   = (s) => '\x1b[34m' + s + '\x1b[0m';
 
+const syncWait = ms => {
+    const end = Date.now() + ms
+    while (Date.now() < end) continue
+}
+
 ///////////////////////////////////////////
 // getContractInitializationDependencies
 //
@@ -163,6 +168,8 @@ task("show", "Show the state of the current genie deployment")
       if (missing.length === 0 && currentAddress === null) {
         availableDeployments.push(c)
       }
+
+      syncWait(1000);
     };
 
     console.log("\n\nTotal Deployment Progress: " + deployed + " of " + totalNeeded);

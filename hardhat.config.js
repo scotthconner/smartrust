@@ -66,7 +66,7 @@ module.exports = {
       accounts: [`${process.env.MY_PRIVATE_KEY}`],
     },
     base: {
-      url: 'https://developer-access-mainnet.base.org',
+      url: 'https://mainnet.base.org',
       gasPrice: 1000000000,
       ledgerAccounts: [
         '0xB617dFa5Cf63C55F5E3f351A70488cE34EDcc9C6'
