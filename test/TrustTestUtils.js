@@ -306,8 +306,7 @@ TrustTestFixtures = (function() {
         notary, ledger, vault, tokenVault, coin, 
         owner, root, second, third};
     },
-
-    // TODO: Set this up
+    
     freshNFTVault: async function() {
       const {keyVault, locksmith, 
         notary, ledger, vault, events,
@@ -326,9 +325,10 @@ TrustTestFixtures = (function() {
       const nft = await ShadowNFT.deploy("my_nft", "myNFT");
  
       // mint shadow NFTs 
-      await nft.connect(owner).mint(1);
-      // TODO: check if this is requied or not 
-     // await nft.connect(owner).approve(nftVault.address, ethers.constants.MaxUint256);
+      await nft.connect(root).mint(1);
+      await nft.connect(second).mint(2);
+      await nft.connect(third).mint(3);
+
       
       await notary.connect(root).setTrustedLedgerRole(
         0, 0, ledger.address, nftVault.address, true, stb('nft Vault'));
