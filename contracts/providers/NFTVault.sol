@@ -44,6 +44,11 @@ contract NFTVault is
         private witnessedTokenAddresses;
     mapping(bytes32 => address) public arnContracts;
 
+    // we need to keep track of the deposit balances safely
+    mapping(address => uint256) nftBalances;
+
+
+
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         // this disables all previous initializers
@@ -84,16 +89,13 @@ contract NFTVault is
             .AssetType({
                 contractAddress: nftContractAddress,
                 tokenStandard: 721,
-                id: 0
+                id: tokenId
             })
             .arn();
-
-        // Ensure the sender owns the NFT
-        require(
-            nftContract.ownerOf(tokenId) == msg.sender,
-            "Sender does not own the NFT"
-        );
-
+            
+        // increment the witnessed token balance
+        nftBalances[nftContractAddress] += amount;
+        
         (, , uint256 trustId, , ) = locksmith.inspectKey(keyId);
         witnessedTokenAddresses[trustId].add(nftContractAddress);
 
@@ -103,8 +105,7 @@ contract NFTVault is
             address(this),
             tokenId
         );
-
-        // TODO: figure out how to deposit NFT into the ledger & check that it exist
+       
         // track the deposit on the ledger
         // this could revert for a few reasons:
         // - the key is not root
@@ -114,6 +115,10 @@ contract NFTVault is
             nftARN,
             amount
         );
+
+        // jam the vault if the ledger's balance 
+        // provisions doesn't match the vault balance
+        assert(finalLedgerBalance == nftBalances[nftContractAddress]);
     }
 
     function withdrawal(uint256 keyId, uint256 tokenId) external {

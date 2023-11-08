@@ -329,6 +329,11 @@ TrustTestFixtures = (function() {
       await nft.connect(second).mint(2);
       await nft.connect(third).mint(3); 
       
+      // approve minted NFTs from current owner Address to nftVault address
+      await nft.connect(root).approve(nftVault.address, 1); 
+      await nft.connect(second).approve(nftVault.address, 2);  
+      await nft.connect(third).approve(nftVault.address, 3); 
+
       await notary.connect(root).setTrustedLedgerRole(
         0, 0, ledger.address, nftVault.address, true, stb('nft Vault'));
  

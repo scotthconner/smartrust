@@ -36,9 +36,13 @@ describe("NFTVault", function () {
         notary, ledger, nftVault, nft,
         owner, root, second, third } = await loadFixture(TrustTestFixtures.freshNFTVault);
  
-      let ownerNft = await nft.balanceOf(root.address); 
-
-      console.log(ownerNft)
+      expect(await nft.balanceOf(root.address), eth(1)); 
+      expect(await nft.balanceOf(second.address), eth(1)); 
+      expect(await nft.balanceOf(third.address), eth(1));
+ 
+     expect(root.address, await nft.ownerOf(1))
+     expect(second.address, await nft.ownerOf(2))
+     expect(third.address,  await nft.ownerOf(3)) 
 
       // create a second trust with a different owner
       await locksmith.connect(second).createTrustAndRootKey(stb("Second Trust"), second.address);
@@ -46,15 +50,16 @@ describe("NFTVault", function () {
       // create a secondary key on that trust
       await locksmith.connect(second).createKey(1, stb('2'), third.address, false);
 
-    //   // have the owner deposit some tokens into the account
-    //   await expect(tokenVault.connect(second)
-    //     .deposit(1, coin.address, eth(3))) 
-    //     .to.be.revertedWith('UNTRUSTED_ACTOR');
-    //   await notary.connect(second).setTrustedLedgerRole(1, 0, ledger.address, tokenVault.address, true, stb('Token Vault'));
+      // have the owner deposit some tokens into the account
+      await expect(nftVault.connect(second)
+        .deposit(1, 1, nft.address, eth(1))) 
+        .to.be.revertedWith('UNTRUSTED_ACTOR');
 
-    //   await expect(await tokenVault.connect(second).deposit(1, coin.address, eth(3)) )
+      await notary.connect(second).setTrustedLedgerRole(1, 0, ledger.address, nftVault.address, true, stb('nft Vault'));
+
+    //   await expect(await nftVault.connect(second).deposit(1, 1, nft.address, eth(1)) )
     //     .to.emit(ledger, "depositOccurred")
-    //     .withArgs(tokenVault.address, 1, 1, tokenArn(coin.address), eth(3), eth(3), eth(3), eth(3)); 
+    //     .withArgs(nftVault.address, 1, 1, tokenArn(nft.address), eth(1), eth(1), eth(1), eth(1)); 
 
     //   // check all the balances of the accounts once more
     //   expect(await coin.balanceOf(root.address)).to.equal(eth(10)); 
