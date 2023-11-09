@@ -74,13 +74,13 @@ contract NFTVault is
         return address(ledger);
     }
 
-    // TODO: is amount required as a parameter, can we just deposit the whole NFT using tokenID?
+
+    // TODO: add comments
     function deposit(
         uint256 keyId,
         uint256 tokenId,
-        address nftContractAddress,
-        uint256 amount
-    ) external override {
+        address nftContractAddress
+    ) external {
         // stop right now if the message sender doesn't hold the key
         require(locksmith.hasKeyOrTrustRoot(msg.sender, keyId), "KEY_NOT_HELD");
 
@@ -92,15 +92,16 @@ contract NFTVault is
                 id: tokenId
             })
             .arn();
-            
+
         // increment the witnessed token balance
-        nftBalances[nftContractAddress] += amount;
+        nftBalances[nftContractAddress] += 1;
         
         (, , uint256 trustId, , ) = locksmith.inspectKey(keyId);
         witnessedTokenAddresses[trustId].add(nftContractAddress);
 
         // Transfer the NFT to the vault
-        IERC721(nftContractAddress).transferFrom(
+        // TODO: implement safeTransferFrom once IERC721Receiver is implemented
+        IERC721(nftContractAddress).transferFrom( 
             msg.sender,
             address(this),
             tokenId
@@ -110,12 +111,8 @@ contract NFTVault is
         // this could revert for a few reasons:
         // - the key is not root
         // - the vault is not a trusted collateral provider the ledger
-        (, , uint256 finalLedgerBalance) = ledger.deposit(
-            keyId,
-            nftARN,
-            amount
-        );
-
+        (, , uint256 finalLedgerBalance) = ledger.deposit(keyId, nftARN, 1);
+    
         // jam the vault if the ledger's balance 
         // provisions doesn't match the vault balance
         assert(finalLedgerBalance == nftBalances[nftContractAddress]);

@@ -5,7 +5,7 @@ pragma solidity ^0.8.16;
 import './ICollateralProvider.sol';
 
 interface INFTCollateralProvider is ICollateralProvider {
-    function deposit(uint256 keyId, uint256 tokenId, address nftContractAddress, uint256 amount) external;
+    function deposit(uint256 keyId, uint256 tokenId, address nftContractAddress) external;
 
     function withdrawal(uint256 keyId, uint256 tokenId) external;
 }
