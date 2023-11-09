@@ -306,6 +306,43 @@ TrustTestFixtures = (function() {
         notary, ledger, vault, tokenVault, coin, 
         owner, root, second, third};
     },
+
+    freshNFTVault: async function() {
+      const {keyVault, locksmith, 
+        notary, ledger, vault, events,
+        owner, root, second, third} =
+      await TrustTestFixtures.fundedEtherVault();
+
+      const NFTVault = await ethers.getContractFactory("NFTVault");
+
+      const nftVault = await upgrades.deployProxy(NFTVault, [
+        locksmith.address, ledger.address
+      ]);
+      await nftVault.deployed();
+
+      // Deploy shadow nft contract
+      const ShadowNFT = await ethers.getContractFactory("ShadowNFT"); 
+      const nft = await ShadowNFT.deploy("my_nft", "myNFT");
+ 
+      // mint shadow NFTs 
+      await nft.connect(root).mint(1);
+      await nft.connect(second).mint(2);
+      await nft.connect(third).mint(3);   
+    
+      // approve minted NFTs from current owner Address to nftVault address
+      await nft.connect(root).approve(nftVault.address, 1); 
+      await nft.connect(second).approve(nftVault.address, 2);  
+      await nft.connect(third).approve(nftVault.address, 3); 
+ 
+
+      await notary.connect(root).setTrustedLedgerRole(
+        0, 0, ledger.address, nftVault.address, true, stb('nft Vault'));
+ 
+        return {keyVault, locksmith, events,
+          notary, ledger, vault, nftVault, nft, 
+          owner, root, second, third}; 
+    },
+
     ////////////////////////////////////////////////////////////
     // fundedTokenVault 
     //
